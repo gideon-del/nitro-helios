@@ -1,4 +1,6 @@
 #include <rasterizer/rasterizer.h>
+#include <rasterizer/texture.h>
+#include <rasterizer/color.h>
 
 using namespace nitro::math;
 
@@ -16,7 +18,8 @@ namespace nitro::rasterizer
 
         return (E0 >= 0 && E1 >= 0 && E2 >= 0) || (E0 <= 0 && E1 <= 0 && E2 <= 0);
     }
-    void drawTriangleEdge(FrameBuffer &fb, VertexOut a, VertexOut b, VertexOut c, uint8_t red, uint8_t green, uint8_t blue)
+
+    void drawTriangleEdge(FrameBuffer &fb, VertexOut a, VertexOut b, VertexOut c, const Texture &texture)
     {
         float area = edgeFn(a.screen, b.screen, c.screen);
 
@@ -43,13 +46,16 @@ namespace nitro::rasterizer
 
                 if (w0 >= 0 && w1 >= 0 && w2 >= 0)
                 {
+                    float denom = (w0 / a.w) + (w1 / b.w) + (w2 / c.w);
 
-                    float z = ((w0 * a.z / a.w) + (w1 * b.z / b.w) + (w2 * c.z / c.w)) / ((w0 * 1.0f / a.w) + (w1 * 1.0f / b.w) + (w2 * 1.0f / c.w));
-
+                    float z = ((w0 * a.z / a.w) + (w1 * b.z / b.w) + (w2 * c.z / c.w)) / denom;
+                    float u = ((w0 * a.u / a.w) + (w1 * b.u / b.w) + (w2 * c.u / c.w)) / denom;
+                    float v = ((w0 * a.v / a.w) + (w1 * b.v / b.w) + (w2 * c.v / c.w)) / denom;
                     if (fb.testAndSetDepth(x, y, z))
                     {
+                        Color col = texture.sampleBilinear(u, v);
 
-                        fb.setPixel(x, y, red, green, blue, 255);
+                        fb.setPixel(x, y, col);
                     }
                 }
             }

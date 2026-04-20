@@ -12,6 +12,7 @@ namespace nitro::rasterizer
         Vec3D screen;
         float z;
         float w;
+        float u, v;
     };
 
     VertexOut processVertex(

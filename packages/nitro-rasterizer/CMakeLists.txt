@@ -6,9 +6,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
 add_executable(nitro-rasterizer
+src/texture.cpp
 src/rasterizer.cpp
 src/pipeline.cpp
   src/main.cpp
+  
 )
 
 target_link_libraries(nitro-rasterizer

@@ -1,6 +1,7 @@
 #include <rasterizer/framebuffer.h>
 #include <rasterizer/pipeline.h>
 #include <rasterizer/rasterizer.h>
+#include <rasterizer/texture.h>
 #include <math/vec.h>
 using namespace nitro::math;
 using namespace nitro::rasterizer;
@@ -18,9 +19,9 @@ void draw3DCube(FrameBuffer &fb, float angle)
     };
     Mat4 model = Mat4() * Quat::fromAxisAngle(Vec3D(0, 10, 20), toRadians(angle)).toMat4();
     // Mat4 model = Mat4();
-    Mat4 view = Mat4::lookAt(Vec3D{0, 0, 3}, Vec3D{0, 0, 0}, Vec3D{0, 1, 0});
+    Mat4 view = Mat4::lookAt(Vec3D{2, 2, 4}, Vec3D{0, 0, 0}, Vec3D{0, 1, 0});
     Mat4 proj = Mat4::perspective(toRadians(120), (float)fb.width / (float)fb.height, 0.1, 100);
-
+    nitro::rasterizer::Texture tex = nitro::rasterizer::Texture::loadFromFilePath("texture.jpg");
     int edges[12][2] = {
         // back face
         {0, 1},
@@ -54,13 +55,13 @@ void draw3DCube(FrameBuffer &fb, float angle)
         VertexOut vOut = processVertex(vertices[i], model, view, proj, fb.width, fb.height);
         screen[i] = vOut;
     }
-    uint8_t colors[6][3] = {
-        {255, 0, 0},   // red
-        {0, 255, 0},   // green
-        {0, 0, 255},   // blue
-        {255, 255, 0}, // yellow
-        {255, 0, 255}, // magenta
-        {0, 255, 255}, // cyan
+    Color colors[6] = {
+        Color{255, 0, 0, 255},   // red
+        Color{0, 255, 0, 255},   // green
+        Color{0, 0, 255, 255},   // blue
+        Color{255, 255, 0, 255}, // yellow
+        Color{255, 0, 255, 255}, // magenta
+        Color{0, 255, 255, 255}, // cyan
     };
 
     for (int i = 0; i < 6; i++)
@@ -71,16 +72,23 @@ void draw3DCube(FrameBuffer &fb, float angle)
         VertexOut b = screen[faces[i][1]];
         VertexOut c = screen[faces[i][2]];
         VertexOut d = screen[faces[i][3]];
-
-        drawTriangleEdge(fb, a, b, c, colors[i][0], colors[i][1], colors[i][2]);
-        drawTriangleEdge(fb, a, c, d, colors[i][0], colors[i][1], colors[i][2]);
+        a.u = 0.0f;
+        a.v = 0.0f;
+        b.u = 1.0f;
+        b.v = 0.0f;
+        c.u = 1.0f;
+        c.v = 1.0f;
+        d.u = 0.0f;
+        d.v = 1.0f;
+        drawTriangleEdge(fb, a, b, c, tex);
+        drawTriangleEdge(fb, a, c, d, tex);
     }
-    fb.clearDepth();
+    // fb.clearDepth();
 
-    for (auto &e : edges)
-        fb.drawLine(screen[e[0]].screen.x, screen[e[0]].screen.y,
-                    screen[e[1]].screen.x, screen[e[1]].screen.y,
-                    0, 255, 0);
+    // for (auto &e : edges)
+    //     fb.drawLine(screen[e[0]].screen.x, screen[e[0]].screen.y,
+    //                 screen[e[1]].screen.x, screen[e[1]].screen.y,
+    //                 Color{0, 255, 0, 255});
 }
 int main()
 {

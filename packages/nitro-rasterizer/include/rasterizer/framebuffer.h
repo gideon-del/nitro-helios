@@ -2,7 +2,9 @@
 #include <algorithm>
 #include <vector>
 #include <math/vec.h>
+#include <rasterizer/color.h>
 using namespace nitro::math;
+
 namespace nitro::rasterizer
 {
     struct FrameBuffer
@@ -13,16 +15,16 @@ namespace nitro::rasterizer
         std::vector<float> depth;
         FrameBuffer(int width, int height) : width(width), height(height), data(width * height * channels, 0), depth(width * height, 1.0f) {}
 
-        void setPixel(int x, int y, uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+        void setPixel(int x, int y, Color col)
         {
             if (x < 0 || x >= width || y < 0 || y >= height)
                 return;
             int idx = (y * width + x) * channels;
 
-            data[idx] = r;
-            data[idx + 1] = g;
-            data[idx + 2] = b;
-            data[idx + 3] = a;
+            data[idx] = col.r;
+            data[idx + 1] = col.g;
+            data[idx + 2] = col.b;
+            data[idx + 3] = col.a;
         }
 
         std::vector<uint8_t> getPixel(int x, int y)
@@ -70,10 +72,10 @@ namespace nitro::rasterizer
             }
             fclose(f);
         }
-        void drawLine(int x0, int y0, int x1, int y1, uint8_t r, uint8_t g, uint8_t b)
+        void drawLine(int x0, int y0, int x1, int y1, const Color color)
         {
 
-            setPixel(x0, y0, r, g, b, 255);
+            setPixel(x0, y0, color);
             int dx = std::abs(x1 - x0);
             int dy = std::abs(y1 - y0);
 
@@ -101,11 +103,11 @@ namespace nitro::rasterizer
                     y0 += sy;
                 }
 
-                setPixel(x0, y0, r, g, b, 255);
+                setPixel(x0, y0, color);
             }
         }
 
-        void drawTriangle(Vec2D v0, Vec2D v1, Vec2D v2, uint8_t r, uint8_t g, uint8_t b)
+        void drawTriangle(Vec2D v0, Vec2D v1, Vec2D v2, Color color)
         {
             if (v1.y < v0.y)
                 std::swap(v0, v1);
@@ -131,7 +133,7 @@ namespace nitro::rasterizer
 
                 for (int x = xl; x <= xr; x++)
                 {
-                    setPixel(x, y, r, g, b, 255);
+                    setPixel(x, y, color);
                 }
 
                 xLong += dxLong;
@@ -148,7 +150,7 @@ namespace nitro::rasterizer
 
                 for (int x = xl; x <= xr; x++)
                 {
-                    setPixel(x, y, r, g, b, 255);
+                    setPixel(x, y, color);
                 }
 
                 xLong += dxLong;
