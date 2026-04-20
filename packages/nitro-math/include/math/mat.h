@@ -39,7 +39,7 @@ namespace nitro::math
         float &at(int col, int row) { return m[col * 4 + row]; }
         float at(int col, int row) const { return m[col * 4 + row]; }
 
-        Mat4 operator*(const Mat4 &o)
+        Mat4 operator*(const Mat4 &o) const
         {
             Mat4 result;
             result.m[0] = 0;
