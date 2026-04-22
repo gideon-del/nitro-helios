@@ -24,7 +24,7 @@ namespace nitro::rasterizer
     }
     Color Texture::sampleAt(int x, int y) const
     {
-        int idx = (y * width + x) * 4;
+        int idx = (y * width + x) * channels;
 
         return {pixels[idx], pixels[idx + 1], pixels[idx + 2], pixels[idx + 3]};
     }
