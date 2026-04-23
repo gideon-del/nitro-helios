@@ -8,12 +8,13 @@ namespace nitro::rasterizer
 {
     struct VertexOut
     {
-        Vec3D position;
+        Vec3D worldPos;
+        Vec3D screenPos;
         Vec2D uv;
         Vec3D normal;
         float w;
     };
-    struct Vertex
+    struct VertexIn
     {
         Vec3D position;
         Vec2D uv;
@@ -21,10 +22,10 @@ namespace nitro::rasterizer
     };
     struct Triangle
     {
-        Vertex v0, v1, v2;
+        VertexIn v0, v1, v2;
     };
-    Vec4D processVertex(
-        const Vec4D &v,
+    VertexOut processVertex(
+        const VertexIn &v,
         const Mat4 &model,
         const Mat4 &view,
         const Mat4 &projection,

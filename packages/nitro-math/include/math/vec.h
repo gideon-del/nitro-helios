@@ -99,6 +99,10 @@ namespace nitro::math
         {
             return {x * t, y * t, z * t};
         }
+        Vec3D operator*(const Vec3D &o) const
+        {
+            return {x * o.x, y * o.y, z * o.z};
+        }
         Vec3D operator/(const float t) const
         {
             return {x / t, y / t, z / t};

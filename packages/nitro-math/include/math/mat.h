@@ -61,7 +61,7 @@ namespace nitro::math
             return result;
         }
 
-        Vec4D operator*(const Vec4D &v)
+        Vec4D operator*(const Vec4D &v) const
         {
             return {
                 m[0] * v.x + m[4] * v.y + m[8] * v.z + m[12] * v.w,

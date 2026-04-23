@@ -18,25 +18,33 @@ namespace nitro::rasterizer
 
         return idx;
     }
-    Vec4D processVertex(const Vec4D &v,
-                        const Mat4 &model,
-                        const Mat4 &view,
-                        const Mat4 &projection,
-                        int width, int height)
+    VertexOut processVertex(const VertexIn &v,
+                            const Mat4 &model,
+                            const Mat4 &view,
+                            const Mat4 &projection,
+                            int width, int height)
     {
 
-        Vec4D clip = projection * view * model * v;
+        Vec4D positionWithW = Vec4D{v.position.x, v.position.y, v.position.z, 1};
+        Vec4D worldPos = model * positionWithW;
+        Vec4D normal = Mat4::normalMatrix(model) * Vec4D{v.normal.x, v.normal.y, v.normal.z, 1};
+        Vec4D clip = projection * view * worldPos;
 
         float invW = 1.0f / clip.w;
 
         Vec3D ndc = clip.perspectiveDivide();
 
-        Vec4D screen;
+        Vec3D screen;
         screen.x = (ndc.x + 1) * 0.5 * width;
         screen.y = (1 - ndc.y) * 0.5 * height;
         screen.z = ndc.z;
-        screen.w = clip.w;
-        return screen;
+
+        return VertexOut{
+            worldPos.perspectiveDivide(),
+            screen,
+            v.uv,
+            normal.perspectiveDivide(),
+            clip.w};
     }
 
     std::vector<Triangle> processOBJFile(std::string fileName)
@@ -117,7 +125,7 @@ namespace nitro::rasterizer
         {
             std::cerr << e.what() << '\n';
         }
-        std::cout << triangles.size() << " Triangles" << "\n";
+
         return triangles;
     }
 
