@@ -213,6 +213,11 @@ namespace nitro::math
         {
             return std::sqrt(lengthSquared());
         }
+        Vec4D lerp(const Vec4D &o, const float t) const
+        {
+
+            return *this + ((o - *this) * t);
+        }
         Vec4D normalize() const
         {
             float len = length();
@@ -225,11 +230,11 @@ namespace nitro::math
             return {x / len, y / len, z / len, w / len};
         }
 
-        Vec3D perspectiveDivide()
+        Vec3D perspectiveDivide() const
         {
             return {x / w, y / w, z / w};
         }
-        Vec3D toVec3D()
+        Vec3D toVec3D() const
         {
             return {x, y, z};
         }

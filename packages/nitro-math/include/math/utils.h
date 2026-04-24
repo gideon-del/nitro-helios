@@ -48,4 +48,5 @@ namespace nitro::math
     constexpr float PI = M_PI;
     constexpr float TAU = 2.0f * M_PI;
     constexpr float HALF_PI = PI / 2.0f;
+    constexpr float EPSILON = 1e-6f;
 }

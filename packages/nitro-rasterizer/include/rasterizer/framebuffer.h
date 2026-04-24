@@ -55,6 +55,7 @@ namespace nitro::rasterizer
         bool testAndSetDepth(int x, int y, float z)
         {
             int idx = y * width + x;
+
             if (z < depth[idx])
             {
                 depth[idx] = z;

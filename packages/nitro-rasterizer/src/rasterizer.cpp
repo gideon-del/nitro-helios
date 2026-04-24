@@ -54,9 +54,12 @@ namespace nitro::rasterizer
                     float denom = (w0 / a.w) + (w1 / b.w) + (w2 / c.w);
 
                     float z = ((w0 * a.screenPos.z / a.w) + (w1 * b.screenPos.z / b.w) + (w2 * c.screenPos.z / c.w)) / denom;
+
                     float u = ((w0 * a.uv.x / a.w) + (w1 * b.uv.x / b.w) + (w2 * c.uv.x / c.w)) / denom;
                     float v = ((w0 * a.uv.y / a.w) + (w1 * b.uv.y / b.w) + (w2 * c.uv.y / c.w)) / denom;
-                    Vec3D P = ((((a.worldPos / a.w) * w0) + ((b.worldPos / b.w) * w1) + ((c.worldPos / c.w) * w2)) / denom);
+
+                    Vec3D P = ((((a.pos_over_w) * w0) + ((b.pos_over_w) * w1) + ((c.pos_over_w) * w2)) / denom);
+
                     Vec3D N = ((((a.normal / a.w) * w0) + ((b.normal / b.w) * w1) + ((c.normal / c.w) * w2)) / denom).normalize();
 
                     if (fb.testAndSetDepth(x, y, z))
@@ -71,6 +74,7 @@ namespace nitro::rasterizer
 
                         Color col = texture.sampleBilinear(u, v);
                         Vec3D texColor = col.toVec3();
+
                         Vec3D finalColor =
                             (texColor * (ambient +
                                          (lightColor * Kd * diffuse))) +
