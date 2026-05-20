@@ -1,0 +1,36 @@
+#pragma once
+#include <cstdint>
+
+namespace nitro::rhi
+{
+    class RHIBuffer;
+    class RHITexture;
+    class RHIPipeline;
+
+    struct RHIRenderPassDesc
+    {
+        float clearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+        float clearDepth = 1.0f;
+        bool hasDepth = true;
+        RHITexture *colorTexture = nullptr;
+    };
+
+    class RHICommandBuffer
+    {
+    public:
+        virtual ~RHICommandBuffer() = default;
+
+        virtual void beginRenderPass(const RHIRenderPassDesc &desc) = 0;
+        virtual void endRenderPass() = 0;
+
+        virtual void bindPipeline(RHIPipeline *pipeline) = 0;
+        virtual void bindVertexBuffer(RHIBuffer *buffer) = 0;
+        virtual void bindIndexBuffer(RHIBuffer *buffer) = 0;
+        virtual void bindUniformBuffer(RHIBuffer *buffer, uint32_t binding) = 0;
+
+        virtual void drawIndexed(uint32_t indexCount) = 0;
+
+        virtual void present() = 0;
+    };
+
+}
