@@ -3,6 +3,8 @@
 #include "rhi-command-buffer.h"
 #include "rhi-texture.h"
 #include "rhi-pipeline.h"
+#include "rhi-surface.h"
+#include "rhi-swapchain.h"
 namespace nitro::rhi
 {
 
@@ -10,6 +12,10 @@ namespace nitro::rhi
     {
     public:
         virtual ~RHIDevice() = default;
+
+        virtual RHISurface *createSurface(void *window) = 0;
+        virtual RHISwapchain *createSwapchain(RHISurface *surface) = 0;
+
         virtual RHIBuffer *createBuffer(const BufferDesc &desc) = 0;
         virtual void destroyBuffer(RHIBuffer *buffer) = 0;
 

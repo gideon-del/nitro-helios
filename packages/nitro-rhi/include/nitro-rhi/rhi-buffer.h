@@ -17,7 +17,8 @@ namespace nitro::rhi
             Vertex,
             Index,
             Uniform,
-            Storage
+            Storage,
+            Staging
         } usage;
 
         size_t size;
