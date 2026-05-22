@@ -13,7 +13,6 @@ namespace nitro::rhi
     public:
         virtual ~RHIDevice() = default;
 
-        virtual RHISurface *createSurface(void *window) = 0;
         virtual RHISwapchain *createSwapchain(RHISurface *surface) = 0;
 
         virtual RHIBuffer *createBuffer(const BufferDesc &desc) = 0;

@@ -15,7 +15,8 @@ namespace nitro::rhi
         enum class Usage : uint32_t
         {
             RenderTarget = 1 << 0,
-            ShaderRead = 1 << 1
+            ShaderRead = 1 << 1,
+            DepthStencil = 1 << 2
         } usage;
 
         struct Size
@@ -25,7 +26,12 @@ namespace nitro::rhi
 
         const void *initialData = nullptr;
     };
-
+    inline bool hasTextureUsageFlag(TextureDesc::Usage value,
+                                    TextureDesc::Usage flag)
+    {
+        return (static_cast<uint32_t>(value) &
+                static_cast<uint32_t>(flag)) != 0;
+    }
     class RHITexture
     {
     public:
