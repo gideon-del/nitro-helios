@@ -11,6 +11,7 @@ namespace nitro::rhi::vulkan
 
     public:
         VulkanTexture(VulkanDevice *device, const TextureDesc &desc);
+        VulkanTexture(VulkanDevice *device, VkImage image, uint32_t width, uint32_t height, VkFormat format);
         ~VulkanTexture() override;
 
         VkImage image = VK_NULL_HANDLE;

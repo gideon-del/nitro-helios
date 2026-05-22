@@ -69,7 +69,7 @@ namespace nitro::rhi::vulkan
     {
 
         VkShaderModule vertexShader = loadShaderModule(m_device->device, desc.vertexShader);
-        VkShaderModule fragmentShader = loadShaderModule(m_device->device, desc.vertexShader);
+        VkShaderModule fragmentShader = loadShaderModule(m_device->device, desc.fragmentShader);
 
         VkPipelineShaderStageCreateInfo shaderStageInfo{};
 
@@ -96,7 +96,7 @@ namespace nitro::rhi::vulkan
             attributeDesc.binding = desc.vertexLayout.binding;
             attributeDesc.format = convertAttributeFormat(attribute.format);
             attributeDesc.location = attribute.location;
-            attributeDesc.offset = attributeDesc.offset;
+            attributeDesc.offset = attribute.offset;
 
             attributes[i] = attributeDesc;
         }

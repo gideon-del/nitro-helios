@@ -1,4 +1,6 @@
 #include <nitro-rhi-backends/vulkan/vulkan-device.h>
+#include <nitro-rhi-backends/vulkan/vulkan-buffer.h>
+#include <nitro-rhi-backends/vulkan/vulkan-texture.h>
 #include <nitro-rhi-backends/vulkan/vulkan-pipeline.h>
 #include <nitro-rhi-backends/vulkan/vulkan-utils.h>
 #include <vector>
@@ -342,17 +344,17 @@ namespace nitro::rhi::vulkan
         m_instance = create_instance();
         m_messageCallback = attach_debugger(m_instance);
         surface = new VulkanSurface(m_instance, window);
-        m_physicalDevice = select_physical_device(m_instance);
-        m_queueFamilyIndices = find_queue_families(surface->surface, m_physicalDevice);
+        physicalDevice = select_physical_device(m_instance);
+        m_queueFamilyIndices = find_queue_families(surface->surface, physicalDevice);
 
-        device = create_logical_device(m_physicalDevice, m_queueFamilyIndices);
+        device = create_logical_device(physicalDevice, m_queueFamilyIndices);
 
         vkGetDeviceQueue(device, m_queueFamilyIndices.graphicsFamily.value(), 0, &graphicsQueue);
         vkGetDeviceQueue(device, m_queueFamilyIndices.presentFamily.value(), 0, &presentQueue);
 
-        allocator = create_allocator(m_instance, m_physicalDevice, device);
+        allocator = create_allocator(m_instance, physicalDevice, device);
         commandPool = create_command_pool(device, m_queueFamilyIndices);
-        m_surfaceFormat = query_device_format(m_physicalDevice, surface->surface);
+        m_surfaceFormat = query_device_format(physicalDevice, surface->surface);
         defaultRenderPass = create_render_pass(device, m_surfaceFormat);
     }
 
@@ -530,5 +532,10 @@ namespace nitro::rhi::vulkan
     void VulkanDevice::destroyPipeline(RHIPipeline *pipeline)
     {
         delete pipeline;
+    }
+
+    void VulkanDevice::waitIdle()
+    {
+        vkDeviceWaitIdle(device);
     }
 }

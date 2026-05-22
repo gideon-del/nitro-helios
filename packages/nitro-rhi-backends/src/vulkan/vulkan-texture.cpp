@@ -117,7 +117,7 @@ namespace nitro::rhi::vulkan
                 VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
                 VK_IMAGE_ASPECT_DEPTH_BIT);
             m_device->endOneTimeCommands(cmd);
-            currentLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+            currentLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         }
 
         VkImageViewCreateInfo imageViewInfo{};
@@ -159,7 +159,26 @@ namespace nitro::rhi::vulkan
                           "Unable to create sampler");
         }
     }
+    VulkanTexture::VulkanTexture(VulkanDevice *device, VkImage existingImage, uint32_t width, uint32_t height, VkFormat surfaceFormat) : m_device(device), width(width), height(height), image(existingImage), format(surfaceFormat)
+    {
+        VkImageViewCreateInfo imageViewInfo{};
+        imageViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        imageViewInfo.format = format;
+        imageViewInfo.image = image;
+        imageViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        imageViewInfo.subresourceRange.baseArrayLayer = 0;
+        imageViewInfo.subresourceRange.baseMipLevel = 0;
+        imageViewInfo.subresourceRange.layerCount = 1;
+        imageViewInfo.subresourceRange.levelCount = 1;
+        imageViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 
+        checkVkResult(vkCreateImageView(
+                          m_device->device,
+                          &imageViewInfo,
+                          nullptr,
+                          &imageView),
+                      "Unable to create a image view");
+    }
     VulkanTexture::~VulkanTexture()
     {
         if (imageView != VK_NULL_HANDLE)
@@ -172,7 +191,7 @@ namespace nitro::rhi::vulkan
             vkDestroySampler(m_device->device, sampler, nullptr);
         }
 
-        if (image != VK_NULL_HANDLE)
+        if (image != VK_NULL_HANDLE && allocation != VK_NULL_HANDLE)
         {
             vmaDestroyImage(m_device->allocator, image, allocation);
         }

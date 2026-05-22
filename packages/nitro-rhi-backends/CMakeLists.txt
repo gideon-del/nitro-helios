@@ -14,6 +14,7 @@ src/vulkan/vulkan-texture.cpp
 src/vulkan/vulkan-surface.cpp
 src/vendor/vma_impl.cpp
 src/vulkan/vulkan-pipeline.cpp
+src/vulkan/vulkan-swapchain.cpp
 )
 
 

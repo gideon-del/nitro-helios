@@ -4,8 +4,6 @@
 #include <vk_mem_alloc.h>
 #include <optional>
 #include "vulkan-surface.h"
-#include "vulkan-buffer.h"
-#include "vulkan-texture.h"
 
 namespace nitro::rhi::vulkan
 
@@ -51,7 +49,7 @@ namespace nitro::rhi::vulkan
 
         VkCommandBuffer beginOneTimeCommands();
         void endOneTimeCommands(VkCommandBuffer &cmd);
-
+        void waitIdle();
         VkDevice device;
         VmaAllocator allocator;
         VkCommandPool commandPool;
@@ -59,11 +57,13 @@ namespace nitro::rhi::vulkan
         VkQueue presentQueue;
         VulkanSurface *surface;
         VkRenderPass defaultRenderPass;
+        VkPhysicalDevice physicalDevice;
+        static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
     private:
         VkInstance m_instance;
         VkDebugUtilsMessengerEXT m_messageCallback;
-        VkPhysicalDevice m_physicalDevice;
+
         QueueFamilyIndices m_queueFamilyIndices;
         VkFormat m_surfaceFormat;
     };
