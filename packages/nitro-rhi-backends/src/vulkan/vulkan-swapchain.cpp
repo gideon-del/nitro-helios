@@ -142,37 +142,16 @@ namespace nitro::rhi::vulkan
 
             checkVkResult(vkCreateSemaphore(m_device->device, &semaphoreInfo, nullptr, &renderFinished[i]), "Semaphore not created");
         }
-
-        imageAvailable.resize(VulkanDevice::MAX_FRAMES_IN_FLIGHT);
-        inFlight.resize(VulkanDevice::MAX_FRAMES_IN_FLIGHT);
-        for (int i = 0; i < VulkanDevice::MAX_FRAMES_IN_FLIGHT; i++)
-        {
-            VkSemaphoreCreateInfo semaphoreInfo{};
-            semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-            checkVkResult(vkCreateSemaphore(m_device->device, &semaphoreInfo, nullptr, &imageAvailable[i]), "Semaphore not created");
-            VkFenceCreateInfo fenceInfo{};
-            fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-            fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-            checkVkResult(vkCreateFence(m_device->device, &fenceInfo, nullptr, &inFlight[i]), "Fence not created");
-        }
     }
 
     void VulkanSwapchain::cleanup()
     {
-        for (auto &fence : inFlight)
-        {
-            vkDestroyFence(m_device->device, fence, nullptr);
-        }
 
         for (auto &renderSemaphore : renderFinished)
         {
             vkDestroySemaphore(m_device->device, renderSemaphore, nullptr);
         }
-        for (auto &imageSemaphore : imageAvailable)
-        {
-            vkDestroySemaphore(m_device->device, imageSemaphore, nullptr);
-        }
+
         for (auto &framebuffer : framebuffers)
         {
             vkDestroyFramebuffer(m_device->device, framebuffer, nullptr);
@@ -183,11 +162,10 @@ namespace nitro::rhi::vulkan
         }
 
         vkDestroySwapchainKHR(m_device->device, swapchain, nullptr);
-        inFlight.clear();
         renderFinished.clear();
-        imageAvailable.clear();
         framebuffers.clear();
         backBuffers.clear();
+        imagesInFlight.clear();
     }
     VulkanSwapchain::~VulkanSwapchain()
     {
@@ -213,8 +191,6 @@ namespace nitro::rhi::vulkan
         framebuffers = newSwapchain->framebuffers;
         imagesInFlight = newSwapchain->imagesInFlight;
         renderFinished = newSwapchain->renderFinished;
-        imageAvailable = newSwapchain->imageAvailable;
-        inFlight = newSwapchain->inFlight;
         depthTexture = newSwapchain->depthTexture;
         format = newSwapchain->format;
         extent = newSwapchain->extent;
@@ -223,9 +199,7 @@ namespace nitro::rhi::vulkan
         newSwapchain->depthTexture = nullptr;
         newSwapchain->backBuffers.clear();
         newSwapchain->framebuffers.clear();
-        newSwapchain->inFlight.clear();
         newSwapchain->renderFinished.clear();
-        newSwapchain->imageAvailable.clear();
 
         delete newSwapchain;
     }

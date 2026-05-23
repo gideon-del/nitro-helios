@@ -3,6 +3,8 @@
 #include <nitro-rhi-backends/vulkan/vulkan-texture.h>
 #include <nitro-rhi-backends/vulkan/vulkan-pipeline.h>
 #include <nitro-rhi-backends/vulkan/vulkan-utils.h>
+#include <nitro-rhi-backends/vulkan/vulkan-swapchain.h>
+#include <nitro-rhi-backends/vulkan/vulkan-command-buffer.h>
 #include <vector>
 #include <set>
 namespace nitro::rhi::vulkan
@@ -537,5 +539,79 @@ namespace nitro::rhi::vulkan
     void VulkanDevice::waitIdle()
     {
         vkDeviceWaitIdle(device);
+    }
+
+    RHISwapchain *VulkanDevice::createSwapchain(RHISurface *surface)
+    {
+        VulkanSwapchain *swapchain = new VulkanSwapchain(this);
+        VkCommandBufferAllocateInfo allocateInfo{};
+
+        allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocateInfo.commandPool = commandPool;
+        allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocateInfo.commandBufferCount = VulkanDevice::MAX_FRAMES_IN_FLIGHT;
+
+        std::vector<VkCommandBuffer> cmdBuffers(VulkanDevice::MAX_FRAMES_IN_FLIGHT);
+
+        checkVkResult(vkAllocateCommandBuffers(device, &allocateInfo, cmdBuffers.data()), "Frame Command buffer not created");
+
+        for (int i = 0; i < VulkanDevice::MAX_FRAMES_IN_FLIGHT; i++)
+        {
+            m_frames.push_back(new VulkanCommandBuffer(this, swapchain, cmdBuffers[i], i));
+        }
+
+        return swapchain;
+    }
+
+    RHICommandBuffer *VulkanDevice::beginFrame()
+    {
+
+        VulkanCommandBuffer *vulkanCommandBuffer = m_frames[m_currentFrame];
+
+        vkWaitForFences(device, 1, &vulkanCommandBuffer->inFlight, VK_TRUE, UINT64_MAX);
+
+        uint32_t imageIdx;
+
+        VkResult acquireResult = vkAcquireNextImageKHR(device, vulkanCommandBuffer->swapchain->swapchain, UINT64_MAX, vulkanCommandBuffer->imageAvailable, VK_NULL_HANDLE, &imageIdx);
+
+        if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR)
+        {
+            checkVkResult(vkResetFences(device, 1, &vulkanCommandBuffer->inFlight), "Unable to reset fence");
+
+            vulkanCommandBuffer->swapchain->resize(
+                surface->getWidth(),
+                surface->getHeight());
+
+            return beginFrame();
+        }
+
+        if (acquireResult != VK_SUBOPTIMAL_KHR)
+        {
+
+            checkVkResult(acquireResult, "Can't acquire next image");
+        }
+
+        checkVkResult(vkResetFences(device, 1, &vulkanCommandBuffer->inFlight), "Unable to reset fence");
+        vulkanCommandBuffer->setImageIndex(imageIdx);
+        if (vulkanCommandBuffer->swapchain->imagesInFlight[imageIdx] != VK_NULL_HANDLE)
+        {
+            checkVkResult(vkWaitForFences(device, 1, &vulkanCommandBuffer->swapchain->imagesInFlight[imageIdx], VK_TRUE, UINT64_MAX), "Can't wait for image in flight fence");
+        }
+
+        vulkanCommandBuffer->swapchain->imagesInFlight[imageIdx] = vulkanCommandBuffer->inFlight;
+
+        vkResetCommandBuffer(vulkanCommandBuffer->cmd, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
+
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+        checkVkResult(vkBeginCommandBuffer(vulkanCommandBuffer->cmd, &beginInfo), "Command buffer not started");
+
+        return vulkanCommandBuffer;
+    }
+
+    void VulkanDevice::endFrame(RHICommandBuffer *cmd)
+    {
+        m_currentFrame = (m_currentFrame + 1) % VulkanDevice::MAX_FRAMES_IN_FLIGHT;
     }
 }

@@ -15,6 +15,7 @@ src/vulkan/vulkan-surface.cpp
 src/vendor/vma_impl.cpp
 src/vulkan/vulkan-pipeline.cpp
 src/vulkan/vulkan-swapchain.cpp
+src/vulkan/vulkan-command-buffer.cpp
 )
 
 

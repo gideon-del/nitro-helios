@@ -4,6 +4,7 @@
 #include <vk_mem_alloc.h>
 #include <optional>
 #include "vulkan-surface.h"
+#include <vector>
 
 namespace nitro::rhi::vulkan
 
@@ -18,12 +19,16 @@ namespace nitro::rhi::vulkan
             return graphicsFamily.has_value() && presentFamily.has_value();
         }
     };
+
+    class VulkanCommandBuffer;
     class VulkanDevice : public RHIDevice
     {
 
     public:
         ~VulkanDevice();
         VulkanDevice(void *window);
+
+        RHISwapchain *createSwapchain(RHISurface *surface) override;
 
         RHIBuffer *createBuffer(const BufferDesc &desc) override;
         void destroyBuffer(RHIBuffer *buffer) override;
@@ -49,7 +54,11 @@ namespace nitro::rhi::vulkan
 
         VkCommandBuffer beginOneTimeCommands();
         void endOneTimeCommands(VkCommandBuffer &cmd);
+
+        RHICommandBuffer *beginFrame() override;
+        void endFrame(RHICommandBuffer *cmd) override;
         void waitIdle();
+
         VkDevice device;
         VmaAllocator allocator;
         VkCommandPool commandPool;
@@ -66,5 +75,7 @@ namespace nitro::rhi::vulkan
 
         QueueFamilyIndices m_queueFamilyIndices;
         VkFormat m_surfaceFormat;
+        std::vector<VulkanCommandBuffer *> m_frames;
+        uint32_t m_currentFrame = 0;
     };
 }

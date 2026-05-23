@@ -21,9 +21,6 @@ namespace nitro::rhi::vulkan
         std::vector<VkFence> imagesInFlight;
         std::vector<VkSemaphore> renderFinished;
 
-        std::vector<VkSemaphore> imageAvailable;
-        std::vector<VkFence> inFlight;
-
         uint32_t currentImageIdx = 0;
 
         VulkanTexture *depthTexture = nullptr;
