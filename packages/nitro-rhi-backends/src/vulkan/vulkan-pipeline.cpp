@@ -101,15 +101,19 @@ namespace nitro::rhi::vulkan
             attributes[i] = attributeDesc;
         }
 
+        VkVertexInputBindingDescription binding{};
         VkPipelineVertexInputStateCreateInfo vertextInputInfo{};
 
         vertextInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        auto binding = convertToVertexBinding(desc.vertexLayout);
-        vertextInputInfo.vertexBindingDescriptionCount = 1;
+        // if (!desc.vertexLayout.attributes.empty())
+        // {
+        //     binding = convertToVertexBinding(desc.vertexLayout);
+        //     vertextInputInfo.vertexBindingDescriptionCount = 1;
 
-        vertextInputInfo.pVertexBindingDescriptions = &binding;
-        vertextInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes.size());
-        vertextInputInfo.pVertexAttributeDescriptions = attributes.data();
+        //     vertextInputInfo.pVertexBindingDescriptions = &binding;
+        // }
+        // vertextInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes.size());
+        // vertextInputInfo.pVertexAttributeDescriptions = desc.vertexLayout.attributes.empty() ? nullptr : attributes.data();
 
         VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
 
@@ -210,7 +214,7 @@ namespace nitro::rhi::vulkan
         pipelineInfo.pMultisampleState = &multisampleInfo;
         pipelineInfo.subpass = 0;
 
-        checkVkResult(vkCreateGraphicsPipelines(m_device->device, cache, 1, &pipelineInfo, nullptr, &pipeline), "Pipeline not created");
+            checkVkResult(vkCreateGraphicsPipelines(m_device->device, cache, 1, &pipelineInfo, nullptr, &pipeline), "Pipeline not created");
 
         vkDestroyShaderModule(m_device->device, vertexShader, nullptr);
         vkDestroyShaderModule(m_device->device, fragmentShader, nullptr);

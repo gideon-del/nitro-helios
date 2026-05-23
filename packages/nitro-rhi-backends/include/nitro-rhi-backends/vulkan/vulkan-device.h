@@ -1,10 +1,12 @@
 #pragma once
 #include <nitro-rhi/rhi-device.h>
 #include <vulkan/vulkan.h>
-#include <vk_mem_alloc.h>
 #include <optional>
 #include "vulkan-surface.h"
 #include <vector>
+
+struct VmaAllocator_T;
+typedef VmaAllocator_T *VmaAllocator;
 
 namespace nitro::rhi::vulkan
 

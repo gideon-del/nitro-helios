@@ -52,7 +52,7 @@ namespace nitro::rhi::vulkan
             .offset = {
                 .x = 0,
                 .y = 0},
-            .extent = {.width = m_device->surface->getWidth(), .height = m_device->surface->getHeight()}
+            .extent = swapchain->extent
 
         };
 
@@ -74,6 +74,31 @@ namespace nitro::rhi::vulkan
         VulkanPipeline *vulkanPipeline = reinterpret_cast<VulkanPipeline *>(pipeline);
 
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanPipeline->pipeline);
+
+        VkViewport viewport{};
+        viewport.x = 0;
+        viewport.y = 0;
+        viewport.width = (float)swapchain->extent.width;
+        viewport.height = (float)swapchain->extent.height;
+        viewport.maxDepth = 1.0f;
+        viewport.minDepth = 0.0f;
+
+        vkCmdSetViewport(
+            cmd,
+            0,
+            1,
+            &viewport);
+
+        VkRect2D scissors{};
+
+        scissors.extent = swapchain->extent;
+        scissors.offset = {0, 0};
+
+        vkCmdSetScissor(
+            cmd,
+            0,
+            1,
+            &scissors);
     }
 
     void VulkanCommandBuffer::bindVertexBuffer(RHIBuffer *buffer)
@@ -93,17 +118,25 @@ namespace nitro::rhi::vulkan
 
     void VulkanCommandBuffer::drawIndexed(uint32_t indexCount)
     {
-        vkCmdDrawIndexed(
+        // vkCmdDrawIndexed(
+        //     cmd,
+        //     indexCount,
+        //     1,
+        //     0,
+        //     0,
+        //     0);
+        vkCmdDraw(
             cmd,
             indexCount,
             1,
-            0,
             0,
             0);
     }
     void VulkanCommandBuffer::present()
     {
-        vkEndCommandBuffer(cmd);
+
+        checkVkResult(vkEndCommandBuffer(cmd), "Command Buffer not ended");
+        ;
 
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;

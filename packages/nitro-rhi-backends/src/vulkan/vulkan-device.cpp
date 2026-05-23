@@ -5,6 +5,7 @@
 #include <nitro-rhi-backends/vulkan/vulkan-utils.h>
 #include <nitro-rhi-backends/vulkan/vulkan-swapchain.h>
 #include <nitro-rhi-backends/vulkan/vulkan-command-buffer.h>
+#include <vk_mem_alloc.h>
 #include <vector>
 #include <set>
 namespace nitro::rhi::vulkan
@@ -399,6 +400,7 @@ namespace nitro::rhi::vulkan
     }
     void VulkanDevice::endOneTimeCommands(VkCommandBuffer &cmd)
     {
+        vkEndCommandBuffer(cmd);
 
         VkSubmitInfo submitInfo{};
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -420,7 +422,6 @@ namespace nitro::rhi::vulkan
         bufferCopy.dstOffset = 0;
         bufferCopy.size = size;
         vkCmdCopyBuffer(commandBuffer, src, dst, 1, &bufferCopy);
-        vkEndCommandBuffer(commandBuffer);
 
         endOneTimeCommands(commandBuffer);
     }
