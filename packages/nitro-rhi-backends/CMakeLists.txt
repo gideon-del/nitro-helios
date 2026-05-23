@@ -19,13 +19,37 @@ src/vulkan/vulkan-command-buffer.cpp
 )
 
 
+
 target_include_directories(nitro-rhi-backends
 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
 SYSTEM PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/vendor
 )
 
+if(APPLE) 
+ add_library(nitro-rhi-metal STATIC
+        src/metal/metal_cpp_impl.cpp
+        src/metal/metal-device.cpp
+        src/metal/metal-swapchain.cpp
+        src/metal/metal-cocoa-bridge.mm
+    )
+
+    target_include_directories(nitro-rhi-metal
+        PUBLIC  ${CMAKE_CURRENT_SOURCE_DIR}/include
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/vendor/metal-cpp
+    )
+
+    target_link_libraries(nitro-rhi-metal
+        PUBLIC nitro-rhi
+        PUBLIC glfw
+        "-framework Metal"
+        "-framework Foundation"
+        "-framework QuartzCore"
+    )
+endif()
+
 target_link_libraries(nitro-rhi-backends
 PUBLIC nitro-rhi
 PUBLIC Vulkan::Vulkan
 PUBLIC glfw
+ $<$<PLATFORM_ID:Darwin>:nitro-rhi-metal>
 )

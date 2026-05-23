@@ -1,0 +1,27 @@
+#pragma once
+#include <nitro-rhi/rhi-swapchain.h>
+#include <SingleHeader/MetalCpp.h>
+extern "C" void *createMetalLayer(void *glfwWindow, void *mtlDevice);
+namespace nitro::rhi::metal
+{
+    class MetalDevice;
+
+    class MetalSwapchain : public RHISwapchain
+    {
+    public:
+        MetalSwapchain(MetalDevice *device, void *windowHandle);
+        ~MetalSwapchain() override;
+
+        void resize(uint32_t width, uint32_t height);
+        RHITexture *getCurrentBackbuffer();
+
+        CA::MetalLayer *layer;
+        CA::MetalDrawable *currentDrawable = nullptr;
+        MTL::Texture *depthTexture;
+        uint32_t width;
+        uint32_t height;
+
+    private:
+        MetalDevice *m_device;
+    };
+}

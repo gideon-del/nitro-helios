@@ -1,21 +1,22 @@
 {
-  "configurations": [
-    {
-      "name": "Mac",
-      "includePath": [
-        "${workspaceFolder}/**",
-        "${workspaceFolder}/**/include",
-        "${workspaceFolder}/packages/nitro-rhi/include",
-        "/opt/homebrew/opt/glfw/include",
-        "${workspaceFolder}/packages/nitro-rhi-backends/include/"
-      ],
-      "defines": [],
-      "compilerPath": "/usr/bin/clang",
-      "cStandard": "c17",
-      "cppStandard": "c++17",
-      "intelliSenseMode": "macos-clang-arm64",
-      "configurationProvider": "ms-vscode.cmake-tools"
-    }
-  ],
-  "version": 4
+    "configurations": [
+        {
+            "name": "Mac",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/**/include",
+                "${workspaceFolder}/packages/nitro-rhi/include",
+                "/opt/homebrew/opt/glfw/include",
+                "${workspaceFolder}/packages/nitro-rhi-backends/include/",
+                "${workspaceFolder}/packages/nitro-rhi-backends/vendor/metal-cpp"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/clang",
+            "cStandard": "c17",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "macos-clang-arm64",
+            "configurationProvider": "ms-vscode.cmake-tools"
+        }
+    ],
+    "version": 4
 }
