@@ -1,12 +1,17 @@
 #include <GLFW/glfw3.h>
-#include <nitro-rhi-backends/vulkan/vulkan-device.h>
-#include <nitro-rhi-backends/vulkan/vulkan-pipeline.h>
+
 #include <nitro-rhi/rhi-command-buffer.h>
+#ifdef USE_METAL
+#include <nitro-rhi-backends/metal/metal-device.h>
+using DeviceType = nitro::rhi::metal::MetalDevice;
+#else
+#include <nitro-rhi-backends/vulkan/vulkan-device.h>
+using DeviceType = nitro::rhi::vulkan::VulkanDevice;
+#endif
 #include <iostream>
 #include <string>
 
 using namespace nitro::rhi;
-using namespace nitro::rhi::vulkan;
 
 int main()
 {
@@ -14,14 +19,19 @@ int main()
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     GLFWwindow *window = glfwCreateWindow(800, 600, "RHI Triangle", nullptr, nullptr);
 
-    VulkanDevice device(window);
+    DeviceType device(window);
     RHISwapchain *swapchain = device.createSwapchain(nullptr);
 
-    PipelineDesc pipelineDesc;
-    auto vertexPath = std::string(SHADER_DIR) + "/triangle.vert.spv";
-    auto fragmentPath = std::string(SHADER_DIR) + "/triangle.frag.spv";
-    pipelineDesc.vertexShader = {"main", vertexPath.c_str()};
-    pipelineDesc.fragmentShader = {"main", fragmentPath.c_str()};
+    std::string shaderPath = std::string(SHADER_DIR) + "/triangle";
+
+    PipelineDesc pipelineDesc{};
+#ifdef USE_METAL
+    pipelineDesc.vertexShader = {"vs", shaderPath + ".metallib"};
+    pipelineDesc.fragmentShader = {"fs", shaderPath + ".metallib"};
+#else
+    pipelineDesc.vertexShader = {"main", shaderPath + ".vert.spv"};
+    pipelineDesc.fragmentShader = {"main", shaderPath + ".frag.spv"};
+#endif
     pipelineDesc.vertexLayout.attributes = {};
     pipelineDesc.vertexLayout.stride = 0;
     pipelineDesc.depthTest = true;

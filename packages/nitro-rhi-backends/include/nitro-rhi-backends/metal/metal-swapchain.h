@@ -12,8 +12,8 @@ namespace nitro::rhi::metal
         MetalSwapchain(MetalDevice *device, void *windowHandle);
         ~MetalSwapchain() override;
 
-        void resize(uint32_t width, uint32_t height);
-        RHITexture *getCurrentBackbuffer();
+        void resize(uint32_t width, uint32_t height) override;
+        RHITexture *getCurrentBackbuffer() override;
 
         CA::MetalLayer *layer;
         CA::MetalDrawable *currentDrawable = nullptr;

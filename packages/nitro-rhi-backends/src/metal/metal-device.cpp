@@ -1,4 +1,7 @@
 #include <nitro-rhi-backends/metal/metal-device.h>
+#include <nitro-rhi-backends/metal/metal-command-buffer.h>
+#include <nitro-rhi-backends/metal/metal-swapchain.h>
+#include <nitro-rhi-backends/metal/metal-pipeline.h>
 
 namespace nitro::rhi::metal
 {
@@ -23,19 +26,40 @@ namespace nitro::rhi::metal
     }
     RHIPipeline *MetalDevice::createPipeline(const PipelineDesc &desc)
     {
-        return nullptr;
+        return new MetalPipeline(this, desc);
     }
     void MetalDevice::destroyBuffer(RHIBuffer *buffer) {}
 
     void MetalDevice::destroyTexture(RHITexture *texture) {}
-    void MetalDevice::destroyPipeline(RHIPipeline *pipeline) {}
+    void MetalDevice::destroyPipeline(RHIPipeline *pipeline)
+    {
+        delete pipeline;
+    }
 
+    RHISwapchain *MetalDevice::createSwapchain(RHISurface *surface)
+    {
+        MetalSwapchain *swapchain = new MetalSwapchain(this, m_window);
+
+        m_swapchain = swapchain;
+
+        return swapchain;
+    }
     RHICommandBuffer *MetalDevice::beginFrame()
     {
-        return nullptr;
+        if (!m_swapchain)
+        {
+            throw std::runtime_error("Metal Swapchain not found");
+        }
+        m_swapchain->currentDrawable = m_swapchain->layer->nextDrawable();
+        return new MetalCommandBuffer(this, m_swapchain);
     }
     void MetalDevice::endFrame(RHICommandBuffer *cmd)
     {
+        MetalCommandBuffer *metalCmd = reinterpret_cast<MetalCommandBuffer *>(cmd);
+
+        metalCmd->commandBuffer->commit();
+        delete cmd;
     }
+    void MetalDevice::waitIdle() {};
 
 } // namespace nitro::rhi::metal

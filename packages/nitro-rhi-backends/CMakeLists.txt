@@ -30,12 +30,14 @@ if(APPLE)
         src/metal/metal_cpp_impl.cpp
         src/metal/metal-device.cpp
         src/metal/metal-swapchain.cpp
+        src/metal/metal-pipeline.cpp
+        src/metal/metal-command-buffer.cpp
         src/metal/metal-cocoa-bridge.mm
     )
 
     target_include_directories(nitro-rhi-metal
         PUBLIC  ${CMAKE_CURRENT_SOURCE_DIR}/include
-        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/vendor/metal-cpp
+        PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/vendor/metal-cpp
     )
 
     target_link_libraries(nitro-rhi-metal

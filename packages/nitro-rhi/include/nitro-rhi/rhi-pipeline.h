@@ -28,8 +28,8 @@ namespace nitro::rhi
 
     struct ShaderDesc
     {
-        const char *name;
-        const char *filePath;
+        std::string name;
+        std::string filePath;
     };
 
     struct PipelineDesc

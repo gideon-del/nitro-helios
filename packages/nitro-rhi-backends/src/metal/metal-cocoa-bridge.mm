@@ -4,7 +4,7 @@
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
-void* createMetalLayer(void* glfwWindow, void* mtlDevice) {
+extern "C" void* createMetalLayer(void* glfwWindow, void* mtlDevice) {
     NSWindow* nsWindow = glfwGetCocoaWindow((GLFWwindow*)glfwWindow);
     NSView* view = nsWindow.contentView;
     view.wantsLayer = YES;

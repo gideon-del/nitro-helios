@@ -1,6 +1,7 @@
 #include <nitro-rhi-backends/metal/metal-device.h>
 #include <nitro-rhi-backends/metal/metal-swapchain.h>
 #include <GLFW/glfw3.h>
+
 namespace nitro::rhi::metal
 {
     MetalSwapchain::MetalSwapchain(MetalDevice *device, void *windowHandle) : m_device(device)

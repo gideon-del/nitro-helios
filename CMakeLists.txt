@@ -19,6 +19,24 @@ endforeach()
 
 add_custom_target(CompileShaders ALL DEPENDS ${SPIRV_BINARIES})
 
+if(APPLE) 
+   
+    find_program(XCRUN xcrun)
+    file(GLOB METAL_SOURCES "shaders/*.metal")
+    foreach(SOURCE ${METAL_SOURCES})
+        get_filename_component(FILE_NAME ${SOURCE} NAME_WE)
+        set(AIR_FILE "${CMAKE_BINARY_DIR}/bin/shaders/${FILE_NAME}.air")
+        set(LIB_FILE "${CMAKE_BINARY_DIR}/bin/shaders/${FILE_NAME}.metallib")
+           add_custom_command(
+            OUTPUT ${LIB_FILE}
+            COMMAND ${XCRUN} -sdk macosx metal -c ${SOURCE} -o ${AIR_FILE}
+            COMMAND ${XCRUN} -sdk macosx metallib ${AIR_FILE} -o ${LIB_FILE}
+            DEPENDS ${SOURCE}
+        )
+        list(APPEND METALLIB_BINARIES ${LIB_FILE})
+    endforeach()
+    add_custom_target(CompileMetalShaders ALL DEPENDS ${METALLIB_BINARIES})    
+endif()
 add_subdirectory(packages/nitro-math)
 add_subdirectory(packages/nitro-rasterizer)
 add_subdirectory(packages/nitro-rhi)

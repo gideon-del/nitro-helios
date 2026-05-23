@@ -76,13 +76,13 @@ namespace nitro::rhi::vulkan
         VkPipelineShaderStageCreateInfo vertexStageInfo{};
         vertexStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         vertexStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-        vertexStageInfo.pName = desc.vertexShader.name;
+        vertexStageInfo.pName = desc.vertexShader.name.c_str();
         vertexStageInfo.module = vertexShader;
 
         VkPipelineShaderStageCreateInfo fragmentStageInfo{};
         fragmentStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         fragmentStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        fragmentStageInfo.pName = desc.fragmentShader.name;
+        fragmentStageInfo.pName = desc.fragmentShader.name.c_str();
         fragmentStageInfo.module = fragmentShader;
 
         VkPipelineShaderStageCreateInfo shaderStages[] = {vertexStageInfo, fragmentStageInfo};
@@ -214,7 +214,7 @@ namespace nitro::rhi::vulkan
         pipelineInfo.pMultisampleState = &multisampleInfo;
         pipelineInfo.subpass = 0;
 
-            checkVkResult(vkCreateGraphicsPipelines(m_device->device, cache, 1, &pipelineInfo, nullptr, &pipeline), "Pipeline not created");
+        checkVkResult(vkCreateGraphicsPipelines(m_device->device, cache, 1, &pipelineInfo, nullptr, &pipeline), "Pipeline not created");
 
         vkDestroyShaderModule(m_device->device, vertexShader, nullptr);
         vkDestroyShaderModule(m_device->device, fragmentShader, nullptr);

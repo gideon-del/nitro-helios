@@ -4,6 +4,7 @@
 namespace nitro::rhi::metal
 {
 
+    class MetalSwapchain;
     class MetalDevice : public RHIDevice
     {
     public:
@@ -23,10 +24,12 @@ namespace nitro::rhi::metal
         RHICommandBuffer *beginFrame() override;
         void endFrame(RHICommandBuffer *cmd) override;
 
+        void waitIdle();
         MTL::Device *device;
         MTL::CommandQueue *commandQueue;
 
     private:
+        MetalSwapchain *m_swapchain = nullptr;
         void *m_window = nullptr;
     };
 } // namespace nitro::rhi::metal
