@@ -6,7 +6,12 @@ struct VertexOut {
     float3 color;
 };
 
-vertex VertexOut vs(uint vid [[vertex_id]]) {
+struct PushConstant {
+    float4x4 model;
+};
+vertex VertexOut vs(uint vid [[vertex_id]],
+                    constant PushConstant& p [[buffer(1)]]
+                    ) {
     float2 positions[3] = {
         float2( 0.0, -0.5),
         float2( 0.5,  0.5),
@@ -18,7 +23,7 @@ vertex VertexOut vs(uint vid [[vertex_id]]) {
         float3(0.0, 0.0, 1.0)
     };
     VertexOut out;
-    out.position = float4(positions[vid], 0.0, 1.0);
+    out.position = p.model * float4(positions[vid], 1.0, 1.0);
     out.color = colors[vid];
     return out;
 }

@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Vulkan REQUIRED)
 find_package(glfw3  REQUIRED)
-
+find_package(glm REQUIRED)
 add_library(nitro-rhi-backends STATIC
 src/vulkan/vulkan-device.cpp
 src/vulkan/vulkan-buffer.cpp
@@ -32,6 +32,7 @@ if(APPLE)
         src/metal/metal-swapchain.cpp
         src/metal/metal-pipeline.cpp
         src/metal/metal-command-buffer.cpp
+        src/metal/metal-buffer.cpp
         src/metal/metal-cocoa-bridge.mm
     )
 
@@ -53,5 +54,6 @@ target_link_libraries(nitro-rhi-backends
 PUBLIC nitro-rhi
 PUBLIC Vulkan::Vulkan
 PUBLIC glfw
+PUBLIC glm::glm
  $<$<PLATFORM_ID:Darwin>:nitro-rhi-metal>
 )

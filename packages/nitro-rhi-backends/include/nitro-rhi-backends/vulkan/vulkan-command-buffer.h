@@ -6,6 +6,7 @@ namespace nitro::rhi::vulkan
 {
     class VulkanDevice;
     class VulkanSwapchain;
+    class VulkanPipeline;
     class VulkanCommandBuffer : public RHICommandBuffer
     {
     public:
@@ -21,6 +22,8 @@ namespace nitro::rhi::vulkan
         void bindVertexBuffer(RHIBuffer *buffer) override;
         void bindIndexBuffer(RHIBuffer *buffer) override;
         void bindUniformBuffer(RHIBuffer *buffer, uint32_t binding) override;
+        void setPushConstant(void *data, size_t size, uint32_t binding) override;
+        void draw(uint32_t vertexCount) override;
         void drawIndexed(uint32_t indexCount) override;
         void present() override;
 
@@ -33,5 +36,6 @@ namespace nitro::rhi::vulkan
         VulkanDevice *m_device;
         uint32_t m_imageIdx = 0;
         uint32_t m_frameIdx;
+        VulkanPipeline *m_pipeline = nullptr;
     };
 } // namespace nitro::rhi::vulkan

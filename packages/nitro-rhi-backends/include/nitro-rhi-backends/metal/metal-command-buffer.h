@@ -6,6 +6,7 @@ namespace nitro::rhi::metal
 {
     class MetalDevice;
     class MetalSwapchain;
+    class MetalBuffer;
     class MetalCommandBuffer : public RHICommandBuffer
     {
     public:
@@ -18,6 +19,8 @@ namespace nitro::rhi::metal
         void bindVertexBuffer(RHIBuffer *buffer) override;
         void bindIndexBuffer(RHIBuffer *buffer) override;
         void bindUniformBuffer(RHIBuffer *buffer, uint32_t binding) override;
+        void setPushConstant(void *data, size_t size, uint32_t binding) override;
+        void draw(uint32_t vertexCount) override;
         void drawIndexed(uint32_t indexCount) override;
         void present() override;
 
@@ -26,6 +29,8 @@ namespace nitro::rhi::metal
         MetalSwapchain *swapchain;
 
     private:
+        MetalBuffer *pushConstant;
         MetalDevice *m_device;
+        MTL::Buffer *m_currentIndexBuffer = nullptr;
     };
 } // namespace nitro::rhi::metal

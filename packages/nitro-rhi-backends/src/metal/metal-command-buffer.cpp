@@ -2,11 +2,19 @@
 #include <nitro-rhi-backends/metal/metal-swapchain.h>
 #include <nitro-rhi-backends/metal/metal-command-buffer.h>
 #include <nitro-rhi-backends/metal/metal-pipeline.h>
+#include <nitro-rhi-backends/metal/metal-buffer.h>
+#include <nitro-rhi-backends/common/push-constant.h>
 
 namespace nitro::rhi::metal
 {
     MetalCommandBuffer::MetalCommandBuffer(MetalDevice *device, MetalSwapchain *swapchain) : m_device(device), swapchain(swapchain)
     {
+        BufferDesc bufferDesc;
+        bufferDesc.storage = BufferDesc::StorageMode::Shared;
+        bufferDesc.usage = BufferDesc::Usage::Uniform;
+        bufferDesc.size = sizeof(PushConstant);
+
+        pushConstant = reinterpret_cast<MetalBuffer *>(device->createBuffer(bufferDesc));
         commandBuffer = m_device->commandQueue->commandBuffer();
     }
     void MetalCommandBuffer::beginRenderPass(const RHIRenderPassDesc &desc)
@@ -57,9 +65,27 @@ namespace nitro::rhi::metal
     {
         // TODO
     }
+
+    void MetalCommandBuffer::setPushConstant(void *data, size_t size, uint32_t binding)
+    {
+        pushConstant->upload(data, size);
+        encoder->setVertexBuffer(pushConstant->buffer, NS::UInteger(0), NS::UInteger(binding));
+    }
+    void MetalCommandBuffer::draw(uint32_t vertexCount)
+    {
+        encoder->drawPrimitives(MTL::PrimitiveTypeTriangle, NS::UInteger(0), NS::UInteger(vertexCount));
+    }
     void MetalCommandBuffer::drawIndexed(uint32_t indexCount)
     {
-        encoder->drawPrimitives(MTL::PrimitiveTypeTriangle, NS::UInteger(0), NS::UInteger(indexCount));
+        if (!m_currentIndexBuffer)
+        {
+            throw std::runtime_error("Must bind index buffer");
+        }
+        encoder->drawIndexedPrimitives(MTL::PrimitiveTypeTriangle,
+                                       NS::UInteger(indexCount),
+                                       MTL::IndexTypeUInt32,
+                                       m_currentIndexBuffer,
+                                       NS::UInteger(0));
     }
     void MetalCommandBuffer::present()
     {

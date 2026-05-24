@@ -2,6 +2,7 @@
 #include <nitro-rhi-backends/metal/metal-command-buffer.h>
 #include <nitro-rhi-backends/metal/metal-swapchain.h>
 #include <nitro-rhi-backends/metal/metal-pipeline.h>
+#include <nitro-rhi-backends/metal/metal-buffer.h>
 
 namespace nitro::rhi::metal
 {
@@ -18,7 +19,7 @@ namespace nitro::rhi::metal
 
     RHIBuffer *MetalDevice::createBuffer(const BufferDesc &desc)
     {
-        return nullptr;
+        return new MetalBuffer(this, desc);
     }
     RHITexture *MetalDevice::createTexture(const TextureDesc &desc)
     {
@@ -28,7 +29,10 @@ namespace nitro::rhi::metal
     {
         return new MetalPipeline(this, desc);
     }
-    void MetalDevice::destroyBuffer(RHIBuffer *buffer) {}
+    void MetalDevice::destroyBuffer(RHIBuffer *buffer)
+    {
+        delete buffer;
+    }
 
     void MetalDevice::destroyTexture(RHITexture *texture) {}
     void MetalDevice::destroyPipeline(RHIPipeline *pipeline)

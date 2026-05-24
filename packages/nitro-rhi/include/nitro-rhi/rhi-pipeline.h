@@ -4,7 +4,8 @@
 #include <vector>
 namespace nitro::rhi
 {
-    struct RHIVertexLayout
+
+      struct RHIVertexLayout
     {
         uint32_t binding;
 

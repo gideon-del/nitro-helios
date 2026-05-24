@@ -82,7 +82,7 @@ namespace nitro::rhi::vulkan
         viewport.height = (float)swapchain->extent.height;
         viewport.maxDepth = 1.0f;
         viewport.minDepth = 0.0f;
-
+        m_pipeline = vulkanPipeline;
         vkCmdSetViewport(
             cmd,
             0,
@@ -116,19 +116,22 @@ namespace nitro::rhi::vulkan
         vkCmdBindIndexBuffer(cmd, indexBuffer->buffer, 0, VK_INDEX_TYPE_UINT32);
     }
 
+    void VulkanCommandBuffer::draw(uint32_t vertexCount)
+    {
+        vkCmdDraw(
+            cmd,
+            vertexCount,
+            1,
+            0,
+            0);
+    }
     void VulkanCommandBuffer::drawIndexed(uint32_t indexCount)
     {
-        // vkCmdDrawIndexed(
-        //     cmd,
-        //     indexCount,
-        //     1,
-        //     0,
-        //     0,
-        //     0);
-        vkCmdDraw(
+        vkCmdDrawIndexed(
             cmd,
             indexCount,
             1,
+            0,
             0,
             0);
     }
@@ -172,5 +175,21 @@ namespace nitro::rhi::vulkan
     }
     void VulkanCommandBuffer::bindUniformBuffer(RHIBuffer *buffer, uint32_t binding)
     {
+    }
+
+    void VulkanCommandBuffer::setPushConstant(void *data, size_t size, uint32_t binding)
+    {
+        if (!m_pipeline)
+        {
+            throw std::runtime_error("Vulkan pipeline not found");
+        }
+
+        vkCmdPushConstants(
+            cmd,
+            m_pipeline->layout,
+            VK_SHADER_STAGE_VERTEX_BIT,
+            0,
+            size,
+            data);
     }
 }

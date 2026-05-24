@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iostream>
 #include <vector>
+#include <nitro-rhi-backends/common/push-constant.h>
 namespace nitro::rhi::vulkan
 {
     std::vector<char> readFile(const std::string filePath)
@@ -168,7 +169,7 @@ namespace nitro::rhi::vulkan
         VkPipelineRasterizationStateCreateInfo rasterizationInfo{};
         rasterizationInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
         rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-        rasterizationInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        rasterizationInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
         rasterizationInfo.depthClampEnable = VK_FALSE;
         rasterizationInfo.depthBiasClamp = 0.0f;
         rasterizationInfo.lineWidth = 1.0f;
@@ -187,8 +188,15 @@ namespace nitro::rhi::vulkan
         depthInfo.depthBoundsTestEnable = VK_FALSE;
         depthInfo.depthWriteEnable = VK_TRUE;
 
+        VkPushConstantRange pushConstantRange{};
+        pushConstantRange.offset = 0;
+        pushConstantRange.size = sizeof(PushConstant);
+        pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
         VkPipelineLayoutCreateInfo pipelayoutInfo{};
         pipelayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        pipelayoutInfo.pushConstantRangeCount = 1;
+        pipelayoutInfo.pPushConstantRanges = &pushConstantRange;
 
         checkVkResult(vkCreatePipelineLayout(m_device->device, &pipelayoutInfo, nullptr, &layout), "Pipeline layout not created");
 
