@@ -42,6 +42,9 @@ int main()
 
     nitro::rhi::PushConstant pushConstant;
     pushConstant.model = glm::translate(glm::mat4(1.0f), glm::vec3{0.4f, 0.0f, 0.0f});
+#ifdef USE_METAL
+    pushConstant.model[1][1] = -1.0f;
+#endif
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
