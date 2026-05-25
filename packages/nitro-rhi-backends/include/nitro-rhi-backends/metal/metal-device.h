@@ -12,6 +12,8 @@ namespace nitro::rhi::metal
         ~MetalDevice() override;
         RHISwapchain *createSwapchain(RHISurface *surface) override;
 
+        RHIDescriptorLayout *createDescriptorLayout(const std::vector<RHIDescriptorBinding> bindings) override;
+        RHIDescriptorSet *createDescriptorSet(RHIDescriptorLayout *layout) override;
         RHIPipeline *createPipeline(const PipelineDesc &desc) override;
         void destroyPipeline(RHIPipeline *pipeline) override;
 
@@ -23,7 +25,7 @@ namespace nitro::rhi::metal
 
         RHICommandBuffer *beginFrame() override;
         void endFrame(RHICommandBuffer *cmd) override;
-
+        uint32_t getCurrentFrameIndex() const override;
         void waitIdle();
         MTL::Device *device;
         MTL::CommandQueue *commandQueue;

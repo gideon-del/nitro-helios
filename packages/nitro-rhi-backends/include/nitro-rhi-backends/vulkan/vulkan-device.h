@@ -32,6 +32,9 @@ namespace nitro::rhi::vulkan
 
         RHISwapchain *createSwapchain(RHISurface *surface) override;
 
+        RHIDescriptorLayout *createDescriptorLayout(const std::vector<RHIDescriptorBinding> bindings) override;
+        RHIDescriptorSet *createDescriptorSet(RHIDescriptorLayout *layout) override;
+
         RHIBuffer *createBuffer(const BufferDesc &desc) override;
         void destroyBuffer(RHIBuffer *buffer) override;
 
@@ -40,6 +43,8 @@ namespace nitro::rhi::vulkan
 
         RHIPipeline *createPipeline(const PipelineDesc &desc) override;
         void destroyPipeline(RHIPipeline *pipeline) override;
+
+        uint32_t getCurrentFrameIndex() const override;
         void copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
         void copyBufferToImage(VkBuffer &src, VkImage &image, VkDeviceSize size, VkExtent3D imageExtent);
 

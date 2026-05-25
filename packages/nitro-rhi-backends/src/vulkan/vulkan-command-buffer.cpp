@@ -5,6 +5,7 @@
 #include <nitro-rhi-backends/vulkan/vulkan-buffer.h>
 #include <nitro-rhi-backends/vulkan/vulkan-texture.h>
 #include <nitro-rhi-backends/vulkan/vulkan-utils.h>
+#include <nitro-rhi-backends/vulkan/vulkan-descriptor-set.h>
 
 namespace nitro::rhi::vulkan
 {
@@ -114,6 +115,25 @@ namespace nitro::rhi::vulkan
 
         VkDeviceSize offset[] = {0};
         vkCmdBindIndexBuffer(cmd, indexBuffer->buffer, 0, VK_INDEX_TYPE_UINT32);
+    }
+
+    void VulkanCommandBuffer::bindDescriptorSet(RHIDescriptorSet *set)
+    {
+
+        if (!m_pipeline)
+        {
+            throw std::runtime_error("Must bind pipeline before descriptor set");
+        }
+        VulkanDescriptorSet *vkSet = reinterpret_cast<VulkanDescriptorSet *>(set);
+        vkCmdBindDescriptorSets(
+            cmd,
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            m_pipeline->layout,
+            0,
+            1,
+            &vkSet->descriptorSet,
+            0,
+            nullptr);
     }
 
     void VulkanCommandBuffer::draw(uint32_t vertexCount)

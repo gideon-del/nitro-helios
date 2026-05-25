@@ -1,6 +1,7 @@
 #include <nitro-rhi-backends/vulkan/vulkan-pipeline.h>
 #include <nitro-rhi-backends/vulkan/vulkan-utils.h>
 #include <nitro-rhi-backends/vulkan/vulkan-device.h>
+#include <nitro-rhi-backends/vulkan/vulkan-descriptor-layout.h>
 #include <fstream>
 #include <iostream>
 #include <vector>
@@ -197,7 +198,13 @@ namespace nitro::rhi::vulkan
         pipelayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         pipelayoutInfo.pushConstantRangeCount = 1;
         pipelayoutInfo.pPushConstantRanges = &pushConstantRange;
-
+        if (desc.layout)
+        {
+            VulkanDescriptorLayout *vkLayout =
+                reinterpret_cast<VulkanDescriptorLayout *>(desc.layout);
+            pipelayoutInfo.setLayoutCount = 1;
+            pipelayoutInfo.pSetLayouts = &vkLayout->descriptorSetLayout;
+        }
         checkVkResult(vkCreatePipelineLayout(m_device->device, &pipelayoutInfo, nullptr, &layout), "Pipeline layout not created");
 
         VkPipelineCacheCreateInfo pipelineCacheInfo{};

@@ -4,6 +4,7 @@
 #include <nitro-rhi-backends/metal/metal-pipeline.h>
 #include <nitro-rhi-backends/metal/metal-buffer.h>
 #include <nitro-rhi-backends/metal/metal-texture.h>
+#include <nitro-rhi-backends/metal/metal-descriptor-set.h>
 #include <nitro-rhi-backends/common/push-constant.h>
 
 namespace nitro::rhi::metal
@@ -35,7 +36,7 @@ namespace nitro::rhi::metal
         rpd->depthAttachment()->setClearDepth(desc.clearDepth);
 
         encoder = commandBuffer->renderCommandEncoder(rpd);
-        encoder->setCullMode(MTL::CullModeNone);
+        encoder->setCullMode(MTL::CullModeBack);
         encoder->setFrontFacingWinding(MTL::WindingCounterClockwise);
         rpd->release();
     }
@@ -50,6 +51,8 @@ namespace nitro::rhi::metal
         MetalPipeline *metalPipeline = reinterpret_cast<MetalPipeline *>(pipeline);
 
         encoder->setRenderPipelineState(metalPipeline->pipelineState);
+        encoder->setDepthStencilState(
+            metalPipeline->depthStencilState);
     }
 
     void MetalCommandBuffer::bindVertexBuffer(RHIBuffer *buffer)
@@ -78,6 +81,22 @@ namespace nitro::rhi::metal
     void MetalCommandBuffer::draw(uint32_t vertexCount)
     {
         encoder->drawPrimitives(MTL::PrimitiveTypeTriangle, NS::UInteger(0), NS::UInteger(vertexCount));
+    }
+    void MetalCommandBuffer::bindDescriptorSet(RHIDescriptorSet *set)
+    {
+        MetalDescriptorSet *metalSet = reinterpret_cast<MetalDescriptorSet *>(set);
+
+        for (auto &[buffer, binding] : metalSet->bufferBindings)
+        {
+            MetalBuffer *metalBuffer = reinterpret_cast<MetalBuffer *>(buffer);
+            encoder->setVertexBuffer(metalBuffer->buffer, 0, binding);
+        }
+        for (auto &[texture, binding] : metalSet->textureBindings)
+        {
+            MetalTexture *metalTex = reinterpret_cast<MetalTexture *>(texture);
+            encoder->setFragmentTexture(metalTex->texture, binding);
+            encoder->setFragmentSamplerState(metalTex->samplerState, binding);
+        }
     }
     void MetalCommandBuffer::drawIndexed(uint32_t indexCount)
     {

@@ -16,6 +16,8 @@ src/vendor/vma_impl.cpp
 src/vulkan/vulkan-pipeline.cpp
 src/vulkan/vulkan-swapchain.cpp
 src/vulkan/vulkan-command-buffer.cpp
+src/vulkan/vulkan-descriptor-layout.cpp
+src/vulkan/vulkan-descriptor-set.cpp
 )
 
 
@@ -34,6 +36,8 @@ if(APPLE)
         src/metal/metal-command-buffer.cpp
         src/metal/metal-buffer.cpp
         src/metal/metal-texture.cpp
+        src/metal/metal-descriptor-layout.cpp
+        src/metal/metal-descriptor-set.cpp
         src/metal/metal-cocoa-bridge.mm
     )
 

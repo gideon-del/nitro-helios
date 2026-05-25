@@ -5,6 +5,8 @@
 #include "rhi-pipeline.h"
 #include "rhi-surface.h"
 #include "rhi-swapchain.h"
+#include "rhi-descriptor-layout.h"
+#include "rhi-descriptor-set.h"
 namespace nitro::rhi
 {
 
@@ -15,6 +17,9 @@ namespace nitro::rhi
 
         virtual RHISwapchain *createSwapchain(RHISurface *surface) = 0;
 
+        virtual RHIDescriptorLayout *createDescriptorLayout(const std::vector<RHIDescriptorBinding> bindings) = 0;
+        virtual RHIDescriptorSet *createDescriptorSet(RHIDescriptorLayout *layout) = 0;
+
         virtual RHIBuffer *createBuffer(const BufferDesc &desc) = 0;
         virtual void destroyBuffer(RHIBuffer *buffer) = 0;
 
@@ -24,6 +29,7 @@ namespace nitro::rhi
         virtual RHIPipeline *createPipeline(const PipelineDesc &desc) = 0;
         virtual void destroyPipeline(RHIPipeline *pipeline) = 0;
 
+        virtual uint32_t getCurrentFrameIndex() const = 0;
         virtual RHICommandBuffer *beginFrame() = 0;
         virtual void endFrame(RHICommandBuffer *cmd) = 0;
     };

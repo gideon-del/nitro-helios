@@ -4,6 +4,8 @@
 #include <nitro-rhi-backends/metal/metal-pipeline.h>
 #include <nitro-rhi-backends/metal/metal-buffer.h>
 #include <nitro-rhi-backends/metal/metal-texture.h>
+#include <nitro-rhi-backends/metal/metal-descriptor-layout.h>
+#include <nitro-rhi-backends/metal/metal-descriptor-set.h>
 
 namespace nitro::rhi::metal
 {
@@ -25,6 +27,14 @@ namespace nitro::rhi::metal
     RHITexture *MetalDevice::createTexture(const TextureDesc &desc)
     {
         return new MetalTexture(this, desc);
+    }
+    RHIDescriptorLayout *MetalDevice::createDescriptorLayout(const std::vector<RHIDescriptorBinding> bindings)
+    {
+        return new MetalDescriptorLayout(this, bindings);
+    }
+    RHIDescriptorSet *MetalDevice::createDescriptorSet(RHIDescriptorLayout *layout)
+    {
+        return new MetalDescriptorSet(this);
     }
     RHIPipeline *MetalDevice::createPipeline(const PipelineDesc &desc)
     {
@@ -70,4 +80,8 @@ namespace nitro::rhi::metal
     }
     void MetalDevice::waitIdle() {};
 
+    uint32_t MetalDevice::getCurrentFrameIndex() const
+    {
+        return 0;
+    }
 } // namespace nitro::rhi::metal

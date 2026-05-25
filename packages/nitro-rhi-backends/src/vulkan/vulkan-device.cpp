@@ -5,6 +5,8 @@
 #include <nitro-rhi-backends/vulkan/vulkan-utils.h>
 #include <nitro-rhi-backends/vulkan/vulkan-swapchain.h>
 #include <nitro-rhi-backends/vulkan/vulkan-command-buffer.h>
+#include <nitro-rhi-backends/vulkan/vulkan-descriptor-layout.h>
+#include <nitro-rhi-backends/vulkan/vulkan-descriptor-set.h>
 #include <vk_mem_alloc.h>
 #include <vector>
 #include <set>
@@ -526,12 +528,22 @@ namespace nitro::rhi::vulkan
                               VK_IMAGE_ASPECT_COLOR_BIT);
         endOneTimeCommands(commandBuffer);
     }
+    RHIDescriptorLayout *VulkanDevice::createDescriptorLayout(const std::vector<RHIDescriptorBinding> bindings)
+    {
+        return new VulkanDescriptorLayout(this, bindings);
+    }
 
     RHIPipeline *VulkanDevice::createPipeline(const PipelineDesc &desc)
     {
         return new VulkanPipeline(this, desc);
     }
+    RHIDescriptorSet *VulkanDevice::createDescriptorSet(RHIDescriptorLayout *layout)
+    {
+        VulkanDescriptorLayout *vulkanDescriptorLayout = reinterpret_cast<VulkanDescriptorLayout *>(layout);
+        VkDescriptorSet descriptorSet = vulkanDescriptorLayout->allocateDescriptorSet();
 
+        return new VulkanDescriptorSet(this, vulkanDescriptorLayout, descriptorSet);
+    }
     void VulkanDevice::destroyPipeline(RHIPipeline *pipeline)
     {
         delete pipeline;
@@ -614,5 +626,10 @@ namespace nitro::rhi::vulkan
     void VulkanDevice::endFrame(RHICommandBuffer *cmd)
     {
         m_currentFrame = (m_currentFrame + 1) % VulkanDevice::MAX_FRAMES_IN_FLIGHT;
+    }
+
+    uint32_t VulkanDevice::getCurrentFrameIndex() const
+    {
+        return m_currentFrame;
     }
 }

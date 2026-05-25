@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <vector>
+#include "rhi-descriptor-layout.h"
 namespace nitro::rhi
 {
 
@@ -39,6 +40,7 @@ namespace nitro::rhi
         ShaderDesc vertexShader;
         ShaderDesc fragmentShader;
         bool depthTest = true;
+        RHIDescriptorLayout *layout = nullptr;
     };
 
     class RHIPipeline

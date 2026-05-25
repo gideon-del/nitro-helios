@@ -22,6 +22,7 @@ namespace nitro::rhi::vulkan
         void bindVertexBuffer(RHIBuffer *buffer) override;
         void bindIndexBuffer(RHIBuffer *buffer) override;
         void bindUniformBuffer(RHIBuffer *buffer, uint32_t binding) override;
+        void bindDescriptorSet(RHIDescriptorSet *descriptorSet) override;
         void setPushConstant(void *data, size_t size, uint32_t binding) override;
         void draw(uint32_t vertexCount) override;
         void drawIndexed(uint32_t indexCount) override;
