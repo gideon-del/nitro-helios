@@ -33,6 +33,7 @@ if(APPLE)
         src/metal/metal-pipeline.cpp
         src/metal/metal-command-buffer.cpp
         src/metal/metal-buffer.cpp
+        src/metal/metal-texture.cpp
         src/metal/metal-cocoa-bridge.mm
     )
 

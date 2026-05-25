@@ -1,5 +1,6 @@
 #include <nitro-rhi-backends/metal/metal-device.h>
 #include <nitro-rhi-backends/metal/metal-swapchain.h>
+#include <nitro-rhi-backends/metal/metal-texture.h>
 #include <GLFW/glfw3.h>
 
 namespace nitro::rhi::metal
@@ -16,15 +17,12 @@ namespace nitro::rhi::metal
         glfwGetFramebufferSize(window, &windowWidth, &windowHeight);
         width = static_cast<uint32_t>(windowWidth);
         height = static_cast<uint32_t>(windowHeight);
-        MTL::TextureDescriptor *desc = MTL::TextureDescriptor::texture2DDescriptor(
-            MTL::PixelFormatDepth32Float,
-            width,
-            height,
-            false);
-        desc->setUsage(MTL::TextureUsageRenderTarget);
-        desc->setStorageMode(MTL::StorageModePrivate);
-        depthTexture = m_device->device->newTexture(desc);
-        desc->release();
+
+        TextureDesc depthTextureDesc;
+        depthTextureDesc.size = {width, height};
+        depthTextureDesc.usage = TextureDesc::Usage::DepthStencil | TextureDesc::Usage::RenderTarget;
+        depthTextureDesc.format = TextureDesc::ImageFormat::Depth32Float;
+        depthTexture = reinterpret_cast<MetalTexture *>(m_device->createTexture(depthTextureDesc));
     };
 
     void MetalSwapchain::resize(uint32_t newWidth, uint32_t newHeight)
@@ -34,16 +32,12 @@ namespace nitro::rhi::metal
         width = newWidth;
         height = newHeight;
 
-        depthTexture->release();
-        MTL::TextureDescriptor *desc = MTL::TextureDescriptor::texture2DDescriptor(
-            MTL::PixelFormatDepth32Float,
-            width,
-            height,
-            false);
-        desc->setUsage(MTL::TextureUsageRenderTarget);
-        desc->setStorageMode(MTL::StorageModePrivate);
-        depthTexture = m_device->device->newTexture(desc);
-        desc->release();
+        delete depthTexture;
+        TextureDesc depthTextureDesc;
+        depthTextureDesc.size = {width, height};
+        depthTextureDesc.usage = TextureDesc::Usage::DepthStencil | TextureDesc::Usage::RenderTarget;
+        depthTextureDesc.format = TextureDesc::ImageFormat::Depth32Float;
+        depthTexture = reinterpret_cast<MetalTexture *>(m_device->createTexture(depthTextureDesc));
     }
 
     MetalSwapchain::~MetalSwapchain()
@@ -51,7 +45,7 @@ namespace nitro::rhi::metal
         if (currentDrawable)
             currentDrawable->release();
         if (depthTexture)
-            depthTexture->release();
+            delete depthTexture;
         if (layer)
             layer->release();
     }

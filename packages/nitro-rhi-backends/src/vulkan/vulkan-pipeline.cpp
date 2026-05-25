@@ -106,15 +106,15 @@ namespace nitro::rhi::vulkan
         VkPipelineVertexInputStateCreateInfo vertextInputInfo{};
 
         vertextInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        // if (!desc.vertexLayout.attributes.empty())
-        // {
-        //     binding = convertToVertexBinding(desc.vertexLayout);
-        //     vertextInputInfo.vertexBindingDescriptionCount = 1;
+        if (!desc.vertexLayout.attributes.empty())
+        {
+            binding = convertToVertexBinding(desc.vertexLayout);
+            vertextInputInfo.vertexBindingDescriptionCount = 1;
 
-        //     vertextInputInfo.pVertexBindingDescriptions = &binding;
-        // }
-        // vertextInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes.size());
-        // vertextInputInfo.pVertexAttributeDescriptions = desc.vertexLayout.attributes.empty() ? nullptr : attributes.data();
+            vertextInputInfo.pVertexBindingDescriptions = &binding;
+        }
+        vertextInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes.size());
+        vertextInputInfo.pVertexAttributeDescriptions = desc.vertexLayout.attributes.empty() ? nullptr : attributes.data();
 
         VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
 
@@ -169,7 +169,7 @@ namespace nitro::rhi::vulkan
         VkPipelineRasterizationStateCreateInfo rasterizationInfo{};
         rasterizationInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
         rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-        rasterizationInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
+        rasterizationInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
         rasterizationInfo.depthClampEnable = VK_FALSE;
         rasterizationInfo.depthBiasClamp = 0.0f;
         rasterizationInfo.lineWidth = 1.0f;

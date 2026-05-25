@@ -5,7 +5,7 @@ extern "C" void *createMetalLayer(void *glfwWindow, void *mtlDevice);
 namespace nitro::rhi::metal
 {
     class MetalDevice;
-
+    class MetalTexture;
     class MetalSwapchain : public RHISwapchain
     {
     public:
@@ -17,7 +17,7 @@ namespace nitro::rhi::metal
 
         CA::MetalLayer *layer;
         CA::MetalDrawable *currentDrawable = nullptr;
-        MTL::Texture *depthTexture;
+        MetalTexture *depthTexture;
         uint32_t width;
         uint32_t height;
 

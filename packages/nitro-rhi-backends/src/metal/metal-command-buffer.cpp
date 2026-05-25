@@ -3,6 +3,7 @@
 #include <nitro-rhi-backends/metal/metal-command-buffer.h>
 #include <nitro-rhi-backends/metal/metal-pipeline.h>
 #include <nitro-rhi-backends/metal/metal-buffer.h>
+#include <nitro-rhi-backends/metal/metal-texture.h>
 #include <nitro-rhi-backends/common/push-constant.h>
 
 namespace nitro::rhi::metal
@@ -14,7 +15,6 @@ namespace nitro::rhi::metal
         bufferDesc.usage = BufferDesc::Usage::Uniform;
         bufferDesc.size = sizeof(PushConstant);
 
-        pushConstant = reinterpret_cast<MetalBuffer *>(device->createBuffer(bufferDesc));
         commandBuffer = m_device->commandQueue->commandBuffer();
     }
     void MetalCommandBuffer::beginRenderPass(const RHIRenderPassDesc &desc)
@@ -29,13 +29,14 @@ namespace nitro::rhi::metal
             MTL::ClearColor(desc.clearColor[0], desc.clearColor[1],
                             desc.clearColor[2], desc.clearColor[3]));
 
-        rpd->depthAttachment()->setTexture(swapchain->depthTexture);
+        rpd->depthAttachment()->setTexture(swapchain->depthTexture->texture);
         rpd->depthAttachment()->setLoadAction(MTL::LoadActionClear);
         rpd->depthAttachment()->setStoreAction(MTL::StoreActionDontCare);
         rpd->depthAttachment()->setClearDepth(desc.clearDepth);
 
         encoder = commandBuffer->renderCommandEncoder(rpd);
-
+        encoder->setCullMode(MTL::CullModeNone);
+        encoder->setFrontFacingWinding(MTL::WindingCounterClockwise);
         rpd->release();
     }
 
@@ -53,23 +54,26 @@ namespace nitro::rhi::metal
 
     void MetalCommandBuffer::bindVertexBuffer(RHIBuffer *buffer)
     {
-        // TODO
+        MetalBuffer *metalBuffer = reinterpret_cast<MetalBuffer *>(buffer);
+        encoder->setVertexBuffer(metalBuffer->buffer, NS::UInteger(0), NS::UInteger(0));
     }
 
     void MetalCommandBuffer::bindIndexBuffer(RHIBuffer *buffer)
     {
-        // TODO
+        MetalBuffer *metalBuffer = reinterpret_cast<MetalBuffer *>(buffer);
+        m_currentIndexBuffer = metalBuffer;
     }
 
     void MetalCommandBuffer::bindUniformBuffer(RHIBuffer *buffer, uint32_t binding)
     {
-        // TODO
+        MetalBuffer *metalBuffer = reinterpret_cast<MetalBuffer *>(buffer);
+        encoder->setVertexBuffer(metalBuffer->buffer, NS::UInteger(0), NS::UInteger(binding));
     }
 
     void MetalCommandBuffer::setPushConstant(void *data, size_t size, uint32_t binding)
     {
-        pushConstant->upload(data, size);
-        encoder->setVertexBuffer(pushConstant->buffer, NS::UInteger(0), NS::UInteger(binding));
+
+        encoder->setVertexBytes(data, NS::UInteger(size), NS::UInteger(binding));
     }
     void MetalCommandBuffer::draw(uint32_t vertexCount)
     {
@@ -81,10 +85,11 @@ namespace nitro::rhi::metal
         {
             throw std::runtime_error("Must bind index buffer");
         }
+
         encoder->drawIndexedPrimitives(MTL::PrimitiveTypeTriangle,
                                        NS::UInteger(indexCount),
                                        MTL::IndexTypeUInt32,
-                                       m_currentIndexBuffer,
+                                       m_currentIndexBuffer->buffer,
                                        NS::UInteger(0));
     }
     void MetalCommandBuffer::present()

@@ -14,10 +14,11 @@ namespace nitro::rhi
 
         enum class Usage : uint32_t
         {
+            None = 0,
             RenderTarget = 1 << 0,
             ShaderRead = 1 << 1,
             DepthStencil = 1 << 2
-        } usage;
+        } usage = Usage::None;
 
         struct Size
         {
@@ -26,6 +27,7 @@ namespace nitro::rhi
 
         const void *initialData = nullptr;
     };
+
     inline bool hasTextureUsageFlag(TextureDesc::Usage value,
                                     TextureDesc::Usage flag)
     {
@@ -36,6 +38,13 @@ namespace nitro::rhi
     {
     public:
         virtual ~RHITexture() = default;
+    };
+
+    inline TextureDesc::Usage operator|(TextureDesc::Usage a, TextureDesc::Usage b)
+    {
+        return static_cast<TextureDesc::Usage>(
+            static_cast<uint32_t>(a) |
+            static_cast<uint32_t>(b));
     };
 
 }

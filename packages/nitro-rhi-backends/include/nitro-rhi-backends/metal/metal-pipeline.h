@@ -16,5 +16,6 @@ namespace nitro::rhi::metal
 
     private:
         MetalDevice *m_device;
+        MTL::VertexDescriptor *m_descriptor = nullptr;
     };
 }

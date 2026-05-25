@@ -29,8 +29,7 @@ namespace nitro::rhi::metal
         MetalSwapchain *swapchain;
 
     private:
-        MetalBuffer *pushConstant;
         MetalDevice *m_device;
-        MTL::Buffer *m_currentIndexBuffer = nullptr;
+        MetalBuffer *m_currentIndexBuffer = nullptr;
     };
 } // namespace nitro::rhi::metal
