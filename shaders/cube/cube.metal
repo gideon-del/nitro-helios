@@ -4,14 +4,17 @@ using namespace metal;
 struct VertexIn {
     float3 position [[attribute(0)]];
     float3 color [[attribute(1)]];
+    float3 normal [[attribute(2)]];
 };
 struct VertexOut {
     float4 position [[position]];
     float3 color;
+    float3 normal;
 };
 
 struct PushConstant {
     float4x4 model;
+    float4x4 normalMatrix;
 };
 struct UniformBuffer {
     float4x4 view;
@@ -25,9 +28,20 @@ vertex VertexOut vs(VertexIn in [[stage_in]],
     VertexOut out;
     out.position = u.proj * u.view * p.model * float4(in.position, 1.0);
     out.color = in.color;
+    float3x3 normalMatrix = {
+        p.normalMatrix[0].xyz,
+        p.normalMatrix[1].xyz,
+        p.normalMatrix[2].xyz,
+    };
+    out.normal = normalMatrix * in.normal;
     return out;
 }
 
 fragment float4 fs(VertexOut in [[stage_in]]) {
-    return float4(in.color, 1.0);
+    float3 N = normalize(in.normal);
+    float3 L = normalize(float3(1.0,1.0,0.0));
+    
+    float intensity = max(0.0, dot(N,L));
+    float3 color = in.color * intensity;
+    return float4(color, 1.0);
 }

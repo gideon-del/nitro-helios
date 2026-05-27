@@ -1,10 +1,7 @@
 #include <GLFW/glfw3.h>
 
 #include <nitro-rhi/rhi-command-buffer.h>
-#include <nitro-rhi-backends/common/push-constant.h>
-#include <nitro-rhi-backends/common/vertex.h>
-#include <nitro-rhi-backends/common/mesh.h>
-#include <nitro-rhi-backends/common/global-transformaton.h>
+#include <nitro-geometry/geometry.h>
 #include <glm/gtc/matrix_transform.hpp>
 #ifdef USE_METAL
 #include <nitro-rhi-backends/metal/metal-device.h>
@@ -17,206 +14,16 @@ using DeviceType = nitro::rhi::vulkan::VulkanDevice;
 #include <string>
 
 using namespace nitro::rhi;
+using namespace nitro::geometry;
 
-Mesh createQuad(float width, float height)
+constexpr float EPSILON = 1e-6f;
+
+struct AppState
 {
-    float halfWidth = width * 0.5f;
-    float halfHeight = height * 0.5f;
-
-    float leftX = 0.0f - halfWidth;
-    float rightX = 0.0f + halfWidth;
-
-    float topY = 0.0f + halfHeight;
-    float bottomY = 0.0f - halfHeight;
-
-    Vertex v0{{leftX, topY, 0.0f}, {1.0f, 0.0f, 0.0f}};
-    Vertex v1{{rightX, topY, 0.0f}, {0.0f, 1.0f, 0.0f}};
-    Vertex v2{{rightX, bottomY, 0.0f}, {0.0f, 0.0f, 1.0f}};
-    Vertex v3{{leftX, bottomY, 0.0f}, {1.0f, 0.0f, 0.0f}};
-
-    return Mesh{
-        .vertices = {v0, v1, v2, v3},
-        .indices = {0, 1, 2, 2, 3, 0}};
-}
-
-Mesh createPlane(float width, float depth)
-{
-
-    float halfWidth = width * 0.5f;
-    float halfDepth = depth * 0.5f;
-
-    float leftX = 0.0f - halfWidth;
-    float rightX = 0.0f + halfWidth;
-
-    float farZ = 0.0f + halfDepth;
-    float nearZ = 0.0f - halfDepth;
-
-    Vertex v0{{leftX, 0.0f, farZ}, {1.0f, 0.0f, 0.0f}};
-    Vertex v1{{rightX, 0.0f, farZ}, {0.0f, 1.0f, 0.0f}};
-    Vertex v2{{rightX, 0.0f, nearZ}, {0.0f, 0.0f, 1.0f}};
-    Vertex v3{{leftX, 0.0f, nearZ}, {1.0f, 0.0f, 0.0f}};
-
-    return Mesh{
-        .vertices = {v0, v1, v2, v3},
-        .indices = {0, 1, 2, 2, 3, 0}};
-}
-
-Mesh createGrid(uint32_t rows, uint32_t cols, float width, float height)
-{
-
-    float widthPerCell = width / float(cols);
-    float heightPerCell = height / float(rows);
-
-    float halfWidth = width * 0.5f;
-    float halfHeight = height * 0.5f;
-
-    glm::vec3 leftTopPos{0.0f - halfWidth, 0.0f + halfHeight, 0.0f};
-
-    Mesh mesh;
-
-       for (int row = 0; row <= rows; row++)
-    {
-        float y = (float)row * heightPerCell;
-
-        for (int col = 0; col <= cols; col++)
-        {
-            float x = (float)col * widthPerCell;
-            uint32_t idx = col;
-            float r = (idx + 0) % 3;
-            float g = (idx + 1) % 3;
-            float b = (idx + 2) % 3;
-            mesh.vertices.push_back({leftTopPos + glm::vec3{x, -y, 0.0f},
-                                     {r, g, b}});
-        }
-    }
-
-    for (int col = 0; col < cols; col++)
-    {
-        for (int row = 0; row < rows; row++)
-        {
-            uint32_t topLeft = (row * (cols + 1)) + col;
-            uint32_t topRight = topLeft + 1;
-            uint32_t bottomLeft = topLeft + (cols + 1);
-            uint32_t bottomRight = bottomLeft + 1;
-            mesh.indices.push_back(topLeft);
-            mesh.indices.push_back(topRight);
-            mesh.indices.push_back(bottomRight);
-
-            mesh.indices.push_back(bottomRight);
-            mesh.indices.push_back(bottomLeft);
-            mesh.indices.push_back(topLeft);
-
-            // Vertex topLeft{
-            //     .pos = leftTopPos + glm::vec3(left * widthPerCell, -top * heightPerCell, 0.0f),
-            //     .color = {1.0f, 0.0f, 0.0f}};
-            // Vertex topRight{
-            //     .pos = leftTopPos + glm::vec3(right * widthPerCell, -top * heightPerCell, 0.0f),
-            //     .color = {0.0f, 1.0f, 0.0f}};
-            // Vertex bottomRight{
-            //     .pos = leftTopPos + glm::vec3(right * widthPerCell, -bottom * heightPerCell, 0.0f),
-            //     .color = {0.0f, 0.0f, 1.0f}};
-            // Vertex bottomLeft{
-            //     .pos = leftTopPos + glm::vec3(left * widthPerCell, -bottom * heightPerCell, 0.0f),
-            //     .color = {1.0f, 0.0f, 0.0f}};
-
-            // uint32_t vertexSize = static_cast<uint32_t>(mesh.vertices.size());
-            // mesh.vertices.push_back(topLeft);
-            // mesh.vertices.push_back(topRight);
-            // mesh.vertices.push_back(bottomRight);
-            // mesh.vertices.push_back(bottomLeft);
-
-            // uint32_t firstVertexIdx = vertexSize;
-            // uint32_t secondVertexIdx = vertexSize + 1;
-            // uint32_t thirdVertexIdx = vertexSize + 2;
-            // uint32_t fourthVertexIdx = vertexSize + 3;
-            // mesh.indices.push_back(firstVertexIdx);
-            // mesh.indices.push_back(secondVertexIdx);
-            // mesh.indices.push_back(thirdVertexIdx);
-            // mesh.indices.push_back(thirdVertexIdx);
-            // mesh.indices.push_back(fourthVertexIdx);
-            // mesh.indices.push_back(firstVertexIdx);
-        }
-    }
-
-    return mesh;
-}
-Vertex cubeVertices[] = {
-    // Front (Red)
-    {{-0.5f, -0.5f, 0.5f}, {1, 0, 0}},
-    {{0.5f, -0.5f, 0.5f}, {1, 0, 0}},
-    {{0.5f, 0.5f, 0.5f}, {1, 0, 0}},
-    {{-0.5f, 0.5f, 0.5f}, {1, 0, 0}},
-
-    // Back (Green)
-    {{-0.5f, -0.5f, -0.5f}, {0, 1, 0}},
-    {{0.5f, -0.5f, -0.5f}, {0, 1, 0}},
-    {{0.5f, 0.5f, -0.5f}, {0, 1, 0}},
-    {{-0.5f, 0.5f, -0.5f}, {0, 1, 0}},
-
-    // Left (Blue)
-    {{-0.5f, -0.5f, -0.5f}, {0, 0, 1}},
-    {{-0.5f, -0.5f, 0.5f}, {0, 0, 1}},
-    {{-0.5f, 0.5f, 0.5f}, {0, 0, 1}},
-    {{-0.5f, 0.5f, -0.5f}, {0, 0, 1}},
-
-    // Right (Yellow)
-    {{0.5f, -0.5f, -0.5f}, {1, 1, 0}},
-    {{0.5f, -0.5f, 0.5f}, {1, 1, 0}},
-    {{0.5f, 0.5f, 0.5f}, {1, 1, 0}},
-    {{0.5f, 0.5f, -0.5f}, {1, 1, 0}},
-
-    // Top (Magenta)
-    {{-0.5f, 0.5f, -0.5f}, {1, 0, 1}},
-    {{-0.5f, 0.5f, 0.5f}, {1, 0, 1}},
-    {{0.5f, 0.5f, 0.5f}, {1, 0, 1}},
-    {{0.5f, 0.5f, -0.5f}, {1, 0, 1}},
-
-    // Bottom (Cyan)
-    {{-0.5f, -0.5f, -0.5f}, {0, 1, 1}},
-    {{-0.5f, -0.5f, 0.5f}, {0, 1, 1}},
-    {{0.5f, -0.5f, 0.5f}, {0, 1, 1}},
-    {{0.5f, -0.5f, -0.5f}, {0, 1, 1}},
+    OrbitalCamera *camera;
+    bool mousePressed;
+    double lastX, lastY;
 };
-
-uint32_t cubeIndices[] = {
-    0,
-    1,
-    2,
-    2,
-    3,
-    0, // Front
-    4,
-    5,
-    6,
-    6,
-    7,
-    4, // Back
-    8,
-    9,
-    10,
-    10,
-    11,
-    8, // Left
-    12,
-    13,
-    14,
-    14,
-    15,
-    12, // Right
-    16,
-    17,
-    18,
-    18,
-    19,
-    16, // Top
-    20,
-    21,
-    22,
-    22,
-    23,
-    20, // Bottom
-};
-;
 int main()
 {
     glfwInit();
@@ -230,7 +37,7 @@ int main()
     DeviceType device(window);
     RHISwapchain *swapchain = device.createSwapchain(nullptr);
 
-    std::string shaderPath = std::string(SHADER_DIR) + "/cube";
+    std::string shaderPath = std::string(SHADER_DIR) + "/cube/cube";
 
     std::vector<RHIDescriptorBinding> binding = {{.type = RHIDescriptorBinding::Type::UniformBuffer,
                                                   .stage = RHIDescriptorBinding::ShaderStage::Vertex,
@@ -249,39 +56,41 @@ int main()
     pipelineDesc.depthTest = true;
     pipelineDesc.layout = descriptorLayout;
     RHIPipeline *pipeline = device.createPipeline(pipelineDesc);
+    pipelineDesc.topology = PipelineTopology::LineList;
+    RHIPipeline *normalPipeline = device.createPipeline(pipelineDesc);
+    Mesh ring = MeshGenerator::createUVSphere(5, 10, 100);
+    ring.calculateNormals();
+    Mesh ringNormals = MeshGenerator::createNormalVisualization(ring, 1);
 
-    Mesh quad = createQuad(1.0f, 1.0f);
-    Mesh plane = createPlane(1.0f, 1.0f);
-    Mesh gridCell = createGrid(8, 8, 1.0f, 1.0f);
     BufferDesc vertexDesc;
-    vertexDesc.initialData = gridCell.vertices.data();
-    vertexDesc.size = sizeof(Vertex) * gridCell.vertices.size();
+    vertexDesc.initialData = ring.vertices.data();
+    vertexDesc.size = sizeof(Vertex) * ring.vertices.size();
     vertexDesc.storage = BufferDesc::StorageMode::GPU;
     vertexDesc.usage = BufferDesc::Usage::Vertex;
 
     RHIBuffer *vertexBuffer = device.createBuffer(vertexDesc);
     BufferDesc indexDesc;
-    indexDesc.initialData = gridCell.indices.data();
-    indexDesc.size = sizeof(uint32_t) * gridCell.indices.size();
+    indexDesc.initialData = ring.indices.data();
+    indexDesc.size = sizeof(uint32_t) * ring.indices.size();
     indexDesc.storage = BufferDesc::StorageMode::GPU;
     indexDesc.usage = BufferDesc::Usage::Index;
 
     RHIBuffer *indexBuffer = device.createBuffer(indexDesc);
 
-    BufferDesc cubeVertexDesc;
-    cubeVertexDesc.initialData = cubeVertices;
-    cubeVertexDesc.size = sizeof(cubeVertices);
-    cubeVertexDesc.storage = BufferDesc::StorageMode::GPU;
-    cubeVertexDesc.usage = BufferDesc::Usage::Vertex;
+    BufferDesc normalVertexDesc;
+    normalVertexDesc.initialData = ringNormals.vertices.data();
+    normalVertexDesc.size = sizeof(Vertex) * ringNormals.vertices.size();
+    normalVertexDesc.storage = BufferDesc::StorageMode::GPU;
+    normalVertexDesc.usage = BufferDesc::Usage::Vertex;
 
-    RHIBuffer *cubeVertexBuffer = device.createBuffer(cubeVertexDesc);
-    BufferDesc cubeIndexDesc;
-    cubeIndexDesc.initialData = cubeIndices;
-    cubeIndexDesc.size = sizeof(cubeIndices);
-    cubeIndexDesc.storage = BufferDesc::StorageMode::GPU;
-    cubeIndexDesc.usage = BufferDesc::Usage::Index;
+    RHIBuffer *normalVertexBuffer = device.createBuffer(normalVertexDesc);
+    BufferDesc normalIndexDesc;
+    normalIndexDesc.initialData = ringNormals.indices.data();
+    normalIndexDesc.size = sizeof(uint32_t) * ringNormals.indices.size();
+    normalIndexDesc.storage = BufferDesc::StorageMode::GPU;
+    normalIndexDesc.usage = BufferDesc::Usage::Index;
 
-    RHIBuffer *cubeIndexBuffer = device.createBuffer(cubeIndexDesc);
+    RHIBuffer *normalIndexBuffer = device.createBuffer(normalIndexDesc);
 
     BufferDesc globalUBODesc;
     globalUBODesc.size = sizeof(GlobalTransformation);
@@ -301,6 +110,36 @@ int main()
     descriptorSets[1]->writeBuffer(uboBuffers[1], 2);
     descriptorSets[1]->commit();
 
+    OrbitalCamera camera;
+    AppState appState{
+        .camera = &camera};
+
+    glfwSetWindowUserPointer(window, &appState);
+
+    glfwSetMouseButtonCallback(window, [](GLFWwindow *w, int button, int action, int mods)
+                               {
+                                   auto state = reinterpret_cast<AppState *>(glfwGetWindowUserPointer(w));
+
+                                   if (button == GLFW_MOUSE_BUTTON_LEFT)
+                                   {
+                                       state->mousePressed = (action == GLFW_PRESS);
+                                       glfwGetCursorPos(w, &state->lastX, &state->lastY);
+                                   } });
+    glfwSetCursorPosCallback(window, [](GLFWwindow *w, double x, double y)
+                             {
+     auto state = reinterpret_cast<AppState *>(glfwGetWindowUserPointer(w));
+     if(state->mousePressed){
+        state->camera->onMouseMove(x - state->lastX, y - state->lastY);
+        state->lastX =x;
+        state->lastY = y;
+     } });
+
+    glfwSetScrollCallback(window, [](GLFWwindow *w, double xoffset, double yoffset)
+                          {
+        
+                              auto state = reinterpret_cast<AppState *>(glfwGetWindowUserPointer(w));
+
+                              state->camera->onScroll(yoffset); });
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
@@ -311,7 +150,13 @@ int main()
         // glm::mat4 scale = glm::scale(glm::mat4(1.0f), {1.5f, 0.5f, 2.0f});
         // pushConstant.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.1f, 0.0f)) * scale;
 
+        // pushConstant.model = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+
+        // pushConstant.model = glm::rotate(glm::mat4(1.0f),
+        //                                  (float)glfwGetTime() * glm::radians(90.0f),
+        //                                  glm::vec3(0.0f, 1.0f, 0.0f));
         pushConstant.model = glm::mat4(1.0f);
+        pushConstant.applyNormalMatrix();
         // if (isMetal)
         // {
         //     pushConstant.model[1][1] *= -1;
@@ -332,10 +177,7 @@ int main()
         glfwGetFramebufferSize(window, &width, &height);
         float aspect = (float)width / (float)height;
         globalUbo.proj = glm::perspective(glm::radians(60.0f), aspect, 0.1f, 100.0f);
-        globalUbo.view = glm::lookAt(
-            glm::vec3(0.0f, 1.0f, -2.0f), // higher + further back
-            glm::vec3(0.0f, 0.0f, 0.0f),  // look at the cube position
-            glm::vec3(0.0f, 1.0f, 0.0f));
+        globalUbo.view = camera.getView();
         cmd->beginRenderPass(rpDesc);
         cmd->bindPipeline(pipeline);
         cmd->setPushConstant(&pushConstant, sizeof(nitro::rhi::PushConstant), 1);
@@ -350,8 +192,12 @@ int main()
         cmd->bindDescriptorSet(descriptorSets[frameIdx]);
         cmd->bindVertexBuffer(vertexBuffer);
         cmd->bindIndexBuffer(indexBuffer);
-        cmd->drawIndexed(static_cast<uint32_t>(gridCell.indices.size()));
+        cmd->drawIndexed(static_cast<uint32_t>(ring.indices.size()));
 
+        cmd->bindPipeline(normalPipeline);
+        cmd->bindVertexBuffer(normalVertexBuffer);
+        cmd->bindIndexBuffer(normalIndexBuffer);
+        cmd->drawIndexed(static_cast<uint32_t>(ringNormals.indices.size()));
         // pushConstant.model =
         //     glm::rotate(glm::mat4(1.0f), glm::radians(30.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 

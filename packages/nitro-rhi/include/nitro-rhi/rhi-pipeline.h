@@ -34,6 +34,12 @@ namespace nitro::rhi
         std::string filePath;
     };
 
+    enum class PipelineTopology
+    {
+        TriangleList,
+        LineList,
+        PointList
+    };
     struct PipelineDesc
     {
         RHIVertexLayout vertexLayout;
@@ -41,6 +47,7 @@ namespace nitro::rhi
         ShaderDesc fragmentShader;
         bool depthTest = true;
         RHIDescriptorLayout *layout = nullptr;
+        PipelineTopology topology = PipelineTopology::TriangleList;
     };
 
     class RHIPipeline

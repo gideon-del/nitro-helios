@@ -13,6 +13,7 @@ namespace nitro::rhi::metal
 
         MTL::RenderPipelineState *pipelineState;
         MTL::DepthStencilState *depthStencilState;
+        MTL::PrimitiveType topology = MTL::PrimitiveTypeTriangle;
 
     private:
         MetalDevice *m_device;

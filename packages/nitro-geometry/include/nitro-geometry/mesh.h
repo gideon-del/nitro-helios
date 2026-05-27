@@ -2,7 +2,7 @@
 #include "vertex.h"
 #include <cstdint>
 
-namespace nitro::rhi
+namespace nitro::geometry
 {
     struct Mesh
     {

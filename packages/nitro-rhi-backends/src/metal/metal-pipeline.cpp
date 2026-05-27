@@ -37,6 +37,20 @@ namespace nitro::rhi::metal
 
         return descriptor;
     }
+    MTL::PrimitiveType convertToPrimitive(PipelineTopology topology)
+    {
+        switch (topology)
+        {
+        case PipelineTopology::TriangleList:
+            return MTL::PrimitiveTypeTriangle;
+        case PipelineTopology::LineList:
+            return MTL::PrimitiveTypeLine;
+        case PipelineTopology::PointList:
+            return MTL::PrimitiveTypePoint;
+        default:
+            return MTL::PrimitiveTypeTriangle;
+        }
+    }
     MetalPipeline::MetalPipeline(MetalDevice *device, const PipelineDesc &desc) : m_device(device)
     {
         NS::Error *error = nullptr;
@@ -81,7 +95,7 @@ namespace nitro::rhi::metal
         depthDesc->setDepthCompareFunction(MTL::CompareFunctionLess);
         depthDesc->setDepthWriteEnabled(desc.depthTest);
         depthStencilState = m_device->device->newDepthStencilState(depthDesc);
-
+        topology = convertToPrimitive(desc.topology);
         vertexFn->release();
         fragmentFn->release();
         vsLibrary->release();

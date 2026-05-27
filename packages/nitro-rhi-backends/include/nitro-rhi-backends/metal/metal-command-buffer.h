@@ -7,6 +7,7 @@ namespace nitro::rhi::metal
     class MetalDevice;
     class MetalSwapchain;
     class MetalBuffer;
+    class MetalPipeline;
     class MetalCommandBuffer : public RHICommandBuffer
     {
     public:
@@ -32,5 +33,6 @@ namespace nitro::rhi::metal
     private:
         MetalDevice *m_device;
         MetalBuffer *m_currentIndexBuffer = nullptr;
+        MetalPipeline *m_pipeline = nullptr;
     };
 } // namespace nitro::rhi::metal

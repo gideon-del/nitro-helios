@@ -67,6 +67,20 @@ namespace nitro::rhi::vulkan
         return binding;
     }
 
+    VkPrimitiveTopology convertToPrimitive(PipelineTopology topology)
+    {
+        switch (topology)
+        {
+        case PipelineTopology::TriangleList:
+            return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        case PipelineTopology::LineList:
+            return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+        case PipelineTopology::PointList:
+            return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+        default:
+            return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        }
+    };
     VulkanPipeline::VulkanPipeline(VulkanDevice *device, const PipelineDesc &desc) : m_device(device)
     {
 
@@ -120,7 +134,7 @@ namespace nitro::rhi::vulkan
         VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo{};
 
         inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-        inputAssemblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        inputAssemblyInfo.topology = convertToPrimitive(desc.topology);
         inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
 
         VkDynamicState dynamicStates[] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};

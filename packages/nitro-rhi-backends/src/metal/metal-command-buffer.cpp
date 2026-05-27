@@ -53,6 +53,7 @@ namespace nitro::rhi::metal
         encoder->setRenderPipelineState(metalPipeline->pipelineState);
         encoder->setDepthStencilState(
             metalPipeline->depthStencilState);
+        m_pipeline = metalPipeline;
     }
 
     void MetalCommandBuffer::bindVertexBuffer(RHIBuffer *buffer)
@@ -80,7 +81,12 @@ namespace nitro::rhi::metal
     }
     void MetalCommandBuffer::draw(uint32_t vertexCount)
     {
-        encoder->drawPrimitives(MTL::PrimitiveTypeTriangle, NS::UInteger(0), NS::UInteger(vertexCount));
+
+        if (!m_pipeline)
+        {
+            throw std::runtime_error("Must bind pipeline for draws");
+        }
+        encoder->drawPrimitives(m_pipeline->topology, NS::UInteger(0), NS::UInteger(vertexCount));
     }
     void MetalCommandBuffer::bindDescriptorSet(RHIDescriptorSet *set)
     {
@@ -100,12 +106,12 @@ namespace nitro::rhi::metal
     }
     void MetalCommandBuffer::drawIndexed(uint32_t indexCount)
     {
-        if (!m_currentIndexBuffer)
+        if (!m_pipeline)
         {
-            throw std::runtime_error("Must bind index buffer");
+            throw std::runtime_error("Must bind pipeline for draws");
         }
 
-        encoder->drawIndexedPrimitives(MTL::PrimitiveTypeTriangle,
+        encoder->drawIndexedPrimitives(m_pipeline->topology,
                                        NS::UInteger(indexCount),
                                        MTL::IndexTypeUInt32,
                                        m_currentIndexBuffer->buffer,

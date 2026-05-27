@@ -2,7 +2,9 @@
 #include <glm/glm.hpp>
 #include <nitro-rhi/rhi-pipeline.h>
 #include <iostream>
-namespace nitro::rhi
+
+using namespace nitro::rhi;
+namespace nitro::geometry
 {
     struct Vertex
     {
