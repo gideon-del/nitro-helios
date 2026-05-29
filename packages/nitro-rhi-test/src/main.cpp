@@ -2,6 +2,7 @@
 
 #include <nitro-rhi/rhi-command-buffer.h>
 #include <nitro-geometry/geometry.h>
+#include <nitro-renderer/nitro-renderer.h>
 #include <glm/gtc/matrix_transform.hpp>
 #ifdef USE_METAL
 #include <nitro-rhi-backends/metal/metal-device.h>
@@ -15,6 +16,7 @@ using DeviceType = nitro::rhi::vulkan::VulkanDevice;
 
 using namespace nitro::rhi;
 using namespace nitro::geometry;
+using namespace nitro::renderer;
 
 constexpr float EPSILON = 1e-6f;
 
@@ -83,37 +85,11 @@ int main()
 
     Mesh sphere = MeshGenerator::createUVSphere(5, 10, 100);
     sphere.calculateNormals();
+    MeshRenderer sphereRenderer(sphere, &device);
     Mesh plane = MeshGenerator::createPlane(50, 50);
     plane.calculateNormals();
-    BufferDesc vertexDesc;
-    vertexDesc.initialData = sphere.vertices.data();
-    vertexDesc.size = sizeof(Vertex) * sphere.vertices.size();
-    vertexDesc.storage = BufferDesc::StorageMode::GPU;
-    vertexDesc.usage = BufferDesc::Usage::Vertex;
-
-    RHIBuffer *sphereVertexBuffer = device.createBuffer(vertexDesc);
-    BufferDesc planeVertexDesc;
-    planeVertexDesc.initialData = plane.vertices.data();
-    planeVertexDesc.size = sizeof(Vertex) * plane.vertices.size();
-    planeVertexDesc.storage = BufferDesc::StorageMode::GPU;
-    planeVertexDesc.usage = BufferDesc::Usage::Vertex;
-
-    RHIBuffer *planeVertexBuffer = device.createBuffer(planeVertexDesc);
-    BufferDesc indexDesc;
-    indexDesc.initialData = sphere.indices.data();
-    indexDesc.size = sizeof(uint32_t) * sphere.indices.size();
-    indexDesc.storage = BufferDesc::StorageMode::GPU;
-    indexDesc.usage = BufferDesc::Usage::Index;
-
-    RHIBuffer *sphereIndexBuffer = device.createBuffer(indexDesc);
-
-    BufferDesc planeIndexDesc;
-    planeIndexDesc.initialData = plane.indices.data();
-    planeIndexDesc.size = sizeof(uint32_t) * plane.indices.size();
-    planeIndexDesc.storage = BufferDesc::StorageMode::GPU;
-    planeIndexDesc.usage = BufferDesc::Usage::Index;
-
-    RHIBuffer *planeIndexBuffer = device.createBuffer(planeIndexDesc);
+    MeshRenderer planeRenderer(plane, &device);
+    planeRenderer.transformation.translate(glm::vec3(0.0f, -10.0f, 0.0f));
 
     BufferDesc globalUBODesc;
     globalUBODesc.size = sizeof(GlobalTransformation);
@@ -234,17 +210,6 @@ int main()
     {
         glfwPollEvents();
 
-        nitro::rhi::PushConstant pushConstant;
-        // pushConstant.model = glm::scale(glm::rotate(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.2f, 0.0f)), glm::radians(90.0f), glm::vec3{1.0f, 0.0f, 0.0f}), {3.0f, 3.0f, 1.0f});
-        // glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3{1.0f, 0.0f, 0.0f});
-        // glm::mat4 scale = glm::scale(glm::mat4(1.0f), {1.5f, 0.5f, 2.0f});
-        // pushConstant.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -0.1f, 0.0f)) * scale;
-
-        // pushConstant.model = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-
-        // light.phi = (float)glfwGetTime() * glm::radians(20.0f);
-        pushConstant.model = glm::mat4(1.0f);
-        pushConstant.applyNormalMatrix();
         GlobalTransformation globalUbo{};
         int width, height;
 
@@ -267,26 +232,13 @@ int main()
         }
         cmd->beginRenderPass(shadowRenderPass);
         cmd->bindPipeline(shadowPipeline);
-        pushConstant.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -10.0f, 0.0f));
-        pushConstant.applyNormalMatrix();
-        cmd->setPushConstant(&pushConstant, sizeof(nitro::rhi::PushConstant), 1);
         uint32_t frameIdx = device.getCurrentFrameIndex();
         RHIBuffer *lightBuffer = lightBuffers[frameIdx];
 
         lightBuffer->upload(&lightView, sizeof(LightView));
         cmd->bindDescriptorSet(shadowDescriptorSets[frameIdx]);
-
-        cmd->bindVertexBuffer(planeVertexBuffer);
-        cmd->bindIndexBuffer(planeIndexBuffer);
-        cmd->drawIndexed(static_cast<uint32_t>(plane.indices.size()));
-
-        pushConstant.model = glm::mat4(1.0f);
-        pushConstant.applyNormalMatrix();
-
-        cmd->setPushConstant(&pushConstant, sizeof(nitro::rhi::PushConstant), 1);
-        cmd->bindVertexBuffer(sphereVertexBuffer);
-        cmd->bindIndexBuffer(sphereIndexBuffer);
-        cmd->drawIndexed(static_cast<uint32_t>(sphere.indices.size()));
+        planeRenderer.draw(cmd);
+        sphereRenderer.draw(cmd);
         cmd->endRenderPass();
 
         RHIRenderPassDesc rpDesc{};
@@ -305,28 +257,13 @@ int main()
         };
         cmd->beginRenderPass(rpDesc);
         cmd->bindPipeline(pipeline);
-        cmd->setPushConstant(&pushConstant, sizeof(nitro::rhi::PushConstant), 1);
         RHIBuffer *uniformBuffer = uboBuffers[frameIdx];
         uniformBuffer->upload(&globalUbo, sizeof(GlobalTransformation));
         uniformBuffer->upload(&globalUbo, sizeof(GlobalTransformation));
-        pushConstant.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -10.0f, 0.0f));
-        pushConstant.applyNormalMatrix();
-        cmd->setPushConstant(&pushConstant, sizeof(nitro::rhi::PushConstant), 1);
         uniformBuffer->upload(&globalUbo, sizeof(GlobalTransformation));
         cmd->bindDescriptorSet(descriptorSets[frameIdx]);
-
-        cmd->bindVertexBuffer(planeVertexBuffer);
-        cmd->bindIndexBuffer(planeIndexBuffer);
-        cmd->drawIndexed(static_cast<uint32_t>(plane.indices.size()));
-
-        pushConstant.model = glm::mat4(1.0f);
-        pushConstant.applyNormalMatrix();
-
-        cmd->setPushConstant(&pushConstant, sizeof(nitro::rhi::PushConstant), 1);
-        cmd->bindVertexBuffer(sphereVertexBuffer);
-        cmd->bindIndexBuffer(sphereIndexBuffer);
-        cmd->drawIndexed(static_cast<uint32_t>(sphere.indices.size()));
-
+        planeRenderer.draw(cmd);
+        sphereRenderer.draw(cmd);
         cmd->endRenderPass();
 
         cmd->present();

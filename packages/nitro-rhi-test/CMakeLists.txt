@@ -18,7 +18,8 @@ if(APPLE)
     target_link_libraries(nitro-rhi-test
         PRIVATE nitro-rhi-backends
         PRIVATE nitro-rhi-metal
-         PRIVATE nitro-geometry
+        PRIVATE nitro-geometry
+        PRIVATE nitro-renderer
         PRIVATE glfw
     )
     # target_compile_definitions(nitro-rhi-test PRIVATE USE_METAL)
@@ -26,6 +27,7 @@ else()
     target_link_libraries(nitro-rhi-test
         PRIVATE nitro-rhi-backends
         PRIVATE nitro-geometry
+         PRIVATE nitro-renderer
         PRIVATE glfw
     )
 endif()
