@@ -9,8 +9,13 @@ namespace nitro::geometry
     struct Vertex
     {
         glm::vec3 pos;
-        glm::vec3 color;
+        glm::vec3 color = glm::vec3(0.0f);
         glm::vec3 normal = glm::vec3(0.0f);
+        glm::vec2 uv;
+
+        Vertex(glm::vec3 pos, glm::vec3 color, glm::vec3 normal, glm::vec2 uv) : pos(pos), color(color), normal(normal), uv(uv) {}
+        Vertex(glm::vec3 pos, glm::vec2 uv) : pos(pos), uv(uv) {}
+        Vertex(glm::vec3 pos, glm::vec3 color, glm::vec2 uv) : pos(pos), uv(uv), color(color) {}
 
         static RHIVertexLayout getVertexLayout()
         {
@@ -19,7 +24,7 @@ namespace nitro::geometry
             vertexLayout.binding = 0;
             vertexLayout.stride = sizeof(Vertex);
 
-            vertexLayout.attributes.resize(3);
+            vertexLayout.attributes.resize(4);
 
             vertexLayout.attributes[0].format = RHIVertexLayout::Attributes::Format::Float3;
             vertexLayout.attributes[0].location = 0;
@@ -32,6 +37,10 @@ namespace nitro::geometry
             vertexLayout.attributes[2].format = RHIVertexLayout::Attributes::Format::Float3;
             vertexLayout.attributes[2].location = 2;
             vertexLayout.attributes[2].offset = offsetof(Vertex, normal);
+
+            vertexLayout.attributes[3].format = RHIVertexLayout::Attributes::Format::Float2;
+            vertexLayout.attributes[3].location = 3;
+            vertexLayout.attributes[3].offset = offsetof(Vertex, uv);
 
             return vertexLayout;
         }

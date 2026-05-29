@@ -34,7 +34,7 @@ namespace nitro::rhi::vulkan
 
         RHIDescriptorLayout *createDescriptorLayout(const std::vector<RHIDescriptorBinding> bindings) override;
         RHIDescriptorSet *createDescriptorSet(RHIDescriptorLayout *layout) override;
-
+        RHIRenderPass *createRenderPass(const RenderPassDesc &desc) override;
         RHIBuffer *createBuffer(const BufferDesc &desc) override;
         void destroyBuffer(RHIBuffer *buffer) override;
 
@@ -65,7 +65,7 @@ namespace nitro::rhi::vulkan
         RHICommandBuffer *beginFrame() override;
         void endFrame(RHICommandBuffer *cmd) override;
         void waitIdle();
-
+        VkFormat getSurfaceFormat() const;
         VkDevice device;
         VmaAllocator allocator;
         VkCommandPool commandPool;

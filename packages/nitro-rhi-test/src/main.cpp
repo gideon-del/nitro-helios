@@ -24,6 +24,11 @@ struct AppState
     bool mousePressed;
     double lastX, lastY;
 };
+
+struct LightView
+{
+    glm::mat4 lightSpaceMatrix;
+};
 int main()
 {
     glfwInit();
@@ -38,19 +43,36 @@ int main()
     RHISwapchain *swapchain = device.createSwapchain(nullptr);
 
     std::string shaderPath = std::string(SHADER_DIR) + "/cube/cube";
+    std::string shadowShaderPath = std::string(SHADER_DIR) + "/shadow/shadow";
 
     std::vector<RHIDescriptorBinding> binding = {{.type = RHIDescriptorBinding::Type::UniformBuffer,
                                                   .stage = RHIDescriptorBinding::ShaderStage::Vertex,
-                                                  .binding = 2}};
+                                                  .binding = 2},
+                                                 {.type = RHIDescriptorBinding::Type::UniformBuffer,
+                                                  .stage = RHIDescriptorBinding::ShaderStage::Vertex,
+                                                  .binding = 3},
+                                                 {.type = RHIDescriptorBinding::Type::Sampler,
+                                                  .stage = RHIDescriptorBinding::ShaderStage::Fragment,
+                                                  .binding = 0}};
+
+    std::vector<RHIDescriptorBinding> shadowBinding = {
+        {.type = RHIDescriptorBinding::Type::UniformBuffer,
+         .stage = RHIDescriptorBinding::ShaderStage::Vertex,
+         .binding = 2},
+    };
 
     RHIDescriptorLayout *descriptorLayout = device.createDescriptorLayout(binding);
+    RHIDescriptorLayout *shadowDescriptorLayout = device.createDescriptorLayout(shadowBinding);
+    PipelineDesc shadowPipelineDesc{};
     PipelineDesc pipelineDesc{};
 #ifdef USE_METAL
-    pipelineDesc.vertexShader = {"vs", shaderPath + ".metallib"};
-    pipelineDesc.fragmentShader = {"fs", shaderPath + ".metallib"};
+    pipelineDesc.shaders.push_back({"vs", shaderPath + ".metallib", ShaderStage::Vertex});
+    pipelineDesc.shaders.push_back({"fs", shaderPath + ".metallib", ShaderStage::Fragment});
+    shadowPipelineDesc.shaders.push_back({"main", shadowShaderPath + ".metallib", ShaderStage::Vertex});
 #else
-    pipelineDesc.vertexShader = {"main", shaderPath + ".vert.spv"};
-    pipelineDesc.fragmentShader = {"main", shaderPath + ".frag.spv"};
+    pipelineDesc.shaders.push_back({"main", shaderPath + ".vert.spv", ShaderStage::Vertex});
+    pipelineDesc.shaders.push_back({"main", shaderPath + ".frag.spv", ShaderStage::Fragment});
+    shadowPipelineDesc.shaders.push_back({"main", shadowShaderPath + ".vert.spv", ShaderStage::Vertex});
 #endif
     pipelineDesc.vertexLayout = Vertex::getVertexLayout();
     pipelineDesc.depthTest = true;
@@ -58,39 +80,40 @@ int main()
     RHIPipeline *pipeline = device.createPipeline(pipelineDesc);
     pipelineDesc.topology = PipelineTopology::LineList;
     RHIPipeline *normalPipeline = device.createPipeline(pipelineDesc);
-    Mesh ring = MeshGenerator::createUVSphere(5, 10, 100);
-    ring.calculateNormals();
-    Mesh ringNormals = MeshGenerator::createNormalVisualization(ring, 1);
 
+    Mesh sphere = MeshGenerator::createUVSphere(5, 10, 100);
+    sphere.calculateNormals();
+    Mesh plane = MeshGenerator::createPlane(50, 50);
+    plane.calculateNormals();
     BufferDesc vertexDesc;
-    vertexDesc.initialData = ring.vertices.data();
-    vertexDesc.size = sizeof(Vertex) * ring.vertices.size();
+    vertexDesc.initialData = sphere.vertices.data();
+    vertexDesc.size = sizeof(Vertex) * sphere.vertices.size();
     vertexDesc.storage = BufferDesc::StorageMode::GPU;
     vertexDesc.usage = BufferDesc::Usage::Vertex;
 
-    RHIBuffer *vertexBuffer = device.createBuffer(vertexDesc);
+    RHIBuffer *sphereVertexBuffer = device.createBuffer(vertexDesc);
+    BufferDesc planeVertexDesc;
+    planeVertexDesc.initialData = plane.vertices.data();
+    planeVertexDesc.size = sizeof(Vertex) * plane.vertices.size();
+    planeVertexDesc.storage = BufferDesc::StorageMode::GPU;
+    planeVertexDesc.usage = BufferDesc::Usage::Vertex;
+
+    RHIBuffer *planeVertexBuffer = device.createBuffer(planeVertexDesc);
     BufferDesc indexDesc;
-    indexDesc.initialData = ring.indices.data();
-    indexDesc.size = sizeof(uint32_t) * ring.indices.size();
+    indexDesc.initialData = sphere.indices.data();
+    indexDesc.size = sizeof(uint32_t) * sphere.indices.size();
     indexDesc.storage = BufferDesc::StorageMode::GPU;
     indexDesc.usage = BufferDesc::Usage::Index;
 
-    RHIBuffer *indexBuffer = device.createBuffer(indexDesc);
+    RHIBuffer *sphereIndexBuffer = device.createBuffer(indexDesc);
 
-    BufferDesc normalVertexDesc;
-    normalVertexDesc.initialData = ringNormals.vertices.data();
-    normalVertexDesc.size = sizeof(Vertex) * ringNormals.vertices.size();
-    normalVertexDesc.storage = BufferDesc::StorageMode::GPU;
-    normalVertexDesc.usage = BufferDesc::Usage::Vertex;
+    BufferDesc planeIndexDesc;
+    planeIndexDesc.initialData = plane.indices.data();
+    planeIndexDesc.size = sizeof(uint32_t) * plane.indices.size();
+    planeIndexDesc.storage = BufferDesc::StorageMode::GPU;
+    planeIndexDesc.usage = BufferDesc::Usage::Index;
 
-    RHIBuffer *normalVertexBuffer = device.createBuffer(normalVertexDesc);
-    BufferDesc normalIndexDesc;
-    normalIndexDesc.initialData = ringNormals.indices.data();
-    normalIndexDesc.size = sizeof(uint32_t) * ringNormals.indices.size();
-    normalIndexDesc.storage = BufferDesc::StorageMode::GPU;
-    normalIndexDesc.usage = BufferDesc::Usage::Index;
-
-    RHIBuffer *normalIndexBuffer = device.createBuffer(normalIndexDesc);
+    RHIBuffer *planeIndexBuffer = device.createBuffer(planeIndexDesc);
 
     BufferDesc globalUBODesc;
     globalUBODesc.size = sizeof(GlobalTransformation);
@@ -102,20 +125,47 @@ int main()
     uboBuffers[0] = device.createBuffer(globalUBODesc);
     uboBuffers[1] = device.createBuffer(globalUBODesc);
 
-    RHIDescriptorSet *descriptorSets[2];
-    descriptorSets[0] = device.createDescriptorSet(descriptorLayout);
-    descriptorSets[0]->writeBuffer(uboBuffers[0], 2);
-    descriptorSets[0]->commit();
-    descriptorSets[1] = device.createDescriptorSet(descriptorLayout);
-    descriptorSets[1]->writeBuffer(uboBuffers[1], 2);
-    descriptorSets[1]->commit();
+    BufferDesc lightUboDesc;
+    lightUboDesc.size = sizeof(LightView);
+    lightUboDesc.storage = BufferDesc::StorageMode::Shared;
+    lightUboDesc.usage = BufferDesc::Usage::Uniform;
+    RHIBuffer *lightBuffers[2];
+    lightBuffers[0] = device.createBuffer(lightUboDesc);
+    lightBuffers[1] = device.createBuffer(lightUboDesc);
 
     OrbitalCamera camera;
+    OrbitalCamera light;
+    light.radius = 20.0f;
+    light.theta = glm::radians(10.0f);
+    light.phi = glm::radians(270.0f);
+
     AppState appState{
         .camera = &camera};
 
     glfwSetWindowUserPointer(window, &appState);
 
+    glfwSetKeyCallback(window, [](GLFWwindow *window, int key, int scancode, int action, int mods)
+                       {
+                           auto state = reinterpret_cast<AppState *>(glfwGetWindowUserPointer(window));
+
+                           if (key == GLFW_KEY_W || key == GLFW_KEY_UP)
+                           {
+                               state->camera->moveForward(0.4f);
+                           }
+
+                           if (key == GLFW_KEY_S || key == GLFW_KEY_DOWN)
+                           {
+                               state->camera->moveForward(-0.4f);
+                           }
+                           if (key == GLFW_KEY_A || key == GLFW_KEY_RIGHT)
+                           {
+                               state->camera->moveRight(0.4f);
+                           }
+
+                           if (key == GLFW_KEY_D || key == GLFW_KEY_LEFT)
+                           {
+                               state->camera->moveRight(-0.4f);
+                           } });
     glfwSetMouseButtonCallback(window, [](GLFWwindow *w, int button, int action, int mods)
                                {
                                    auto state = reinterpret_cast<AppState *>(glfwGetWindowUserPointer(w));
@@ -140,6 +190,46 @@ int main()
                               auto state = reinterpret_cast<AppState *>(glfwGetWindowUserPointer(w));
 
                               state->camera->onScroll(yoffset); });
+
+    TextureDesc shadowDesc{};
+    shadowDesc.size.width = 2048;
+    shadowDesc.size.height = 2048;
+    shadowDesc.format = TextureDesc::ImageFormat::Depth32Float;
+    shadowDesc.usage = TextureDesc::Usage::DepthStencil | TextureDesc::Usage::ShaderRead;
+
+    RHITexture *shadowDepthTexture = device.createTexture(shadowDesc);
+    shadowPipelineDesc.vertexLayout = Vertex::getVertexLayout();
+    shadowPipelineDesc.depthTest = true;
+    shadowPipelineDesc.hasColorAttachment = false;
+    shadowPipelineDesc.layout = shadowDescriptorLayout;
+
+    RHIPipeline *shadowPipeline = device.createPipeline(shadowPipelineDesc);
+    RenderPassDesc shadowRenderPassDesc;
+    RenderPassDesc::Attachment shadowDepthAttachment;
+    shadowDepthAttachment.texture = shadowDepthTexture;
+    shadowRenderPassDesc.depthAttachment = &shadowDepthAttachment;
+
+    RHIRenderPass *shadowRenderPass = device.createRenderPass(shadowRenderPassDesc);
+    RHIDescriptorSet *shadowDescriptorSets[2];
+    shadowDescriptorSets[0] = device.createDescriptorSet(shadowDescriptorLayout);
+    shadowDescriptorSets[0]->writeBuffer(lightBuffers[0], 2);
+    shadowDescriptorSets[0]->commit();
+
+    shadowDescriptorSets[1] = device.createDescriptorSet(shadowDescriptorLayout);
+    shadowDescriptorSets[1]->writeBuffer(lightBuffers[1], 2);
+    shadowDescriptorSets[1]->commit();
+
+    RHIDescriptorSet *descriptorSets[2];
+    descriptorSets[0] = device.createDescriptorSet(descriptorLayout);
+    descriptorSets[0]->writeBuffer(uboBuffers[0], 2);
+    descriptorSets[0]->writeBuffer(lightBuffers[0], 3);
+    descriptorSets[0]->writeTexture(shadowDepthTexture, 0);
+    descriptorSets[0]->commit();
+    descriptorSets[1] = device.createDescriptorSet(descriptorLayout);
+    descriptorSets[1]->writeBuffer(uboBuffers[1], 2);
+    descriptorSets[1]->writeBuffer(lightBuffers[1], 3);
+    descriptorSets[1]->writeTexture(shadowDepthTexture, 0);
+    descriptorSets[1]->commit();
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
@@ -152,16 +242,52 @@ int main()
 
         // pushConstant.model = glm::rotate(glm::mat4(1.0f), glm::radians(-90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 
-        // pushConstant.model = glm::rotate(glm::mat4(1.0f),
-        //                                  (float)glfwGetTime() * glm::radians(90.0f),
-        //                                  glm::vec3(0.0f, 1.0f, 0.0f));
+        // light.phi = (float)glfwGetTime() * glm::radians(20.0f);
         pushConstant.model = glm::mat4(1.0f);
         pushConstant.applyNormalMatrix();
-        // if (isMetal)
-        // {
-        //     pushConstant.model[1][1] *= -1;
-        // }
+        GlobalTransformation globalUbo{};
+        int width, height;
+
+        glfwGetFramebufferSize(window, &width, &height);
+        float aspect = (float)width / (float)height;
+
         RHICommandBuffer *cmd = device.beginFrame();
+
+        LightView lightView;
+        lightView.lightSpaceMatrix = glm::orthoRH_ZO(-20.0f,
+                                                     20.0f,
+                                                     -20.0f,
+                                                     20.0f,
+                                                     0.1f,
+                                                     50.0f) *
+                                     light.getView();
+        if (!isMetal)
+        {
+            lightView.lightSpaceMatrix[1][1] *= -1;
+        }
+        cmd->beginRenderPass(shadowRenderPass);
+        cmd->bindPipeline(shadowPipeline);
+        pushConstant.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -10.0f, 0.0f));
+        pushConstant.applyNormalMatrix();
+        cmd->setPushConstant(&pushConstant, sizeof(nitro::rhi::PushConstant), 1);
+        uint32_t frameIdx = device.getCurrentFrameIndex();
+        RHIBuffer *lightBuffer = lightBuffers[frameIdx];
+
+        lightBuffer->upload(&lightView, sizeof(LightView));
+        cmd->bindDescriptorSet(shadowDescriptorSets[frameIdx]);
+
+        cmd->bindVertexBuffer(planeVertexBuffer);
+        cmd->bindIndexBuffer(planeIndexBuffer);
+        cmd->drawIndexed(static_cast<uint32_t>(plane.indices.size()));
+
+        pushConstant.model = glm::mat4(1.0f);
+        pushConstant.applyNormalMatrix();
+
+        cmd->setPushConstant(&pushConstant, sizeof(nitro::rhi::PushConstant), 1);
+        cmd->bindVertexBuffer(sphereVertexBuffer);
+        cmd->bindIndexBuffer(sphereIndexBuffer);
+        cmd->drawIndexed(static_cast<uint32_t>(sphere.indices.size()));
+        cmd->endRenderPass();
 
         RHIRenderPassDesc rpDesc{};
         rpDesc.clearColor[0] = 0.2f;
@@ -170,45 +296,36 @@ int main()
         rpDesc.clearColor[3] = 1.0f;
         rpDesc.clearDepth = 1.0f;
         rpDesc.hasDepth = true;
-
-        GlobalTransformation globalUbo{};
-        int width, height;
-
-        glfwGetFramebufferSize(window, &width, &height);
-        float aspect = (float)width / (float)height;
         globalUbo.proj = glm::perspective(glm::radians(60.0f), aspect, 0.1f, 100.0f);
         globalUbo.view = camera.getView();
-        cmd->beginRenderPass(rpDesc);
-        cmd->bindPipeline(pipeline);
-        cmd->setPushConstant(&pushConstant, sizeof(nitro::rhi::PushConstant), 1);
 
         if (!isMetal)
         {
             globalUbo.proj[1][1] *= -1;
-        }
-        uint32_t frameIdx = device.getCurrentFrameIndex();
+        };
+        cmd->beginRenderPass(rpDesc);
+        cmd->bindPipeline(pipeline);
+        cmd->setPushConstant(&pushConstant, sizeof(nitro::rhi::PushConstant), 1);
         RHIBuffer *uniformBuffer = uboBuffers[frameIdx];
         uniformBuffer->upload(&globalUbo, sizeof(GlobalTransformation));
+        uniformBuffer->upload(&globalUbo, sizeof(GlobalTransformation));
+        pushConstant.model = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -10.0f, 0.0f));
+        pushConstant.applyNormalMatrix();
+        cmd->setPushConstant(&pushConstant, sizeof(nitro::rhi::PushConstant), 1);
+        uniformBuffer->upload(&globalUbo, sizeof(GlobalTransformation));
         cmd->bindDescriptorSet(descriptorSets[frameIdx]);
-        cmd->bindVertexBuffer(vertexBuffer);
-        cmd->bindIndexBuffer(indexBuffer);
-        cmd->drawIndexed(static_cast<uint32_t>(ring.indices.size()));
 
-        cmd->bindPipeline(normalPipeline);
-        cmd->bindVertexBuffer(normalVertexBuffer);
-        cmd->bindIndexBuffer(normalIndexBuffer);
-        cmd->drawIndexed(static_cast<uint32_t>(ringNormals.indices.size()));
-        // pushConstant.model =
-        //     glm::rotate(glm::mat4(1.0f), glm::radians(30.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        cmd->bindVertexBuffer(planeVertexBuffer);
+        cmd->bindIndexBuffer(planeIndexBuffer);
+        cmd->drawIndexed(static_cast<uint32_t>(plane.indices.size()));
 
-        // if (isMetal)
-        // {
-        //     pushConstant.model[1][1] *= -1;
-        // }
-        // cmd->setPushConstant(&pushConstant, sizeof(nitro::rhi::PushConstant), 1);
-        // cmd->bindVertexBuffer(cubeVertexBuffer);
-        // cmd->bindIndexBuffer(cubeIndexBuffer);
-        // cmd->drawIndexed(36);
+        pushConstant.model = glm::mat4(1.0f);
+        pushConstant.applyNormalMatrix();
+
+        cmd->setPushConstant(&pushConstant, sizeof(nitro::rhi::PushConstant), 1);
+        cmd->bindVertexBuffer(sphereVertexBuffer);
+        cmd->bindIndexBuffer(sphereIndexBuffer);
+        cmd->drawIndexed(static_cast<uint32_t>(sphere.indices.size()));
 
         cmd->endRenderPass();
 

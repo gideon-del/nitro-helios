@@ -40,7 +40,9 @@ namespace nitro::rhi::metal
         encoder->setFrontFacingWinding(MTL::WindingCounterClockwise);
         rpd->release();
     }
-
+    void MetalCommandBuffer::beginRenderPass(RHIRenderPass *renderPass)
+    {
+    }
     void MetalCommandBuffer::endRenderPass()
     {
         encoder->endEncoding();

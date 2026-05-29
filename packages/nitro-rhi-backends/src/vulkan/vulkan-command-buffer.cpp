@@ -5,6 +5,7 @@
 #include <nitro-rhi-backends/vulkan/vulkan-buffer.h>
 #include <nitro-rhi-backends/vulkan/vulkan-texture.h>
 #include <nitro-rhi-backends/vulkan/vulkan-utils.h>
+#include <nitro-rhi-backends/vulkan/vulkan-render-pass.h>
 #include <nitro-rhi-backends/vulkan/vulkan-descriptor-set.h>
 
 namespace nitro::rhi::vulkan
@@ -44,31 +45,104 @@ namespace nitro::rhi::vulkan
     void VulkanCommandBuffer::beginRenderPass(const RHIRenderPassDesc &desc)
     {
 
-        VkRenderPassBeginInfo beginInfo{};
-        beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        beginInfo.framebuffer = swapchain->framebuffers[m_imageIdx];
-        beginInfo.renderPass = m_device->defaultRenderPass;
-        beginInfo.clearValueCount = 1;
-        beginInfo.renderArea = {
-            .offset = {
-                .x = 0,
-                .y = 0},
-            .extent = swapchain->extent
+        // VkRenderPassBeginInfo beginInfo{};
+        // beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        // beginInfo.framebuffer = swapchain->framebuffers[m_imageIdx];
+        // beginInfo.renderPass = m_device->defaultRenderPass;
+        // beginInfo.clearValueCount = 1;
+        // beginInfo.renderArea = {
+        //     .offset = {
+        //         .x = 0,
+        //         .y = 0},
+        //     .extent = swapchain->extent
 
-        };
+        // };
 
-        std::array<VkClearValue, 2> clearValues;
-        clearValues[0].color = {{desc.clearColor[0], desc.clearColor[1], desc.clearColor[2], desc.clearColor[3]}};
-        clearValues[1].depthStencil = {desc.clearDepth, 0};
-        beginInfo.pClearValues = clearValues.data();
-        beginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+        m_device->transitionImageLayout(
+            cmd,
+            swapchain->backBuffers[m_imageIdx]->image,
+            0,
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            swapchain->backBuffers[m_imageIdx]->currentLayout,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_IMAGE_ASPECT_COLOR_BIT);
+        swapchain->backBuffers[m_imageIdx]->currentLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-        vkCmdBeginRenderPass(cmd, &beginInfo, VK_SUBPASS_CONTENTS_INLINE);
+        VkRenderingAttachmentInfo colorAttachment{};
+        colorAttachment.sType =
+            VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+
+        colorAttachment.imageView = swapchain->backBuffers[m_imageIdx]->imageView;
+
+        colorAttachment.imageLayout =
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+        colorAttachment.loadOp =
+            VK_ATTACHMENT_LOAD_OP_CLEAR;
+
+        colorAttachment.storeOp =
+            VK_ATTACHMENT_STORE_OP_STORE;
+
+        colorAttachment.clearValue.color =
+            {{desc.clearColor[0], desc.clearColor[1], desc.clearColor[2], desc.clearColor[3]}};
+
+        VkRenderingAttachmentInfo depthAttachment{};
+        depthAttachment.sType =
+            VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+
+        depthAttachment.imageView =
+            swapchain->depthTexture->imageView;
+
+        depthAttachment.imageLayout =
+            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+
+        depthAttachment.loadOp =
+            VK_ATTACHMENT_LOAD_OP_CLEAR;
+
+        depthAttachment.storeOp =
+            VK_ATTACHMENT_STORE_OP_STORE;
+
+        depthAttachment.clearValue.depthStencil =
+            {desc.clearDepth, 0};
+        VkRenderingInfo renderingInfo{};
+        renderingInfo.sType =
+            VK_STRUCTURE_TYPE_RENDERING_INFO;
+
+        renderingInfo.renderArea.extent =
+            swapchain->extent;
+
+        renderingInfo.layerCount = 1;
+
+        renderingInfo.colorAttachmentCount = 1;
+        renderingInfo.pColorAttachments =
+            &colorAttachment;
+
+        renderingInfo.pDepthAttachment =
+            &depthAttachment;
+
+        vkCmdBeginRendering(cmd, &renderingInfo);
     };
+    void VulkanCommandBuffer::beginRenderPass(RHIRenderPass *renderPass)
+    {
+        VulkanRenderPass *vulkanRenderPass = reinterpret_cast<VulkanRenderPass *>(renderPass);
+        vulkanRenderPass->startTransition(cmd);
+        vulkanRenderPass->renderingInfo.renderArea.extent = swapchain->extent;
 
+        vkCmdBeginRendering(cmd, &vulkanRenderPass->renderingInfo);
+
+        m_activeRenderPass = vulkanRenderPass;
+    }
     void VulkanCommandBuffer::endRenderPass()
     {
-        vkCmdEndRenderPass(cmd);
+        vkCmdEndRendering(cmd);
+
+        if (m_activeRenderPass == nullptr)
+            return;
+
+        m_activeRenderPass->endTransition(cmd);
+        m_activeRenderPass = nullptr;
     }
     void VulkanCommandBuffer::bindPipeline(RHIPipeline *pipeline)
     {
@@ -157,6 +231,18 @@ namespace nitro::rhi::vulkan
     }
     void VulkanCommandBuffer::present()
     {
+
+        m_device->transitionImageLayout(
+            cmd,
+            swapchain->backBuffers[m_imageIdx]->image,
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            0,
+            swapchain->backBuffers[m_imageIdx]->currentLayout,
+            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+            VK_IMAGE_ASPECT_COLOR_BIT);
+        swapchain->backBuffers[m_imageIdx]->currentLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
         checkVkResult(vkEndCommandBuffer(cmd), "Command Buffer not ended");
         ;

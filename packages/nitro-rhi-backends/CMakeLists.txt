@@ -18,6 +18,7 @@ src/vulkan/vulkan-swapchain.cpp
 src/vulkan/vulkan-command-buffer.cpp
 src/vulkan/vulkan-descriptor-layout.cpp
 src/vulkan/vulkan-descriptor-set.cpp
+src/vulkan/vulkan-render-pass.cpp
 )
 
 

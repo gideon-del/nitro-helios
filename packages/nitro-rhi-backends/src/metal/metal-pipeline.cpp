@@ -54,32 +54,43 @@ namespace nitro::rhi::metal
     MetalPipeline::MetalPipeline(MetalDevice *device, const PipelineDesc &desc) : m_device(device)
     {
         NS::Error *error = nullptr;
-        NS::String *vsLibPath = NS::String::string(
-            desc.vertexShader.filePath.c_str(),
-            NS::StringEncoding::UTF8StringEncoding);
-        MTL::Library *vsLibrary = m_device->device->newLibrary(vsLibPath, &error);
 
-        checkNSError(error, "Failed to load VSLibary");
-        NS::String *vsName = NS::String::string(
-            desc.vertexShader.name.c_str(),
-            NS::StringEncoding::UTF8StringEncoding);
-        MTL::Function *vertexFn = vsLibrary->newFunction(vsName);
+        std::vector<MTL::Function *> shaderFunctions;
 
-        NS::String *fsLibPath = NS::String::string(
-            desc.fragmentShader.filePath.c_str(),
-            NS::StringEncoding::UTF8StringEncoding);
-        MTL::Library *fsLibrary = m_device->device->newLibrary(fsLibPath, &error);
-        checkNSError(error, "Failed to load FsLibary");
-        NS::String *fsName = NS::String::string(
-            desc.fragmentShader.name.c_str(),
-            NS::StringEncoding::UTF8StringEncoding);
-        MTL::Function *fragmentFn = fsLibrary->newFunction(fsName);
+        for (const auto &shaderDesc : desc.shaders)
+        {
+            NS::String *libPath = NS::String::string(
+                shaderDesc.filePath.c_str(),
+                NS::StringEncoding::UTF8StringEncoding);
+            MTL::Library *library = m_device->device->newLibrary(libPath, &error);
+
+            checkNSError(error, "Failed to load libary");
+            NS::String *vsName = NS::String::string(
+                shaderDesc.name.c_str(),
+                NS::StringEncoding::UTF8StringEncoding);
+            shaderFunctions.push_back(library->newFunction(vsName));
+            libPath->release();
+            vsName->release();
+            library->release();
+        }
 
         MTL::RenderPipelineDescriptor *pipeDesc =
             MTL::RenderPipelineDescriptor::alloc()->init();
 
-        pipeDesc->setVertexFunction(vertexFn);
-        pipeDesc->setFragmentFunction(fragmentFn);
+        for (int i = 0; i < desc.shaders.size(); i++)
+        {
+            auto &function = shaderFunctions[i];
+            auto &shaderDesc = desc.shaders[i];
+
+            if (shaderDesc.stage == ShaderStage::Fragment)
+            {
+                pipeDesc->setFragmentFunction(function);
+            }
+            if (shaderDesc.stage == ShaderStage::Vertex)
+            {
+                pipeDesc->setVertexFunction(function);
+            }
+        }
         pipeDesc->colorAttachments()->object(0)->setPixelFormat(MTL::PixelFormatBGRA8Unorm_sRGB);
         pipeDesc->setDepthAttachmentPixelFormat(MTL::PixelFormatDepth32Float);
 
@@ -96,12 +107,10 @@ namespace nitro::rhi::metal
         depthDesc->setDepthWriteEnabled(desc.depthTest);
         depthStencilState = m_device->device->newDepthStencilState(depthDesc);
         topology = convertToPrimitive(desc.topology);
-        vertexFn->release();
-        fragmentFn->release();
-        vsLibrary->release();
-        fsLibrary->release();
-        vsName->release();
-        fsName->release();
+        for (auto &function : shaderFunctions)
+        {
+            function->release();
+        }
         pipeDesc->release();
         depthDesc->release();
     }

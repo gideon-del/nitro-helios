@@ -40,7 +40,26 @@ namespace nitro::geometry
         {
             float sensitivity = 0.01;
             radius -= delta * sensitivity;
-            radius = glm::max(radius, 0.5f);
+            radius = glm::max(radius, 0.1f);
+        }
+
+        void moveForward(float amount)
+        {
+            glm::vec3 forward = target - getEye();
+            forward.y = 0.0f;
+            forward = glm::normalize(forward);
+
+            target += forward * amount;
+        }
+
+        void moveRight(float amount)
+        {
+            glm::vec3 forward = target - getEye();
+            forward.y = 0.0f;
+            forward = glm::normalize(forward);
+            glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0.0f, 1.0f, 0.0f)));
+
+            target += right * amount;
         }
     };
 }

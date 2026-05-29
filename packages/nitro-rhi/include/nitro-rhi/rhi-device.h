@@ -7,6 +7,7 @@
 #include "rhi-swapchain.h"
 #include "rhi-descriptor-layout.h"
 #include "rhi-descriptor-set.h"
+#include "rhi-render-pass.h"
 namespace nitro::rhi
 {
 
@@ -19,6 +20,8 @@ namespace nitro::rhi
 
         virtual RHIDescriptorLayout *createDescriptorLayout(const std::vector<RHIDescriptorBinding> bindings) = 0;
         virtual RHIDescriptorSet *createDescriptorSet(RHIDescriptorLayout *layout) = 0;
+
+        virtual RHIRenderPass *createRenderPass(const RenderPassDesc &desc) = 0;
 
         virtual RHIBuffer *createBuffer(const BufferDesc &desc) = 0;
         virtual void destroyBuffer(RHIBuffer *buffer) = 0;

@@ -81,27 +81,42 @@ namespace nitro::rhi::vulkan
             return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         }
     };
+
+    VkShaderStageFlagBits convertToShaderStage(ShaderStage stage)
+    {
+        switch (stage)
+        {
+        case ShaderStage::Fragment:
+            return VK_SHADER_STAGE_FRAGMENT_BIT;
+        case ShaderStage::Vertex:
+            return VK_SHADER_STAGE_VERTEX_BIT;
+        }
+
+        return VK_SHADER_STAGE_ALL;
+    }
     VulkanPipeline::VulkanPipeline(VulkanDevice *device, const PipelineDesc &desc) : m_device(device)
     {
 
-        VkShaderModule vertexShader = loadShaderModule(m_device->device, desc.vertexShader);
-        VkShaderModule fragmentShader = loadShaderModule(m_device->device, desc.fragmentShader);
+        std::vector<VkShaderModule> shaderModules;
+        std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
+        for (const auto &shader : desc.shaders)
+        {
+            shaderModules.push_back(loadShaderModule(m_device->device, shader));
+        }
 
-        VkPipelineShaderStageCreateInfo shaderStageInfo{};
+        for (int i = 0; i < desc.shaders.size(); i++)
+        {
+            auto &shaderModule = shaderModules[i];
+            auto &shaderDesc = desc.shaders[i];
+            VkPipelineShaderStageCreateInfo shaderStageInfo{};
+            shaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+            shaderStageInfo.module = shaderModule;
+            shaderStageInfo.pName = shaderDesc.name.c_str();
+            shaderStageInfo.stage = convertToShaderStage(shaderDesc.stage);
 
-        VkPipelineShaderStageCreateInfo vertexStageInfo{};
-        vertexStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        vertexStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-        vertexStageInfo.pName = desc.vertexShader.name.c_str();
-        vertexStageInfo.module = vertexShader;
+            shaderStages.push_back(shaderStageInfo);
+        }
 
-        VkPipelineShaderStageCreateInfo fragmentStageInfo{};
-        fragmentStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        fragmentStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        fragmentStageInfo.pName = desc.fragmentShader.name.c_str();
-        fragmentStageInfo.module = fragmentShader;
-
-        VkPipelineShaderStageCreateInfo shaderStages[] = {vertexStageInfo, fragmentStageInfo};
         const auto attributeSize = desc.vertexLayout.attributes.size();
         std::vector<VkVertexInputAttributeDescription> attributes(attributeSize);
 
@@ -230,23 +245,44 @@ namespace nitro::rhi::vulkan
 
         pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         pipelineInfo.layout = layout;
-        pipelineInfo.stageCount = 2;
-        pipelineInfo.pStages = shaderStages;
+        pipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
+        pipelineInfo.pStages = shaderStages.data();
         pipelineInfo.pViewportState = &viewportStateInfo;
         pipelineInfo.pColorBlendState = &colorBlendInfo;
         pipelineInfo.pVertexInputState = &vertextInputInfo;
         pipelineInfo.pInputAssemblyState = &inputAssemblyInfo;
         pipelineInfo.pRasterizationState = &rasterizationInfo;
-        pipelineInfo.renderPass = m_device->defaultRenderPass;
         pipelineInfo.pDynamicState = &dynamicStateInfo;
         pipelineInfo.pDepthStencilState = &depthInfo;
         pipelineInfo.pMultisampleState = &multisampleInfo;
-        pipelineInfo.subpass = 0;
+
+        VkPipelineRenderingCreateInfo renderingInfo{};
+        renderingInfo.sType =
+            VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+        VkFormat colorFormats[] = {
+            m_device->getSurfaceFormat()};
+        renderingInfo.colorAttachmentCount = 0;
+        if (desc.hasColorAttachment)
+        {
+            renderingInfo.colorAttachmentCount = 1;
+            renderingInfo.pColorAttachmentFormats =
+                colorFormats;
+        }
+
+        if (desc.depthTest)
+        {
+            renderingInfo.depthAttachmentFormat =
+                VK_FORMAT_D32_SFLOAT;
+        }
+
+        pipelineInfo.pNext = &renderingInfo;
 
         checkVkResult(vkCreateGraphicsPipelines(m_device->device, cache, 1, &pipelineInfo, nullptr, &pipeline), "Pipeline not created");
 
-        vkDestroyShaderModule(m_device->device, vertexShader, nullptr);
-        vkDestroyShaderModule(m_device->device, fragmentShader, nullptr);
+        for (auto &shaderModule : shaderModules)
+        {
+            vkDestroyShaderModule(m_device->device, shaderModule, nullptr);
+        }
     }
 
     VulkanPipeline::~VulkanPipeline()

@@ -5,11 +5,13 @@ struct VertexIn {
     float3 position [[attribute(0)]];
     float3 color [[attribute(1)]];
     float3 normal [[attribute(2)]];
+    float2 uv [[attribute(3)]];
 };
 struct VertexOut {
     float4 position [[position]];
     float3 color;
     float3 normal;
+     float2 uv;
 };
 
 struct PushConstant {
@@ -34,6 +36,7 @@ vertex VertexOut vs(VertexIn in [[stage_in]],
         p.normalMatrix[2].xyz,
     };
     out.normal = normalMatrix * in.normal;
+    out.uv = in.uv;
     return out;
 }
 
@@ -42,6 +45,5 @@ fragment float4 fs(VertexOut in [[stage_in]]) {
     float3 L = normalize(float3(1.0,1.0,0.0));
     
     float intensity = max(0.0, dot(N,L));
-    float3 color = in.color * intensity;
-    return float4(color, 1.0);
+    return float4(in.uv, 0.0, 1.0);
 }

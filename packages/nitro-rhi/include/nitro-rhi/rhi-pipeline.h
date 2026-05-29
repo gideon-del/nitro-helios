@@ -28,10 +28,16 @@ namespace nitro::rhi
         uint32_t stride;
     };
 
+    enum class ShaderStage
+    {
+        Fragment,
+        Vertex
+    };
     struct ShaderDesc
     {
         std::string name;
         std::string filePath;
+        ShaderStage stage;
     };
 
     enum class PipelineTopology
@@ -43,9 +49,9 @@ namespace nitro::rhi
     struct PipelineDesc
     {
         RHIVertexLayout vertexLayout;
-        ShaderDesc vertexShader;
-        ShaderDesc fragmentShader;
+        std::vector<ShaderDesc> shaders;
         bool depthTest = true;
+        bool hasColorAttachment = true;
         RHIDescriptorLayout *layout = nullptr;
         PipelineTopology topology = PipelineTopology::TriangleList;
     };

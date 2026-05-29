@@ -18,10 +18,10 @@ namespace nitro::geometry
             float topY = 0.0f + halfHeight;
             float bottomY = 0.0f - halfHeight;
 
-            Vertex v0{{leftX, topY, 0.0f}, {1.0f, 0.0f, 0.0f}};
-            Vertex v1{{rightX, topY, 0.0f}, {0.0f, 1.0f, 0.0f}};
-            Vertex v2{{rightX, bottomY, 0.0f}, {0.0f, 0.0f, 1.0f}};
-            Vertex v3{{leftX, bottomY, 0.0f}, {1.0f, 0.0f, 0.0f}};
+            Vertex v0({leftX, topY, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f});
+            Vertex v1({rightX, topY, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f});
+            Vertex v2({rightX, bottomY, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f});
+            Vertex v3{{leftX, bottomY, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}};
 
             return Mesh{
                 .vertices = {v0, v1, v2, v3},
@@ -40,10 +40,10 @@ namespace nitro::geometry
             float farZ = 0.0f + halfDepth;
             float nearZ = 0.0f - halfDepth;
 
-            Vertex v0{{leftX, 0.0f, farZ}, {1.0f, 0.0f, 0.0f}};
-            Vertex v1{{rightX, 0.0f, farZ}, {0.0f, 1.0f, 0.0f}};
-            Vertex v2{{rightX, 0.0f, nearZ}, {0.0f, 0.0f, 1.0f}};
-            Vertex v3{{leftX, 0.0f, nearZ}, {1.0f, 0.0f, 0.0f}};
+            Vertex v0{{leftX, 0.0f, farZ}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}};
+            Vertex v1{{rightX, 0.0f, farZ}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}};
+            Vertex v2{{rightX, 0.0f, nearZ}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}};
+            Vertex v3{{leftX, 0.0f, nearZ}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}};
 
             return Mesh{
                 .vertices = {v0, v1, v2, v3},
@@ -75,7 +75,8 @@ namespace nitro::geometry
                     float g = (idx + 1) % 3;
                     float b = (idx + 2) % 3;
                     mesh.vertices.push_back({leftTopPos + glm::vec3{x, -y, 0.0f},
-                                             {r, g, b}});
+                                             {r, g, b},
+                                             {float(col) / float(cols), float(row) / float(rows)}});
                 }
             }
 
@@ -122,8 +123,14 @@ namespace nitro::geometry
                 {
                     y = 0;
                 }
-                mesh.vertices.push_back({staringPoint + glm::vec3{radius * x, radius * y, 0.0f},
-                                         {1.0f, 0.0f, 0.0f}});
+
+                x *= radius;
+                y *= radius;
+                float u = ((x) / radius + 1) / 2;
+                float v = ((y) / radius + 1) / 2;
+                mesh.vertices.push_back({staringPoint + glm::vec3{x, y, 0.0f},
+                                         {1.0f, 0.0f, 0.0f},
+                                         {u, v}});
             }
 
             for (int i = 1; i <= segments; i++)
@@ -165,9 +172,14 @@ namespace nitro::geometry
                 {
                     y = 0;
                 }
+                x *= radius;
+                y *= radius;
+                float u = ((x) / radius + 1) / 2;
+                float v = ((y) / radius + 1) / 2;
 
-                mesh.vertices.push_back({staringPoint + glm::vec3{radius * x, radius * y, 0.0f},
-                                         {1.0f, 0.0f, 0.0f}});
+                mesh.vertices.push_back({staringPoint + glm::vec3{x, y, 0.0f},
+                                         {1.0f, 0.0f, 0.0f},
+                                         {u, v}});
             }
 
             for (int i = 1; i <= segments; i++)
@@ -188,10 +200,10 @@ namespace nitro::geometry
             uint32_t segments)
         {
             float sideAngle = (M_PI * 2) / float(segments);
-
+            float uvIncrease = 1.0f / float(segments + 1);
             Mesh mesh;
 
-            for (int i = 0; i < segments; i++)
+            for (int i = 0; i <= segments; i++)
             {
                 float currentAngle = sideAngle * i;
                 float x = std::cos(currentAngle);
@@ -207,28 +219,30 @@ namespace nitro::geometry
                 float finalRadius = outerRadius + innerRadius;
                 Vertex Iv{
                     glm::vec3(innerRadius * x, innerRadius * y, 0.0f),
-                    glm::vec3(1.0f, 0.0f, 0.0f)};
+                    glm::vec3(1.0f, 0.0f, 0.0f),
+                    {1, uvIncrease * i}};
 
                 Vertex Ov{
                     glm::vec3(finalRadius * x, finalRadius * y, 0.0f),
-                    glm::vec3(1.0f, 0.0f, 1.0f)};
+                    glm::vec3(1.0f, 0.0f, 1.0f),
+                    {0, uvIncrease * i}};
 
                 mesh.vertices.push_back(Ov);
                 mesh.vertices.push_back(Iv);
             }
 
-            for (int i = 0; i <= segments; i++)
+            for (int i = 0; i < segments; i++)
             {
                 uint32_t topRight = 2 * i;
                 uint32_t bottomRight = topRight + 1;
 
                 uint32_t topLeft = bottomRight + 1;
                 uint32_t bottomLeft = topLeft + 1;
-                if (i + 1 == segments)
-                {
-                    topLeft = 0;
-                    bottomLeft = 1;
-                }
+                // if (i + 1 == segments)
+                // {
+                //     topLeft = 0;
+                //     bottomLeft = 1;
+                // }
 
                 mesh.indices.push_back(topLeft);
                 mesh.indices.push_back(topRight);
@@ -247,10 +261,10 @@ namespace nitro::geometry
             uint32_t segments)
         {
             float sideAngle = (M_PI * 2) / float(segments);
-
+            float uIncrease = 1.0f / float(segments + 1);
             float halfHeight = height * 0.5f;
             Mesh mesh;
-            for (int i = 0; i < segments; i++)
+            for (int i = 0; i <= segments; i++)
             {
                 float currentAngle = sideAngle * i;
                 float x = std::sin(currentAngle);
@@ -269,11 +283,13 @@ namespace nitro::geometry
 
                 Vertex Iv{
                     glm::vec3(radius * x, -halfHeight, radius * z),
-                    glm::vec3(r, g, b)};
+                    glm::vec3(r, g, b),
+                    {uIncrease * i, 1.0f}};
 
                 Vertex Ov{
                     glm::vec3(radius * x, halfHeight, radius * z),
-                    glm::vec3(0.5f, 0.5f, 0.5f)};
+                    glm::vec3(0.5f, 0.5f, 0.5f),
+                    {uIncrease * i, 0.0f}};
 
                 mesh.vertices.push_back(Ov);
                 mesh.vertices.push_back(Iv);
@@ -286,11 +302,11 @@ namespace nitro::geometry
 
                 uint32_t topLeft = bottomRight + 1;
                 uint32_t bottomLeft = topLeft + 1;
-                if (i + 1 == segments)
-                {
-                    topLeft = 0;
-                    bottomLeft = 1;
-                }
+                // if (i + 1 == segments)
+                // {
+                //     topLeft = 0;
+                //     bottomLeft = 1;
+                // }
 
                 mesh.indices.push_back(topLeft);
                 mesh.indices.push_back(topRight);
@@ -345,8 +361,12 @@ namespace nitro::geometry
                     float r = (ring + 0) % 3;
                     float g = (ring + 1) % 3;
                     float b = (ring + 2) % 3;
+
+                    float u = currentAngle / (2 * M_PI);
+                    float v = currentThetaAngle / (M_PI);
                     mesh.vertices.push_back({startPos + glm::vec3(ringRadius * x, radius * y, ringRadius * z),
-                                             glm::vec3(r, g, b)});
+                                             glm::vec3(r, g, b),
+                                             {u, v}});
                 }
             }
 
@@ -379,14 +399,10 @@ namespace nitro::geometry
             float sideAngles = (M_PI) * 2 / float(segments);
 
             float halfHeight = float(height) * 0.5f;
-
+            float uIncrease = 1.0f / float(segments + 1);
             Mesh mesh;
 
-            mesh.vertices.push_back(
-                Vertex{
-                    {0.0f, halfHeight, 0.0f},
-                    {0.0f, 0.0f, 0.0f}});
-            for (int i = 0; i < segments; i++)
+            for (int i = 0; i <= segments; i++)
             {
                 float currentAngle = sideAngles * i;
                 float x = std::sin(currentAngle);
@@ -402,25 +418,30 @@ namespace nitro::geometry
                 float r = (i + 0) % 3;
                 float g = (i + 1) % 3;
                 float b = (i + 2) % 3;
-
+                mesh.vertices.push_back(Vertex{
+                    {0.0f, halfHeight, 0.0f},
+                    {0.0f, 0.0f, 0.0f},
+                    {uIncrease * i, 0.0f}});
                 mesh.vertices.push_back({glm::vec3{radius * x, -halfHeight, radius * z},
-                                         glm::vec3(r, g, b)});
+                                         glm::vec3(r, g, b),
+                                         {uIncrease * i, 1.0f}});
             }
 
-            for (int i = 1; i <= segments; i++)
+            for (int i = 0; i < segments; i++)
             {
 
-                uint32_t C = i;
-                uint32_t B = i + 1;
+                uint32_t A = 2 * i;
+                uint32_t C = A + 1;
+                uint32_t B = 2 + C;
 
-                if (i == segments)
-                {
-                    B = 1;
-                }
+                                // if (i == segments)
+                // {
+                //     B = 1;
+                // }
 
-                mesh.indices.push_back(0);
-                mesh.indices.push_back(C);
+                mesh.indices.push_back(A);
                 mesh.indices.push_back(B);
+                mesh.indices.push_back(C);
             }
 
             return mesh;

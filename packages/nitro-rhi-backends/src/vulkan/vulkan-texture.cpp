@@ -137,7 +137,7 @@ namespace nitro::rhi::vulkan
                           nullptr,
                           &imageView),
                       "Unable to create a image view");
-        if (!hasTextureUsageFlag(desc.usage, TextureDesc::Usage::DepthStencil))
+        if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::ShaderRead))
         {
             VkSamplerCreateInfo samplerInfo{};
             samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;

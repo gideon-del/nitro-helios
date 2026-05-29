@@ -7,6 +7,7 @@ namespace nitro::rhi::vulkan
     class VulkanDevice;
     class VulkanSwapchain;
     class VulkanPipeline;
+    class VulkanRenderPass;
     class VulkanCommandBuffer : public RHICommandBuffer
     {
     public:
@@ -17,6 +18,7 @@ namespace nitro::rhi::vulkan
         void setImageIndex(uint32_t imageIdx) { m_imageIdx = imageIdx; }
 
         void beginRenderPass(const RHIRenderPassDesc &desc) override;
+        void beginRenderPass(RHIRenderPass *renderPass) override;
         void endRenderPass() override;
         void bindPipeline(RHIPipeline *pipeline) override;
         void bindVertexBuffer(RHIBuffer *buffer) override;
@@ -38,5 +40,6 @@ namespace nitro::rhi::vulkan
         uint32_t m_imageIdx = 0;
         uint32_t m_frameIdx;
         VulkanPipeline *m_pipeline = nullptr;
+        VulkanRenderPass *m_activeRenderPass = nullptr;
     };
 } // namespace nitro::rhi::vulkan

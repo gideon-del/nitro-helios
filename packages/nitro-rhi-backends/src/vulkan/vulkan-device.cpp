@@ -7,6 +7,7 @@
 #include <nitro-rhi-backends/vulkan/vulkan-command-buffer.h>
 #include <nitro-rhi-backends/vulkan/vulkan-descriptor-layout.h>
 #include <nitro-rhi-backends/vulkan/vulkan-descriptor-set.h>
+#include <nitro-rhi-backends/vulkan/vulkan-render-pass.h>
 #include <vk_mem_alloc.h>
 #include <vector>
 #include <set>
@@ -204,8 +205,13 @@ namespace nitro::rhi::vulkan
 
         std::vector<const char *> deviceExtensions = {
             VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-            "VK_KHR_portability_subset"};
+            "VK_KHR_portability_subset",
+            VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME};
 
+        VkPhysicalDeviceDynamicRenderingFeatures dynamicRendering{};
+        dynamicRendering.sType =
+            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
+        dynamicRendering.dynamicRendering = VK_TRUE;
         VkDeviceCreateInfo deviceInfo{};
 
         deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -215,6 +221,7 @@ namespace nitro::rhi::vulkan
         deviceInfo.ppEnabledExtensionNames = deviceExtensions.data();
         VkPhysicalDeviceFeatures deviceFeatures{};
         deviceInfo.pEnabledFeatures = &deviceFeatures;
+        deviceInfo.pNext = &dynamicRendering;
 
         VkDevice logicalDevice;
         checkVkResult(vkCreateDevice(physicalDevice, &deviceInfo, nullptr, &logicalDevice), "Logical Device not created");
@@ -553,6 +560,10 @@ namespace nitro::rhi::vulkan
     {
         vkDeviceWaitIdle(device);
     }
+    VkFormat VulkanDevice::getSurfaceFormat() const
+    {
+        return m_surfaceFormat;
+    }
 
     RHISwapchain *VulkanDevice::createSwapchain(RHISurface *surface)
     {
@@ -576,6 +587,11 @@ namespace nitro::rhi::vulkan
         return swapchain;
     }
 
+    RHIRenderPass *VulkanDevice::createRenderPass(const RenderPassDesc &desc)
+    {
+
+        return new VulkanRenderPass(this, desc);
+    }
     RHICommandBuffer *VulkanDevice::beginFrame()
     {
 

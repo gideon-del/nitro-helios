@@ -8,6 +8,7 @@ namespace nitro::rhi
     class RHITexture;
     class RHIPipeline;
     class RHIDescriptorSet;
+    class RHIRenderPass;
     struct RHIRenderPassDesc
     {
         float clearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
@@ -22,6 +23,7 @@ namespace nitro::rhi
         virtual ~RHICommandBuffer() = default;
 
         virtual void beginRenderPass(const RHIRenderPassDesc &desc) = 0;
+        virtual void beginRenderPass(RHIRenderPass *renderPass) = 0;
         virtual void endRenderPass() = 0;
 
         virtual void bindPipeline(RHIPipeline *pipeline) = 0;

@@ -15,6 +15,7 @@ namespace nitro::rhi::metal
         ~MetalCommandBuffer() override;
 
         void beginRenderPass(const RHIRenderPassDesc &desc) override;
+        void beginRenderPass(RHIRenderPass *renderPass) override;
         void endRenderPass() override;
         void bindPipeline(RHIPipeline *pipeline) override;
         void bindVertexBuffer(RHIBuffer *buffer) override;

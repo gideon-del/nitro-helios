@@ -36,6 +36,10 @@ namespace nitro::rhi::metal
     {
         return new MetalDescriptorSet(this);
     }
+    RHIRenderPass *MetalDevice::createRenderPass(const RenderPassDesc &desc)
+    {
+        return nullptr;
+    };
     RHIPipeline *MetalDevice::createPipeline(const PipelineDesc &desc)
     {
         return new MetalPipeline(this, desc);
