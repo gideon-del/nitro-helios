@@ -31,6 +31,25 @@ struct LightView
 {
     glm::mat4 lightSpaceMatrix;
 };
+
+struct FrameData
+{
+    glm::mat4 view;
+    glm::mat4 proj;
+
+    glm::vec4 cameraPos;
+
+    glm::vec4 lightPos;
+    glm::vec4 lightColor = glm::vec4(1.0f);
+
+    glm::mat4 lightViewProj;
+
+    float ambient = 0.3f;
+    float Ka = 1.0f;
+    float Kd = 0.8f;
+    float Ks = 0.9f;
+    float shininess = 120.0f;
+};
 int main()
 {
     glfwInit();
@@ -47,15 +66,24 @@ int main()
     std::string shaderPath = std::string(SHADER_DIR) + "/cube/cube";
     std::string shadowShaderPath = std::string(SHADER_DIR) + "/shadow/shadow";
 
-    std::vector<RHIDescriptorBinding> binding = {{.type = RHIDescriptorBinding::Type::UniformBuffer,
-                                                  .stage = RHIDescriptorBinding::ShaderStage::Vertex,
-                                                  .binding = 2},
-                                                 {.type = RHIDescriptorBinding::Type::UniformBuffer,
-                                                  .stage = RHIDescriptorBinding::ShaderStage::Vertex,
-                                                  .binding = 3},
-                                                 {.type = RHIDescriptorBinding::Type::Sampler,
-                                                  .stage = RHIDescriptorBinding::ShaderStage::Fragment,
-                                                  .binding = 0}};
+    std::vector<RHIDescriptorBinding> binding = {
+        // {.type = RHIDescriptorBinding::Type::UniformBuffer,
+        //  .stage = RHIDescriptorBinding::ShaderStage::Vertex,
+        //  .binding = 2},
+        // {.type = RHIDescriptorBinding::Type::UniformBuffer,
+        //  .stage = RHIDescriptorBinding::ShaderStage::Vertex,
+        //  .binding = 3},
+        {.type = RHIDescriptorBinding::Type::Sampler,
+         .stage = RHIDescriptorBinding::ShaderStage::Fragment,
+         .binding = 0},
+        {.type = RHIDescriptorBinding::Type::UniformBuffer,
+         .stage = RHIDescriptorBinding::ShaderStage::Both,
+         .binding = 2},
+        // {.type = RHIDescriptorBinding::Type::UniformBuffer,
+        //  .stage = RHIDescriptorBinding::ShaderStage::Fragment,
+        //  .binding = 5},
+
+    };
 
     std::vector<RHIDescriptorBinding> shadowBinding = {
         {.type = RHIDescriptorBinding::Type::UniformBuffer,
@@ -86,33 +114,17 @@ int main()
     Mesh sphere = MeshGenerator::createUVSphere(5, 10, 100);
     sphere.calculateNormals();
     MeshRenderer sphereRenderer(sphere, &device);
+    sphereRenderer.transformation.translate(
+        glm::vec3(0.0f, -5.0f, 0.0f));
     Mesh plane = MeshGenerator::createPlane(50, 50);
     plane.calculateNormals();
     MeshRenderer planeRenderer(plane, &device);
     planeRenderer.transformation.translate(glm::vec3(0.0f, -10.0f, 0.0f));
 
-    BufferDesc globalUBODesc;
-    globalUBODesc.size = sizeof(GlobalTransformation);
-    globalUBODesc.storage = BufferDesc::StorageMode::Shared;
-    globalUBODesc.usage = BufferDesc::Usage::Uniform;
-
-    RHIBuffer *uboBuffers[2];
-
-    uboBuffers[0] = device.createBuffer(globalUBODesc);
-    uboBuffers[1] = device.createBuffer(globalUBODesc);
-
-    BufferDesc lightUboDesc;
-    lightUboDesc.size = sizeof(LightView);
-    lightUboDesc.storage = BufferDesc::StorageMode::Shared;
-    lightUboDesc.usage = BufferDesc::Usage::Uniform;
-    RHIBuffer *lightBuffers[2];
-    lightBuffers[0] = device.createBuffer(lightUboDesc);
-    lightBuffers[1] = device.createBuffer(lightUboDesc);
-
     OrbitalCamera camera;
     OrbitalCamera light;
     light.radius = 20.0f;
-    light.theta = glm::radians(10.0f);
+    light.theta = glm::radians(50.0f);
     light.phi = glm::radians(270.0f);
 
     AppState appState{
@@ -183,35 +195,76 @@ int main()
     RenderPassDesc shadowRenderPassDesc;
     RenderPassDesc::Attachment shadowDepthAttachment;
     shadowDepthAttachment.texture = shadowDepthTexture;
+    shadowDepthAttachment.store = RenderPassDesc::StoreOp::Store;
     shadowRenderPassDesc.depthAttachment = &shadowDepthAttachment;
 
     RHIRenderPass *shadowRenderPass = device.createRenderPass(shadowRenderPassDesc);
-    RHIDescriptorSet *shadowDescriptorSets[2];
-    shadowDescriptorSets[0] = device.createDescriptorSet(shadowDescriptorLayout);
-    shadowDescriptorSets[0]->writeBuffer(lightBuffers[0], 2);
-    shadowDescriptorSets[0]->commit();
 
-    shadowDescriptorSets[1] = device.createDescriptorSet(shadowDescriptorLayout);
-    shadowDescriptorSets[1]->writeBuffer(lightBuffers[1], 2);
-    shadowDescriptorSets[1]->commit();
+    // BufferDesc globalUBODesc;
+    // globalUBODesc.size = sizeof(GlobalTransformation);
+    // globalUBODesc.storage = BufferDesc::StorageMode::Shared;
+    // globalUBODesc.usage = BufferDesc::Usage::Uniform;
 
-    RHIDescriptorSet *descriptorSets[2];
-    descriptorSets[0] = device.createDescriptorSet(descriptorLayout);
-    descriptorSets[0]->writeBuffer(uboBuffers[0], 2);
-    descriptorSets[0]->writeBuffer(lightBuffers[0], 3);
-    descriptorSets[0]->writeTexture(shadowDepthTexture, 0);
-    descriptorSets[0]->commit();
-    descriptorSets[1] = device.createDescriptorSet(descriptorLayout);
-    descriptorSets[1]->writeBuffer(uboBuffers[1], 2);
-    descriptorSets[1]->writeBuffer(lightBuffers[1], 3);
-    descriptorSets[1]->writeTexture(shadowDepthTexture, 0);
-    descriptorSets[1]->commit();
+    BufferDesc lightUboDesc;
+    lightUboDesc.size = sizeof(LightView);
+    lightUboDesc.storage = BufferDesc::StorageMode::Shared;
+    lightUboDesc.usage = BufferDesc::Usage::Uniform;
+
+    // BufferDesc directionalLightUboDesc;
+    // lightUboDesc.size = sizeof(BlinnPhongLight);
+    // lightUboDesc.storage = BufferDesc::StorageMode::Shared;
+    // lightUboDesc.usage = BufferDesc::Usage::Uniform;
+
+    // BufferDesc cameraViewUboDesc;
+    // lightUboDesc.size = sizeof(CameraView);
+    // lightUboDesc.storage = BufferDesc::StorageMode::Shared;
+    // lightUboDesc.usage = BufferDesc::Usage::Uniform;
+
+    BufferDesc frameDataUBODesc;
+    frameDataUBODesc.size = sizeof(FrameData);
+    frameDataUBODesc.storage = BufferDesc::StorageMode::Shared;
+    frameDataUBODesc.usage = BufferDesc::Usage::Uniform;
+
+    std::vector<FrameResource> frameResources;
+
+    for (int i = 0; i < 2; i++)
+    {
+        FrameResource frameResource(&device);
+        // frameResource.setBuffer(FrameResourceId::GlobalUniformBuffer, device.createBuffer(globalUBODesc));
+        frameResource.setBuffer(FrameResourceId::LightUniformBuffer, device.createBuffer(lightUboDesc));
+        frameResource.setBuffer(FrameResourceId::FrameDataUniformBuffer, device.createBuffer(frameDataUBODesc));
+        // frameResource.setBuffer(FrameResourceId::DirectionalLightUniformBuffer, device.createBuffer(directionalLightUboDesc));
+        // frameResource.setBuffer(FrameResourceId::CameraViewUniformBuffer, device.createBuffer(cameraViewUboDesc));
+
+        RHIDescriptorSet *shadowDescriptorSet = device.createDescriptorSet(shadowDescriptorLayout);
+
+        shadowDescriptorSet->writeBuffer(frameResource.getBuffer(FrameResourceId::LightUniformBuffer), 2);
+        shadowDescriptorSet->commit();
+
+        frameResource.setDescriptorSet(FrameResourceId::ShadowDescriptorSet, shadowDescriptorSet);
+
+        RHIDescriptorSet *mainDescriptorSet = device.createDescriptorSet(descriptorLayout);
+        // mainDescriptorSet->writeBuffer(frameResource.getBuffer(FrameResourceId::GlobalUniformBuffer), 2);
+        // mainDescriptorSet->writeBuffer(frameResource.getBuffer(FrameResourceId::LightUniformBuffer), 3);
+        // mainDescriptorSet->writeBuffer(frameResource.getBuffer(FrameResourceId::DirectionalLightUniformBuffer), 4);
+        mainDescriptorSet->writeBuffer(frameResource.getBuffer(FrameResourceId::FrameDataUniformBuffer), 2);
+        mainDescriptorSet->writeTexture(shadowDepthTexture, 0);
+        mainDescriptorSet->commit();
+
+        frameResource.setDescriptorSet(FrameResourceId::MainDescriptorSet, mainDescriptorSet);
+
+        frameResources.push_back(std::move(frameResource));
+    }
+    double lastTime = glfwGetTime();
+    double currentTime = lastTime;
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
 
         GlobalTransformation globalUbo{};
         int width, height;
+        currentTime = glfwGetTime();
+        light.phi = float(glfwGetTime() * glm::radians(20.0f));
 
         glfwGetFramebufferSize(window, &width, &height);
         float aspect = (float)width / (float)height;
@@ -219,24 +272,35 @@ int main()
         RHICommandBuffer *cmd = device.beginFrame();
 
         LightView lightView;
-        lightView.lightSpaceMatrix = glm::orthoRH_ZO(-20.0f,
-                                                     20.0f,
-                                                     -20.0f,
-                                                     20.0f,
+
+        lightView.lightSpaceMatrix = glm::orthoRH_ZO(-light.radius,
+                                                     light.radius,
+                                                     -light.radius,
+                                                     light.radius,
                                                      0.1f,
                                                      50.0f) *
-                                     light.getView();
-        if (!isMetal)
-        {
-            lightView.lightSpaceMatrix[1][1] *= -1;
-        }
+                                     glm::lookAt(light.getEye(), glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        // if (!isMetal)
+        // {
+        //     lightView.lightSpaceMatrix[1][1] *= -1;
+        // }
+
+        BlinnPhongLight bpLight;
+        bpLight.lightPosition = glm::vec4(light.getEye(), 1.0f);
+        CameraView cameraView;
+        cameraView.view = glm::vec4(camera.getEye(), 1.0f);
+
+        FrameData frameData;
+        frameData.view = camera.getView();
+
         cmd->beginRenderPass(shadowRenderPass);
         cmd->bindPipeline(shadowPipeline);
         uint32_t frameIdx = device.getCurrentFrameIndex();
-        RHIBuffer *lightBuffer = lightBuffers[frameIdx];
+        FrameResource &frameResource = frameResources[frameIdx];
 
-        lightBuffer->upload(&lightView, sizeof(LightView));
-        cmd->bindDescriptorSet(shadowDescriptorSets[frameIdx]);
+        frameResource.getBuffer(FrameResourceId::LightUniformBuffer)->upload(&lightView, sizeof(LightView));
+
+        cmd->bindDescriptorSet(frameResource.getDescriptorSet(FrameResourceId::ShadowDescriptorSet));
         planeRenderer.draw(cmd);
         sphereRenderer.draw(cmd);
         cmd->endRenderPass();
@@ -255,13 +319,17 @@ int main()
         {
             globalUbo.proj[1][1] *= -1;
         };
+        frameData.proj = globalUbo.proj;
+        frameData.lightPos = glm::vec4(light.getEye(), 1.0f);
+        frameData.lightViewProj = lightView.lightSpaceMatrix;
         cmd->beginRenderPass(rpDesc);
         cmd->bindPipeline(pipeline);
-        RHIBuffer *uniformBuffer = uboBuffers[frameIdx];
-        uniformBuffer->upload(&globalUbo, sizeof(GlobalTransformation));
-        uniformBuffer->upload(&globalUbo, sizeof(GlobalTransformation));
-        uniformBuffer->upload(&globalUbo, sizeof(GlobalTransformation));
-        cmd->bindDescriptorSet(descriptorSets[frameIdx]);
+
+        // frameResource.getBuffer(FrameResourceId::GlobalUniformBuffer)->upload(&globalUbo, sizeof(GlobalTransformation));
+        // frameResource.getBuffer(FrameResourceId::DirectionalLightUniformBuffer)->upload(&bpLight, sizeof(BlinnPhongLight));
+        frameResource.getBuffer(FrameResourceId::FrameDataUniformBuffer)->upload(&frameData, sizeof(FrameData));
+
+        cmd->bindDescriptorSet(frameResource.getDescriptorSet(FrameResourceId::MainDescriptorSet));
         planeRenderer.draw(cmd);
         sphereRenderer.draw(cmd);
         cmd->endRenderPass();

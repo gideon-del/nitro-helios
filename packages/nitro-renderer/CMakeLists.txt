@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_library(nitro-renderer STATIC
  src/mesh-renderer.cpp
+ src/frame-resource.cpp
 )
 
 find_package(glm REQUIRED)

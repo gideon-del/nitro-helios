@@ -20,8 +20,8 @@ namespace nitro::rhi
         struct Attachment
         {
             RHITexture *texture;
-            LoadOp load;
-            StoreOp store;
+            LoadOp load = LoadOp::Clear;
+            StoreOp store = StoreOp::DontCare;
             float clearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
             float clearDepth = 1.0f;
             bool hasDepth = true;

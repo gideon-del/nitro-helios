@@ -8,24 +8,45 @@ layout(location = 3) in vec2 aUV;
 
 layout(location = 0) out vec2 fragUV;
 layout(location = 1) out vec4 fragLightPos;
+layout(location = 2) out vec3 fragNormal;
+layout(location = 3) out vec3 fragPos;
 
 
-
-layout(set=0, binding=2) uniform UniformBuffer {
+layout(set=0, binding=2) uniform FrameUniformBuffer {
     mat4 view;
     mat4 proj;
-} ubo;
-layout(set=0, binding=3) uniform LightUBO {
+
+    vec4 cameraPos;
+    
+    vec4 lightPos;
+    vec4 lightColor;
+
     mat4 lightViewProj;
-} lt;
+
+     float ambient;
+    float Ka;
+    float Kd;
+    float Ks;
+    float shininess;
+} frameUbo;
 layout(push_constant)uniform PushConstant {
     mat4 model;
     mat4 normal;
 } pc;
 void main() {
-    gl_Position = ubo.proj * ubo.view * pc.model * vec4(aPos, 1.0);
+    vec4 worldPos = pc.model * vec4(aPos, 1.0);
+    gl_Position = frameUbo.proj * frameUbo.view * worldPos;
 
     
     fragUV = aUV;
-    fragLightPos = lt.lightViewProj * pc.model *vec4(aPos, 1.0);
+    fragLightPos = frameUbo.lightViewProj * worldPos;
+    
+    mat3 normalMatrix = {
+        pc.normal[0].xyz,
+        pc.normal[1].xyz,
+        pc.normal[2].xyz
+    };
+
+    fragNormal = normalMatrix * aNormal;
+    fragPos = worldPos.xyz;
 }

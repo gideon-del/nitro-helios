@@ -6,3 +6,5 @@
 #include "push-constant.h"
 #include "mesh-generator.h"
 #include "mesh-transformation.h"
+#include "camera-view.h"
+#include "blinn-phong-light.h"
