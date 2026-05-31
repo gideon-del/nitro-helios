@@ -202,6 +202,7 @@ namespace nitro::rhi::vulkan
         rasterizationInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
         rasterizationInfo.depthClampEnable = VK_FALSE;
         rasterizationInfo.depthBiasClamp = 0.0f;
+        rasterizationInfo.depthBiasEnable = VK_TRUE;
         rasterizationInfo.lineWidth = 1.0f;
         rasterizationInfo.polygonMode = VK_POLYGON_MODE_FILL;
         rasterizationInfo.rasterizerDiscardEnable = VK_FALSE;

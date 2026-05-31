@@ -24,11 +24,20 @@ namespace nitro::rhi::metal
             NS::UInteger(width),
             NS::UInteger(height),
             false);
+        MTL::TextureUsage usage = MTL::TextureUsageUnknown;
 
-        if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::RenderTarget))
+        if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::RenderTarget) ||
+            hasTextureUsageFlag(desc.usage, TextureDesc::Usage::DepthStencil))
         {
-            textureDesc->setUsage(MTL::TextureUsageRenderTarget);
+            usage |= MTL::TextureUsageRenderTarget;
         }
+
+        if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::ShaderRead))
+        {
+            usage |= MTL::TextureUsageShaderRead;
+        }
+
+        textureDesc->setUsage(usage);
         if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::DepthStencil))
         {
             textureDesc->setStorageMode(MTL::StorageModePrivate);
@@ -48,9 +57,10 @@ namespace nitro::rhi::metal
 
         if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::ShaderRead))
         {
-            MTL::SamplerDescriptor *samplerDesc = MTL::SamplerDescriptor::alloc();
+
+            MTL::SamplerDescriptor *samplerDesc = MTL::SamplerDescriptor::alloc()->init();
             samplerDesc->setMagFilter(MTL::SamplerMinMagFilterLinear);
-            samplerDesc->setRAddressMode(MTL::SamplerAddressModeMirrorRepeat);
+            samplerDesc->setRAddressMode(MTL::SamplerAddressModeClampToEdge);
             samplerState = m_device->device->newSamplerState(samplerDesc);
             samplerDesc->release();
         }

@@ -2,10 +2,11 @@
 #include <nitro-rhi-backends/metal/metal-device.h>
 #include <nitro-rhi-backends/metal/metal-texture.h>
 #include <nitro-rhi-backends/metal/metal-buffer.h>
+#include <nitro-rhi-backends/metal/metal-descriptor-layout.h>
 
 namespace nitro::rhi::metal
 {
-    MetalDescriptorSet::MetalDescriptorSet(MetalDevice *device) : m_device(device) {}
+    MetalDescriptorSet::MetalDescriptorSet(MetalDevice *device, MetalDescriptorLayout *descriptorLayout) : m_device(device), descriptorLayout(descriptorLayout) {}
 
     MetalDescriptorSet::~MetalDescriptorSet() {}
 

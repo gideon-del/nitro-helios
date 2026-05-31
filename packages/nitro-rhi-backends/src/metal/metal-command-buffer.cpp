@@ -5,16 +5,13 @@
 #include <nitro-rhi-backends/metal/metal-buffer.h>
 #include <nitro-rhi-backends/metal/metal-texture.h>
 #include <nitro-rhi-backends/metal/metal-descriptor-set.h>
-#include <nitro-rhi-backends/common/push-constant.h>
+#include <nitro-rhi-backends/metal/metal-render-pass.h>
+#include <nitro-rhi-backends/metal/metal-descriptor-layout.h>
 
 namespace nitro::rhi::metal
 {
     MetalCommandBuffer::MetalCommandBuffer(MetalDevice *device, MetalSwapchain *swapchain) : m_device(device), swapchain(swapchain)
     {
-        BufferDesc bufferDesc;
-        bufferDesc.storage = BufferDesc::StorageMode::Shared;
-        bufferDesc.usage = BufferDesc::Usage::Uniform;
-        bufferDesc.size = sizeof(PushConstant);
 
         commandBuffer = m_device->commandQueue->commandBuffer();
     }
@@ -42,6 +39,11 @@ namespace nitro::rhi::metal
     }
     void MetalCommandBuffer::beginRenderPass(RHIRenderPass *renderPass)
     {
+        MetalRenderPass *metalRenderPass = reinterpret_cast<MetalRenderPass *>(renderPass);
+
+        encoder = commandBuffer->renderCommandEncoder(metalRenderPass->renderPassDescriptor);
+        encoder->setCullMode(MTL::CullModeBack);
+        encoder->setFrontFacingWinding(MTL::WindingCounterClockwise);
     }
     void MetalCommandBuffer::endRenderPass()
     {
@@ -97,7 +99,14 @@ namespace nitro::rhi::metal
         for (auto &[buffer, binding] : metalSet->bufferBindings)
         {
             MetalBuffer *metalBuffer = reinterpret_cast<MetalBuffer *>(buffer);
-            encoder->setVertexBuffer(metalBuffer->buffer, 0, binding);
+            if (metalSet->descriptorLayout->bufferBindings[binding] == RHIDescriptorBinding::ShaderStage::Vertex || metalSet->descriptorLayout->bufferBindings[binding] == RHIDescriptorBinding::ShaderStage::Both)
+            {
+                encoder->setVertexBuffer(metalBuffer->buffer, 0, binding);
+            }
+            if (metalSet->descriptorLayout->bufferBindings[binding] == RHIDescriptorBinding::ShaderStage::Fragment || metalSet->descriptorLayout->bufferBindings[binding] == RHIDescriptorBinding::ShaderStage::Both)
+            {
+                encoder->setFragmentBuffer(metalBuffer->buffer, 0, binding);
+            }
         }
         for (auto &[texture, binding] : metalSet->textureBindings)
         {

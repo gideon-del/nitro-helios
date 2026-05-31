@@ -129,6 +129,10 @@ namespace nitro::rhi::vulkan
         VulkanRenderPass *vulkanRenderPass = reinterpret_cast<VulkanRenderPass *>(renderPass);
         vulkanRenderPass->startTransition(cmd);
         vulkanRenderPass->renderingInfo.renderArea.extent = swapchain->extent;
+        if (vulkanRenderPass->depthTexture)
+        {
+            vulkanRenderPass->renderingInfo.renderArea.extent = {vulkanRenderPass->depthTexture->width, vulkanRenderPass->depthTexture->height};
+        }
 
         vkCmdBeginRendering(cmd, &vulkanRenderPass->renderingInfo);
 

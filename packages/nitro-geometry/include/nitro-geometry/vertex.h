@@ -13,9 +13,14 @@ namespace nitro::geometry
         glm::vec3 normal = glm::vec3(0.0f);
         glm::vec2 uv;
 
-        Vertex(glm::vec3 pos, glm::vec3 color, glm::vec3 normal, glm::vec2 uv) : pos(pos), color(color), normal(normal), uv(uv) {}
+        Vertex(glm::vec3 pos, glm::vec3 color, glm::vec3 normal, glm::vec2 uv) : pos(pos), color(color), normal(normal), uv(uv)
+        {
+        }
         Vertex(glm::vec3 pos, glm::vec2 uv) : pos(pos), uv(uv) {}
-        Vertex(glm::vec3 pos, glm::vec3 color, glm::vec2 uv) : pos(pos), uv(uv), color(color) {}
+        Vertex(glm::vec3 pos, glm::vec3 color, glm::vec2 uv) : pos(pos), uv(uv), color(color)
+        {
+            normal = glm::normalize(pos);
+        }
 
         static RHIVertexLayout getVertexLayout()
         {

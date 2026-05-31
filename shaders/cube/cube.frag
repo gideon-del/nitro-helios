@@ -41,36 +41,37 @@ void main() {
    vec3 H = normalize(L + V);
 
    float diffuse = max(0.0, dot(N,L));
-   float specular = pow(max(0.0,dot(N,H)), frameUbo.shininess);
+  float specular = diffuse > 0.0 
+    ? pow(max(0.0, dot(N, H)), frameUbo.shininess) 
+    : 0.0;
 
    vec3 lightColor = frameUbo.lightColor.xyz;
 
   
 
     vec3 projCoords = fragLightPos.xyz / fragLightPos.w;
-    projCoords = projCoords * 0.5 + 0.5;
-
-    float closestDepth = texture(shadowMap, projCoords.xy).r;
+    // projCoords= projCoords * 0.5 + 0.5;
+    projCoords.xy = projCoords.xy * 0.5 + 0.5;
+    float closestDepth = texture(shadowMap, projCoords.xy).x;
     float currentDepth = projCoords.z;
 
 //   float bias = max(
 //     0.005 * (1.0 - dot(N, L)),
 //     0.0005
 // );
+  float bias =0.0005;
 
-float bias =0.0;
-   float shadow =
-    currentDepth-bias > closestDepth
-    ? 1.0
-    : 0.0;
 
- vec3 ambientColor = (lightColor * (frameUbo.ambient + 1.0 -shadow) * frameUbo.Ka);
-   vec3 diffuseColor = lightColor * diffuse * frameUbo.Kd;
+  float shadow = (currentDepth - bias) > closestDepth ? 0.0 : 1.0;
+
+
+ vec3 ambientColor = (lightColor * (frameUbo.ambient) * frameUbo.Ka);
+   vec3 diffuseColor = lightColor * diffuse ;
    vec3 specularColor = lightColor * specular * frameUbo.Ks;
-    vec3 color = vec3(fragUV,0.0);
+  vec3 color = vec3(0.4,0.5,0.9);
 
-    vec3 finalColor = (ambientColor + diffuseColor + specularColor) * color; 
+    vec3 finalColor = (ambientColor + shadow * (diffuseColor + specularColor)) * color; 
 
-
-    outColor = vec4(finalColor, 1.0f);
+  float diff = abs(currentDepth - closestDepth) * 50.0;
+    outColor = vec4(finalColor,1.0);
 }

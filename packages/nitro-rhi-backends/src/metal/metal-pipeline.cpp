@@ -63,11 +63,11 @@ namespace nitro::rhi::metal
                 shaderDesc.filePath.c_str(),
                 NS::StringEncoding::UTF8StringEncoding);
             MTL::Library *library = m_device->device->newLibrary(libPath, &error);
-
             checkNSError(error, "Failed to load libary");
             NS::String *vsName = NS::String::string(
                 shaderDesc.name.c_str(),
                 NS::StringEncoding::UTF8StringEncoding);
+
             shaderFunctions.push_back(library->newFunction(vsName));
             libPath->release();
             vsName->release();
@@ -91,8 +91,16 @@ namespace nitro::rhi::metal
                 pipeDesc->setVertexFunction(function);
             }
         }
-        pipeDesc->colorAttachments()->object(0)->setPixelFormat(MTL::PixelFormatBGRA8Unorm_sRGB);
-        pipeDesc->setDepthAttachmentPixelFormat(MTL::PixelFormatDepth32Float);
+
+        if (desc.hasColorAttachment)
+        {
+            pipeDesc->colorAttachments()->object(0)->setPixelFormat(MTL::PixelFormatBGRA8Unorm_sRGB);
+        }
+        if (desc.depthTest)
+        {
+
+            pipeDesc->setDepthAttachmentPixelFormat(MTL::PixelFormatDepth32Float);
+        }
 
         if (!desc.vertexLayout.attributes.empty())
         {
@@ -100,6 +108,7 @@ namespace nitro::rhi::metal
         }
 
         pipelineState = m_device->device->newRenderPipelineState(pipeDesc, &error);
+
         checkNSError(error, "Failed to load PipelineState");
         MTL::DepthStencilDescriptor *depthDesc =
             MTL::DepthStencilDescriptor::alloc()->init();
@@ -107,12 +116,12 @@ namespace nitro::rhi::metal
         depthDesc->setDepthWriteEnabled(desc.depthTest);
         depthStencilState = m_device->device->newDepthStencilState(depthDesc);
         topology = convertToPrimitive(desc.topology);
+        pipeDesc->release();
+        depthDesc->release();
         for (auto &function : shaderFunctions)
         {
             function->release();
         }
-        pipeDesc->release();
-        depthDesc->release();
     }
     MetalPipeline::~MetalPipeline()
     {

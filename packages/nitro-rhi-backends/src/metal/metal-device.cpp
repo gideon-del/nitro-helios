@@ -6,6 +6,8 @@
 #include <nitro-rhi-backends/metal/metal-texture.h>
 #include <nitro-rhi-backends/metal/metal-descriptor-layout.h>
 #include <nitro-rhi-backends/metal/metal-descriptor-set.h>
+#include <nitro-rhi-backends/metal/metal-render-pass.h>
+#include <nitro-rhi-backends/metal/metal-descriptor-layout.h>
 
 namespace nitro::rhi::metal
 {
@@ -34,11 +36,12 @@ namespace nitro::rhi::metal
     }
     RHIDescriptorSet *MetalDevice::createDescriptorSet(RHIDescriptorLayout *layout)
     {
-        return new MetalDescriptorSet(this);
+        MetalDescriptorLayout *metalLayout = reinterpret_cast<MetalDescriptorLayout *>(layout);
+        return new MetalDescriptorSet(this, metalLayout);
     }
     RHIRenderPass *MetalDevice::createRenderPass(const RenderPassDesc &desc)
     {
-        return nullptr;
+        return new MetalRenderPass(this, desc);
     };
     RHIPipeline *MetalDevice::createPipeline(const PipelineDesc &desc)
     {

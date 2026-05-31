@@ -39,6 +39,7 @@ if(APPLE)
         src/metal/metal-texture.cpp
         src/metal/metal-descriptor-layout.cpp
         src/metal/metal-descriptor-set.cpp
+        src/metal/metal-render-pass.cpp
         src/metal/metal-cocoa-bridge.mm
     )
 

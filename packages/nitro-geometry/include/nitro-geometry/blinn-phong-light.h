@@ -12,7 +12,7 @@ namespace nitro::geometry
         float ambient = 0.3f;
         float Ka = 1.0f;
         float Kd = 0.8f;
-        float Ks = 0.9f;
-        float shininess = 120.0f;
+        float Ks = 0.2f;
+        float shininess = 32.0f;
     };
 } // namespace nitro::geometry

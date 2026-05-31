@@ -128,6 +128,7 @@ namespace nitro::geometry
                 y *= radius;
                 float u = ((x) / radius + 1) / 2;
                 float v = ((y) / radius + 1) / 2;
+
                 mesh.vertices.push_back({staringPoint + glm::vec3{x, y, 0.0f},
                                          {1.0f, 0.0f, 0.0f},
                                          {u, v}});
@@ -364,9 +365,19 @@ namespace nitro::geometry
 
                     float u = currentAngle / (2 * M_PI);
                     float v = currentThetaAngle / (M_PI);
-                    mesh.vertices.push_back({startPos + glm::vec3(ringRadius * x, radius * y, ringRadius * z),
-                                             glm::vec3(r, g, b),
-                                             {u, v}});
+                    glm::vec3 pos = startPos + glm::vec3(ringRadius * x, radius * y, ringRadius * z);
+                    glm::vec3 normal = glm::normalize(pos);
+                    if (ring == 0)
+                    {
+                        normal = glm::vec3(0.0f, 1.0f, 0.0f);
+                    }
+
+                    if (ring == rings)
+                    {
+                        normal = glm::vec3(0.0f, -1.0f, 0.0f);
+                    }
+                    mesh.vertices.push_back(Vertex(pos,
+                                                   {0.3, 0.3, 0.3}, normal, {u, v}));
                 }
             }
 
@@ -434,7 +445,7 @@ namespace nitro::geometry
                 uint32_t C = A + 1;
                 uint32_t B = 2 + C;
 
-                                // if (i == segments)
+                // if (i == segments)
                 // {
                 //     B = 1;
                 // }
