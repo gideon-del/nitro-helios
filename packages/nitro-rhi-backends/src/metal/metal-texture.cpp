@@ -38,9 +38,19 @@ namespace nitro::rhi::metal
         }
 
         textureDesc->setUsage(usage);
-        if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::DepthStencil))
+
+        if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::DepthStencil) &&
+            hasTextureUsageFlag(desc.usage, TextureDesc::Usage::ShaderRead))
         {
             textureDesc->setStorageMode(MTL::StorageModePrivate);
+        }
+        else if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::DepthStencil))
+        {
+            textureDesc->setStorageMode(MTL::StorageModeMemoryless);
+        }
+        else if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::ShaderRead))
+        {
+            textureDesc->setStorageMode(MTL::StorageModeShared);
         }
 
         texture = m_device->device->newTexture(textureDesc);
@@ -60,7 +70,16 @@ namespace nitro::rhi::metal
 
             MTL::SamplerDescriptor *samplerDesc = MTL::SamplerDescriptor::alloc()->init();
             samplerDesc->setMagFilter(MTL::SamplerMinMagFilterLinear);
-            samplerDesc->setRAddressMode(MTL::SamplerAddressModeClampToEdge);
+            samplerDesc->setRAddressMode(MTL::SamplerAddressModeClampToBorderColor);
+            samplerDesc->setSAddressMode(MTL::SamplerAddressModeClampToBorderColor);
+            samplerDesc->setTAddressMode(MTL::SamplerAddressModeClampToBorderColor);
+            samplerDesc->setBorderColor(MTL::SamplerBorderColorOpaqueWhite);
+            samplerDesc->setMinFilter(MTL::SamplerMinMagFilterLinear);
+            if (desc.sampler == TextureDesc::Sampler::Depth && hasTextureUsageFlag(desc.usage, TextureDesc::Usage::DepthStencil))
+            {
+                samplerDesc->setCompareFunction(MTL::CompareFunctionLessEqual);
+            }
+
             samplerState = m_device->device->newSamplerState(samplerDesc);
             samplerDesc->release();
         }

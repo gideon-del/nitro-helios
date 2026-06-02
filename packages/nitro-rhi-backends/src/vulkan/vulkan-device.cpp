@@ -8,6 +8,7 @@
 #include <nitro-rhi-backends/vulkan/vulkan-descriptor-layout.h>
 #include <nitro-rhi-backends/vulkan/vulkan-descriptor-set.h>
 #include <nitro-rhi-backends/vulkan/vulkan-render-pass.h>
+#include <nitro-rhi-backends/vulkan/vulkan-timer.h>
 #include <vk_mem_alloc.h>
 #include <vector>
 #include <set>
@@ -350,6 +351,27 @@ namespace nitro::rhi::vulkan
         return renderPass;
     }
 
+    VkQueryPool create_query_pool(const VkDevice &device)
+    {
+        VkQueryPoolCreateInfo queryInfo{};
+        queryInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+        queryInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
+        queryInfo.queryCount = 2;
+
+        VkQueryPool queryPool;
+        checkVkResult(vkCreateQueryPool(device, &queryInfo, nullptr, &queryPool), "Failed to create query pool");
+
+        return queryPool;
+    }
+
+    float get_gpu_timestamp(const VkPhysicalDevice &physicalDevice)
+    {
+        VkPhysicalDeviceProperties props{};
+        vkGetPhysicalDeviceProperties(physicalDevice, &props);
+
+        return props.limits.timestampPeriod;
+    }
+
     VulkanDevice::VulkanDevice(void *window)
     {
 
@@ -368,6 +390,8 @@ namespace nitro::rhi::vulkan
         commandPool = create_command_pool(device, m_queueFamilyIndices);
         m_surfaceFormat = query_device_format(physicalDevice, surface->surface);
         defaultRenderPass = create_render_pass(device, m_surfaceFormat);
+        queryPool = create_query_pool(device);
+        timestampPeriod = get_gpu_timestamp(physicalDevice);
     }
 
     VulkanDevice::~VulkanDevice()
@@ -550,6 +574,10 @@ namespace nitro::rhi::vulkan
         VkDescriptorSet descriptorSet = vulkanDescriptorLayout->allocateDescriptorSet();
 
         return new VulkanDescriptorSet(this, vulkanDescriptorLayout, descriptorSet);
+    }
+    RHITimer *VulkanDevice::createTimer()
+    {
+        return new VulkanTimer(this, 10);
     }
     void VulkanDevice::destroyPipeline(RHIPipeline *pipeline)
     {

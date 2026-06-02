@@ -19,6 +19,7 @@ src/vulkan/vulkan-command-buffer.cpp
 src/vulkan/vulkan-descriptor-layout.cpp
 src/vulkan/vulkan-descriptor-set.cpp
 src/vulkan/vulkan-render-pass.cpp
+src/vulkan/vulkan-timer.cpp
 )
 
 
@@ -41,6 +42,7 @@ if(APPLE)
         src/metal/metal-descriptor-set.cpp
         src/metal/metal-render-pass.cpp
         src/metal/metal-cocoa-bridge.mm
+        src/metal/metal-timer.cpp
     )
 
     target_include_directories(nitro-rhi-metal

@@ -34,6 +34,7 @@ namespace nitro::rhi::vulkan
 
         RHIDescriptorLayout *createDescriptorLayout(const std::vector<RHIDescriptorBinding> bindings) override;
         RHIDescriptorSet *createDescriptorSet(RHIDescriptorLayout *layout) override;
+        RHITimer *createTimer() override;
         RHIRenderPass *createRenderPass(const RenderPassDesc &desc) override;
         RHIBuffer *createBuffer(const BufferDesc &desc) override;
         void destroyBuffer(RHIBuffer *buffer) override;
@@ -74,6 +75,9 @@ namespace nitro::rhi::vulkan
         VulkanSurface *surface;
         VkRenderPass defaultRenderPass;
         VkPhysicalDevice physicalDevice;
+        VkQueryPool queryPool;
+        float timestampPeriod;
+
         static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
     private:

@@ -14,7 +14,7 @@ namespace nitro::rhi::metal
 
         RHIDescriptorLayout *createDescriptorLayout(const std::vector<RHIDescriptorBinding> bindings) override;
         RHIDescriptorSet *createDescriptorSet(RHIDescriptorLayout *layout) override;
-
+        RHITimer *createTimer() override;
         RHIRenderPass *createRenderPass(const RenderPassDesc &desc) override;
 
         RHIPipeline *createPipeline(const PipelineDesc &desc) override;

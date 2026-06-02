@@ -31,6 +31,6 @@ vertex VertexOut vs(
 VertexOut out;
 
 out.position = lt.lightSpaceView * p.model * float4(in.position, 1.0);
-
+out.position.y = -out.position.y;
 return out;
 }

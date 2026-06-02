@@ -8,6 +8,7 @@
 #include <nitro-rhi-backends/metal/metal-descriptor-set.h>
 #include <nitro-rhi-backends/metal/metal-render-pass.h>
 #include <nitro-rhi-backends/metal/metal-descriptor-layout.h>
+#include <nitro-rhi-backends/metal/metal-timer.h>
 
 namespace nitro::rhi::metal
 {
@@ -47,6 +48,11 @@ namespace nitro::rhi::metal
     {
         return new MetalPipeline(this, desc);
     }
+    RHITimer *MetalDevice::createTimer()
+    {
+        return new MetalTimer(this);
+    }
+
     void MetalDevice::destroyBuffer(RHIBuffer *buffer)
     {
         delete buffer;

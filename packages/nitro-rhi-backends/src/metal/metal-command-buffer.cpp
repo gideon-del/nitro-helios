@@ -35,6 +35,7 @@ namespace nitro::rhi::metal
         encoder = commandBuffer->renderCommandEncoder(rpd);
         encoder->setCullMode(MTL::CullModeBack);
         encoder->setFrontFacingWinding(MTL::WindingCounterClockwise);
+        encoder->setDepthBias(2.0, 2.0, 0.0);
         rpd->release();
     }
     void MetalCommandBuffer::beginRenderPass(RHIRenderPass *renderPass)
@@ -44,6 +45,7 @@ namespace nitro::rhi::metal
         encoder = commandBuffer->renderCommandEncoder(metalRenderPass->renderPassDescriptor);
         encoder->setCullMode(MTL::CullModeBack);
         encoder->setFrontFacingWinding(MTL::WindingCounterClockwise);
+        encoder->setDepthBias(2.0, 2.0, 0.0);
     }
     void MetalCommandBuffer::endRenderPass()
     {

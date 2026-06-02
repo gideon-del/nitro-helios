@@ -45,19 +45,6 @@ namespace nitro::rhi::vulkan
     void VulkanCommandBuffer::beginRenderPass(const RHIRenderPassDesc &desc)
     {
 
-        // VkRenderPassBeginInfo beginInfo{};
-        // beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        // beginInfo.framebuffer = swapchain->framebuffers[m_imageIdx];
-        // beginInfo.renderPass = m_device->defaultRenderPass;
-        // beginInfo.clearValueCount = 1;
-        // beginInfo.renderArea = {
-        //     .offset = {
-        //         .x = 0,
-        //         .y = 0},
-        //     .extent = swapchain->extent
-
-        // };
-
         m_device->transitionImageLayout(
             cmd,
             swapchain->backBuffers[m_imageIdx]->image,
@@ -121,7 +108,8 @@ namespace nitro::rhi::vulkan
 
         renderingInfo.pDepthAttachment =
             &depthAttachment;
-
+        vkCmdResetQueryPool(cmd, m_device->queryPool, 0, 2);
+        vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, m_device->queryPool, 0);
         vkCmdBeginRendering(cmd, &renderingInfo);
     };
     void VulkanCommandBuffer::beginRenderPass(RHIRenderPass *renderPass)
@@ -143,7 +131,10 @@ namespace nitro::rhi::vulkan
         vkCmdEndRendering(cmd);
 
         if (m_activeRenderPass == nullptr)
+        {
+            vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, m_device->queryPool, 1);
             return;
+        }
 
         m_activeRenderPass->endTransition(cmd);
         m_activeRenderPass = nullptr;
@@ -275,6 +266,22 @@ namespace nitro::rhi::vulkan
         presentInfo.pImageIndices = &m_imageIdx;
         VkResult presentResult = vkQueuePresentKHR(m_device->presentQueue, &presentInfo);
 
+        uint64_t timestamps[2];
+
+        vkGetQueryPoolResults(
+            m_device->device,
+            m_device->queryPool,
+            0,
+            2,
+            sizeof(timestamps),
+            timestamps,
+            sizeof(uint64_t),
+            VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT
+
+        );
+
+        // float gpuMs = (timestamps[1] - timestamps[0]) * m_device->timestampPeriod / 1e6f;
+        // std::cout << "Main Pass: " << gpuMs << " ms" << std::endl;
         if (presentResult == VK_ERROR_OUT_OF_DATE_KHR ||
             presentResult == VK_SUBOPTIMAL_KHR)
         {

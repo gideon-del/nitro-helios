@@ -147,7 +147,14 @@ namespace nitro::rhi::vulkan
             samplerInfo.anisotropyEnable = VK_FALSE;
             samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
             samplerInfo.compareEnable = VK_FALSE;
-            samplerInfo.compareOp = VK_COMPARE_OP_EQUAL;
+            samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+
+            if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::DepthStencil) && desc.sampler == TextureDesc::Sampler::Depth)
+            {
+
+                samplerInfo.compareEnable = VK_TRUE;
+                samplerInfo.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+            }
             samplerInfo.unnormalizedCoordinates = VK_FALSE;
             samplerInfo.magFilter = VK_FILTER_LINEAR;
             samplerInfo.minFilter = VK_FILTER_LINEAR;

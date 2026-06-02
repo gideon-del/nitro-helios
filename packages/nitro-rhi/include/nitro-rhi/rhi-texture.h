@@ -5,6 +5,11 @@ namespace nitro::rhi
 {
     struct TextureDesc
     {
+        enum class Sampler
+        {
+            Depth,
+            Sampler2D
+        } sampler = Sampler::Sampler2D;
         enum class ImageFormat
         {
             ColorRGBA8,

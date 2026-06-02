@@ -174,6 +174,7 @@ int main()
     shadowDesc.size.height = 2048;
     shadowDesc.format = TextureDesc::ImageFormat::Depth32Float;
     shadowDesc.usage = TextureDesc::Usage::DepthStencil | TextureDesc::Usage::ShaderRead;
+    shadowDesc.sampler = TextureDesc::Sampler::Depth;
 
     RHITexture *shadowDepthTexture = device.createTexture(shadowDesc);
     shadowPipelineDesc.vertexLayout = Vertex::getVertexLayout();
@@ -228,7 +229,8 @@ int main()
 
     auto lightEye = light.getEye();
 
-    std::cout << "Light Eye x: " << lightEye.x << " y: " << lightEye.y << " z: " << lightEye.z << std::endl;
+    RHITimer *timer = device.createTimer();
+
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
@@ -242,18 +244,18 @@ int main()
         float aspect = (float)width / (float)height;
 
         RHICommandBuffer *cmd = device.beginFrame();
-
+        timer->beginFrame(cmd);
         LightView lightView;
         float orthoSize = 20.0f;
-        // glm::vec3 lightPos(-20.0f, 2.0f, -3.0f);
+
         lightView.lightSpaceMatrix = glm::orthoRH_ZO(-orthoSize,
                                                      orthoSize,
                                                      -orthoSize,
                                                      orthoSize,
-                                                     20.0f,
+                                                     10.0f,
                                                      50.0f) *
                                      light.getView();
-
+        timer->begin(cmd, "shadow_pass");
         cmd->beginRenderPass(shadowRenderPass);
         cmd->bindPipeline(shadowPipeline);
         uint32_t frameIdx = device.getCurrentFrameIndex();
@@ -265,7 +267,7 @@ int main()
         planeRenderer.draw(cmd);
         sphereRenderer.draw(cmd);
         cmd->endRenderPass();
-
+        timer->end(cmd, "shadow_pass");
         RHIRenderPassDesc rpDesc{};
         rpDesc.clearColor[0] = 0.3f;
         rpDesc.clearColor[1] = 0.3f;
@@ -278,8 +280,8 @@ int main()
 
         if (!isMetal)
         {
-            globalUbo.proj[1][1] *= -1;
-        };
+            globalUbo.proj[1][1] *= -1.0f;
+        }
         FrameData frameData;
         frameData.view = camera.getView();
         frameData.cameraPos = glm::vec4(camera.getEye(), 1.0f);
@@ -299,6 +301,8 @@ int main()
         cmd->present();
 
         device.endFrame(cmd);
+        timer->endFrame();
+        std::cout << "shadow: " << timer->getResult("shadow_pass") << " ms\n";
     }
 
     device.waitIdle();
