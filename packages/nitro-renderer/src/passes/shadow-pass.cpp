@@ -29,6 +29,14 @@ namespace nitro::renderer
         cmd->beginRenderPass(m_renderPass);
         cmd->bindPipeline(pipeline);
         cmd->bindDescriptorSet(descriptorSet, 0);
+        RHIViewport viewport;
+        viewport.width = ShadowPass::c_ShadowResolution;
+        viewport.height = ShadowPass::c_ShadowResolution;
+        cmd->setViewPort(viewport);
+        RHIScissor scissor;
+        scissor.width = ShadowPass::c_ShadowResolution;
+        scissor.height = ShadowPass::c_ShadowResolution;
+        cmd->setScissor(scissor);
         for (auto &obj : scene.objects)
         {
             ShadowPushConstant shadowPc;

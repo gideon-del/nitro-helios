@@ -144,6 +144,14 @@ namespace nitro::rhi::vulkan
         }
     }
 
+    uint32_t VulkanSwapchain::getWidth()
+    {
+        return extent.width;
+    }
+    uint32_t VulkanSwapchain::getHeight()
+    {
+        return extent.height;
+    }
     void VulkanSwapchain::cleanup()
     {
 

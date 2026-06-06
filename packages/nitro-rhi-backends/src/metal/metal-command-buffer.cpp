@@ -12,7 +12,6 @@ namespace nitro::rhi::metal
 {
     MetalCommandBuffer::MetalCommandBuffer(MetalDevice *device, MetalSwapchain *swapchain) : m_device(device), swapchain(swapchain)
     {
-
         commandBuffer = m_device->commandQueue->commandBuffer();
     }
     void MetalCommandBuffer::beginRenderPass(const RHIRenderPassDesc &desc)
@@ -36,22 +35,22 @@ namespace nitro::rhi::metal
         encoder->setCullMode(MTL::CullModeBack);
         encoder->setFrontFacingWinding(MTL::WindingCounterClockwise);
         encoder->setDepthBias(2.0, 2.0, 0.0);
-        MTL::Viewport viewport;
-        viewport.originX = 0;
-        viewport.originY = 0;
-        viewport.width = swapchain->currentDrawable->texture()->width();
-        viewport.height = swapchain->currentDrawable->texture()->height();
-        viewport.zfar = 1.0;
-        viewport.znear = 0.0;
+        // MTL::Viewport viewport;
+        // viewport.originX = 0;
+        // viewport.originY = 0;
+        // viewport.width = swapchain->currentDrawable->texture()->width();
+        // viewport.height = swapchain->currentDrawable->texture()->height();
+        // viewport.zfar = 1.0;
+        // viewport.znear = 0.0;
 
-        encoder->setViewport(viewport);
+        // encoder->setViewport(viewport);
 
-        MTL::ScissorRect scissors;
-        scissors.x = 0;
-        scissors.y = 0;
-        scissors.width = swapchain->currentDrawable->texture()->width();
-        scissors.height = swapchain->currentDrawable->texture()->height();
-        encoder->setScissorRect(scissors);
+        // MTL::ScissorRect scissors;
+        // scissors.x = 0;
+        // scissors.y = 0;
+        // scissors.width = swapchain->currentDrawable->texture()->width();
+        // scissors.height = swapchain->currentDrawable->texture()->height();
+        // encoder->setScissorRect(scissors);
         rpd->release();
     }
     void MetalCommandBuffer::beginRenderPass(RHIRenderPass *renderPass)
@@ -63,28 +62,50 @@ namespace nitro::rhi::metal
         encoder->setFrontFacingWinding(MTL::WindingCounterClockwise);
         encoder->setDepthBias(2.0, 2.0, 0.0);
 
-        MTL::Viewport viewport;
-        viewport.originX = 0;
-        viewport.originY = 0;
-        viewport.width = metalRenderPass->width;
-        viewport.height = metalRenderPass->height;
-        viewport.zfar = 1.0;
-        viewport.znear = 0.0;
+        // MTL::Viewport viewport;
+        // viewport.originX = 0;
+        // viewport.originY = 0;
+        // viewport.width = metalRenderPass->width;
+        // viewport.height = metalRenderPass->height;
+        // viewport.zfar = 1.0;
+        // viewport.znear = 0.0;
 
-        encoder->setViewport(viewport);
+        // encoder->setViewport(viewport);
 
-        MTL::ScissorRect scissors;
-        scissors.x = 0;
-        scissors.y = 0;
-        scissors.width = metalRenderPass->width;
-        scissors.height = metalRenderPass->height;
-        encoder->setScissorRect(scissors);
+        // MTL::ScissorRect scissors;
+        // scissors.x = 0;
+        // scissors.y = 0;
+        // scissors.width = metalRenderPass->width;
+        // scissors.height = metalRenderPass->height;
+        // encoder->setScissorRect(scissors);
     }
     void MetalCommandBuffer::endRenderPass()
     {
         encoder->endEncoding();
     }
 
+    void MetalCommandBuffer::setViewPort(const RHIViewport &viewport)
+    {
+        MTL::Viewport metalViewport;
+        metalViewport.originX = viewport.x;
+        metalViewport.originY = viewport.y;
+        metalViewport.width = viewport.width;
+        metalViewport.height = viewport.height;
+        metalViewport.zfar = viewport.maxDepth;
+        metalViewport.znear = viewport.minDepth;
+
+        encoder->setViewport(metalViewport);
+    }
+
+    void MetalCommandBuffer::setScissor(const RHIScissor &scissor)
+    {
+        MTL::ScissorRect metalScissor;
+        metalScissor.x = scissor.x;
+        metalScissor.y = scissor.y;
+        metalScissor.width = scissor.width;
+        metalScissor.height = scissor.height;
+        encoder->setScissorRect(metalScissor);
+    }
     void MetalCommandBuffer::bindPipeline(RHIPipeline *pipeline)
     {
         MetalPipeline *metalPipeline = reinterpret_cast<MetalPipeline *>(pipeline);

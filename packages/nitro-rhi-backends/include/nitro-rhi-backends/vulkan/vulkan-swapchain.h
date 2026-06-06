@@ -13,6 +13,8 @@ namespace nitro::rhi::vulkan
         VulkanSwapchain(VulkanDevice *device);
         RHITexture *getCurrentBackbuffer() override;
         void resize(uint32_t width, uint32_t height) override;
+        uint32_t getWidth() override;
+        uint32_t getHeight() override;
         void cleanup();
         VkSwapchainKHR swapchain;
         std::vector<VulkanTexture *> backBuffers;

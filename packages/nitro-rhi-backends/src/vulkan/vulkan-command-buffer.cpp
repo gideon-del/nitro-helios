@@ -147,51 +147,83 @@ namespace nitro::rhi::vulkan
 
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanPipeline->pipeline);
 
-        VkViewport viewport{};
-        viewport.x = 0;
-        viewport.y = 0;
-        if (m_activeRenderPass != nullptr)
-        {
-            viewport.width = (float)m_activeRenderPass->width;
-            viewport.height = (float)m_activeRenderPass->height;
-        }
-        else
-        {
-            viewport.width = (float)swapchain->extent.width;
-            viewport.height = (float)swapchain->extent.height;
-        }
+        // VkViewport viewport{};
+        // viewport.x = 0;
+        // viewport.y = 0;
+        // if (m_activeRenderPass != nullptr)
+        // {
+        //     viewport.width = (float)m_activeRenderPass->width;
+        //     viewport.height = (float)m_activeRenderPass->height;
+        // }
+        // else
+        // {
+        //     viewport.width = (float)swapchain->extent.width;
+        //     viewport.height = (float)swapchain->extent.height;
+        // }
 
-        viewport.maxDepth = 1.0f;
-        viewport.minDepth = 0.0f;
-        m_pipeline = vulkanPipeline;
+        // viewport.maxDepth = 1.0f;
+        // viewport.minDepth = 0.0f;
+        // m_pipeline = vulkanPipeline;
+        // vkCmdSetViewport(
+        //     cmd,
+        //     0,
+        //     1,
+        //     &viewport);
+
+        // VkRect2D scissors{};
+
+        // if (m_activeRenderPass != nullptr)
+        // {
+        //     scissors.extent = {
+        //         m_activeRenderPass->width,
+        //         m_activeRenderPass->height};
+        // }
+        // else
+        // {
+        //     scissors.extent = swapchain->extent;
+        // }
+
+        // scissors.offset = {0, 0};
+
+        // vkCmdSetScissor(
+        //     cmd,
+        //     0,
+        //     1,
+        //     &scissors);
+    }
+
+    void VulkanCommandBuffer::setViewPort(const RHIViewport &viewport)
+    {
+        VkViewport vulkanViewport{};
+        vulkanViewport.x = viewport.x;
+        vulkanViewport.y = viewport.y;
+        vulkanViewport.width = viewport.width;
+        vulkanViewport.height = viewport.height;
+        vulkanViewport.minDepth = viewport.minDepth;
+        vulkanViewport.maxDepth = viewport.maxDepth;
+
         vkCmdSetViewport(
             cmd,
             0,
             1,
-            &viewport);
+            &vulkanViewport);
+    }
 
-        VkRect2D scissors{};
+    void VulkanCommandBuffer::setScissor(const RHIScissor &scissor)
+    {
 
-        if (m_activeRenderPass != nullptr)
-        {
-            scissors.extent = {
-                m_activeRenderPass->width,
-                m_activeRenderPass->height};
-        }
-        else
-        {
-            scissors.extent = swapchain->extent;
-        }
+        VkRect2D vulkanScissor;
 
-        scissors.offset = {0, 0};
-
+        vulkanScissor.offset.x = scissor.x;
+        vulkanScissor.offset.y = scissor.y;
+        vulkanScissor.extent.width = scissor.width;
+        vulkanScissor.extent.height = scissor.height;
         vkCmdSetScissor(
             cmd,
             0,
             1,
-            &scissors);
-    }
-
+            &vulkanScissor);
+    };
     void VulkanCommandBuffer::bindVertexBuffer(RHIBuffer *buffer)
     {
         VulkanBuffer *vertexBuffer = reinterpret_cast<VulkanBuffer *>(buffer);

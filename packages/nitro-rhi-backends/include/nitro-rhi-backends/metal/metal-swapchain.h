@@ -14,9 +14,12 @@ namespace nitro::rhi::metal
 
         void resize(uint32_t width, uint32_t height) override;
         RHITexture *getCurrentBackbuffer() override;
+        uint32_t getWidth() override;
+        uint32_t getHeight() override;
 
         CA::MetalLayer *layer;
         CA::MetalDrawable *currentDrawable = nullptr;
+
         MetalTexture *depthTexture;
         uint32_t width;
         uint32_t height;

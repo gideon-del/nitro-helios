@@ -49,6 +49,15 @@ namespace nitro::rhi::metal
         if (layer)
             layer->release();
     }
+    uint32_t MetalSwapchain::getWidth()
+    {
+
+        return currentDrawable != nullptr ? currentDrawable->texture()->width() : 0;
+    }
+    uint32_t MetalSwapchain::getHeight()
+    {
+        return currentDrawable != nullptr ? currentDrawable->texture()->height() : 0;
+    }
     RHITexture *MetalSwapchain::getCurrentBackbuffer()
     {
         return nullptr;

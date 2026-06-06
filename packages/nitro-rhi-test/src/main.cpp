@@ -323,6 +323,14 @@ int main()
 
         cmd->bindDescriptorSet(frameResource.getDescriptorSet(FrameResourceId::MainDescriptorSet), 0);
         cmd->bindDescriptorSet(frameResource.getDescriptorSet(FrameResourceId::TextureDescriptor), 1);
+        RHIViewport mainViewPort;
+        mainViewPort.width = swapchain->getWidth();
+        mainViewPort.height = swapchain->getHeight();
+        cmd->setViewPort(mainViewPort);
+        RHIScissor mainScissor;
+        mainScissor.width = swapchain->getWidth();
+        mainScissor.height = swapchain->getHeight();
+        cmd->setScissor(mainScissor);
         mainScene.draw(cmd);
         cmd->endRenderPass();
 
