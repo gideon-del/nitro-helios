@@ -30,8 +30,6 @@ namespace nitro::renderer
 
     void MeshRenderer::draw(rhi::RHICommandBuffer *cmd)
     {
-        auto transform = transformation.getTransform();
-        cmd->setPushConstant(&transform, sizeof(geometry::PushConstant), 1);
         cmd->bindVertexBuffer(m_vertexBuffer);
         cmd->bindIndexBuffer(m_indexBuffer);
         cmd->drawIndexed(m_indexCount);

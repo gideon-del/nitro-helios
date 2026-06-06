@@ -32,7 +32,7 @@ namespace nitro::rhi::metal
             return MTL::StoreActionDontCare;
         }
     }
-    MetalRenderPass::MetalRenderPass(MetalDevice *device, const RenderPassDesc &desc) : m_device(device)
+    MetalRenderPass::MetalRenderPass(MetalDevice *device, const RenderPassDesc &desc) : m_device(device), width(desc.width), height(desc.height)
     {
         renderPassDescriptor = MTL::RenderPassDescriptor::alloc()->init();
         if (desc.depthAttachment)

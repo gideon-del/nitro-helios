@@ -31,7 +31,7 @@ namespace nitro::rhi::vulkan
             return VK_ATTACHMENT_STORE_OP_DONT_CARE;
         }
     }
-    VulkanRenderPass::VulkanRenderPass(VulkanDevice *device, const RenderPassDesc &desc) : m_device(device)
+    VulkanRenderPass::VulkanRenderPass(VulkanDevice *device, const RenderPassDesc &desc) : m_device(device), width(desc.width), height(desc.height)
     {
         renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
         renderingInfo.colorAttachmentCount = 0;
@@ -123,6 +123,7 @@ namespace nitro::rhi::vulkan
     }
     void VulkanRenderPass::endTransition(VkCommandBuffer cmd)
     {
+
         if (depthTexture != nullptr)
         {
             m_device->transitionImageLayout(
@@ -137,6 +138,7 @@ namespace nitro::rhi::vulkan
                 VK_IMAGE_ASPECT_DEPTH_BIT);
             depthTexture->currentLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         }
+
         if (colorTexture != nullptr)
         {
             m_device->transitionImageLayout(

@@ -11,12 +11,12 @@ struct VertexIn {
 
 
 struct  LightTransform {
-    float4x4 lightSpaceView;
+    float4x4 lightSpaceView[4];
 };
 
 struct PushConstant {
     float4x4 model;
-    float4x4 normalMatrix;
+    int cascadeIndex;
 };
 
 struct VertexOut  {
@@ -30,7 +30,7 @@ vertex VertexOut vs(
 ) {
 VertexOut out;
 
-out.position = lt.lightSpaceView * p.model * float4(in.position, 1.0);
+out.position = lt.lightSpaceView[p.cascadeIndex] * p.model * float4(in.position, 1.0);
 out.position.y = -out.position.y;
 return out;
 }

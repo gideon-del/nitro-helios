@@ -16,7 +16,8 @@ namespace nitro::renderer
         CameraViewUniformBuffer,
         MainDescriptorSet,
         ShadowDescriptorSet,
-        ShadowTexture
+        ShadowTexture,
+        TextureDescriptor,
     };
 
     class FrameResource

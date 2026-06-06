@@ -36,6 +36,22 @@ namespace nitro::rhi::metal
         encoder->setCullMode(MTL::CullModeBack);
         encoder->setFrontFacingWinding(MTL::WindingCounterClockwise);
         encoder->setDepthBias(2.0, 2.0, 0.0);
+        MTL::Viewport viewport;
+        viewport.originX = 0;
+        viewport.originY = 0;
+        viewport.width = swapchain->currentDrawable->texture()->width();
+        viewport.height = swapchain->currentDrawable->texture()->height();
+        viewport.zfar = 1.0;
+        viewport.znear = 0.0;
+
+        encoder->setViewport(viewport);
+
+        MTL::ScissorRect scissors;
+        scissors.x = 0;
+        scissors.y = 0;
+        scissors.width = swapchain->currentDrawable->texture()->width();
+        scissors.height = swapchain->currentDrawable->texture()->height();
+        encoder->setScissorRect(scissors);
         rpd->release();
     }
     void MetalCommandBuffer::beginRenderPass(RHIRenderPass *renderPass)
@@ -46,6 +62,23 @@ namespace nitro::rhi::metal
         encoder->setCullMode(MTL::CullModeBack);
         encoder->setFrontFacingWinding(MTL::WindingCounterClockwise);
         encoder->setDepthBias(2.0, 2.0, 0.0);
+
+        MTL::Viewport viewport;
+        viewport.originX = 0;
+        viewport.originY = 0;
+        viewport.width = metalRenderPass->width;
+        viewport.height = metalRenderPass->height;
+        viewport.zfar = 1.0;
+        viewport.znear = 0.0;
+
+        encoder->setViewport(viewport);
+
+        MTL::ScissorRect scissors;
+        scissors.x = 0;
+        scissors.y = 0;
+        scissors.width = metalRenderPass->width;
+        scissors.height = metalRenderPass->height;
+        encoder->setScissorRect(scissors);
     }
     void MetalCommandBuffer::endRenderPass()
     {
@@ -82,7 +115,6 @@ namespace nitro::rhi::metal
 
     void MetalCommandBuffer::setPushConstant(void *data, size_t size, uint32_t binding)
     {
-
         encoder->setVertexBytes(data, NS::UInteger(size), NS::UInteger(binding));
     }
     void MetalCommandBuffer::draw(uint32_t vertexCount)
@@ -94,7 +126,7 @@ namespace nitro::rhi::metal
         }
         encoder->drawPrimitives(m_pipeline->topology, NS::UInteger(0), NS::UInteger(vertexCount));
     }
-    void MetalCommandBuffer::bindDescriptorSet(RHIDescriptorSet *set)
+    void MetalCommandBuffer::bindDescriptorSet(RHIDescriptorSet *set, uint32_t mainBinding)
     {
         MetalDescriptorSet *metalSet = reinterpret_cast<MetalDescriptorSet *>(set);
 
@@ -103,11 +135,11 @@ namespace nitro::rhi::metal
             MetalBuffer *metalBuffer = reinterpret_cast<MetalBuffer *>(buffer);
             if (metalSet->descriptorLayout->bufferBindings[binding] == RHIDescriptorBinding::ShaderStage::Vertex || metalSet->descriptorLayout->bufferBindings[binding] == RHIDescriptorBinding::ShaderStage::Both)
             {
-                encoder->setVertexBuffer(metalBuffer->buffer, 0, binding);
+                encoder->setVertexBuffer(metalBuffer->buffer, 0, mainBinding + binding);
             }
             if (metalSet->descriptorLayout->bufferBindings[binding] == RHIDescriptorBinding::ShaderStage::Fragment || metalSet->descriptorLayout->bufferBindings[binding] == RHIDescriptorBinding::ShaderStage::Both)
             {
-                encoder->setFragmentBuffer(metalBuffer->buffer, 0, binding);
+                encoder->setFragmentBuffer(metalBuffer->buffer, 0, mainBinding + binding);
             }
         }
         for (auto &[texture, binding] : metalSet->textureBindings)

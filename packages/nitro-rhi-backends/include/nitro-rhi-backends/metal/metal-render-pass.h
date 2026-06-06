@@ -15,6 +15,9 @@ namespace nitro::rhi::metal
         MetalTexture *depthTexture = nullptr;
         MetalTexture *colorTexture = nullptr;
 
+        uint32_t width;
+        uint32_t height;
+
     private:
         MetalDevice *m_device;
     };

@@ -52,7 +52,9 @@ namespace nitro::rhi
         std::vector<ShaderDesc> shaders;
         bool depthTest = true;
         bool hasColorAttachment = true;
-        RHIDescriptorLayout *layout = nullptr;
+        bool hasPushConstant = true;
+        uint32_t pushConstantSize;
+        std::vector<RHIDescriptorLayout *> layouts;
         PipelineTopology topology = PipelineTopology::TriangleList;
     };
 

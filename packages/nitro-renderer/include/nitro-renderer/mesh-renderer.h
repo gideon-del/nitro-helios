@@ -14,8 +14,6 @@ namespace nitro::renderer
         ~MeshRenderer();
         void draw(rhi::RHICommandBuffer *cmd);
 
-        geometry::MeshTransformation transformation;
-
     private:
         rhi::RHIBuffer *m_vertexBuffer;
         rhi::RHIBuffer *m_indexBuffer;

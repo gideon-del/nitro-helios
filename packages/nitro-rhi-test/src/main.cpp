@@ -29,7 +29,7 @@ struct AppState
 
 struct LightView
 {
-    glm::mat4 lightSpaceMatrix;
+    glm::mat4 lightSpaceMatrix[4];
 };
 
 struct FrameData
@@ -42,7 +42,8 @@ struct FrameData
     glm::vec4 lightPos;
     glm::vec4 lightColor = glm::vec4(1.0f);
 
-    glm::mat4 lightViewProj;
+    glm::mat4 lightViewProj[4];
+    float cascadeSplit[4];
 
     float ambient = 0.3f;
     float Ka = 1.0f;
@@ -64,13 +65,10 @@ int main()
     DeviceType device(window);
     RHISwapchain *swapchain = device.createSwapchain(nullptr);
 
-    std::string shaderPath = std::string(SHADER_DIR) + "/cube/cube";
+    std::string mainShaderPath = std::string(SHADER_DIR) + "/main/main";
     std::string shadowShaderPath = std::string(SHADER_DIR) + "/shadow/shadow";
 
     std::vector<RHIDescriptorBinding> binding = {
-        {.type = RHIDescriptorBinding::Type::Sampler,
-         .stage = RHIDescriptorBinding::ShaderStage::Fragment,
-         .binding = 0},
         {.type = RHIDescriptorBinding::Type::UniformBuffer,
          .stage = RHIDescriptorBinding::ShaderStage::Both,
          .binding = 2},
@@ -82,41 +80,64 @@ int main()
          .binding = 2},
     };
 
+    std::vector<RHIDescriptorBinding> shadowTextureBinding = {
+        {.type = RHIDescriptorBinding::Type::Sampler,
+         .stage = RHIDescriptorBinding::ShaderStage::Fragment,
+         .binding = 0},
+        {.type = RHIDescriptorBinding::Type::Sampler,
+         .stage = RHIDescriptorBinding::ShaderStage::Fragment,
+         .binding = 1},
+        {.type = RHIDescriptorBinding::Type::Sampler,
+         .stage = RHIDescriptorBinding::ShaderStage::Fragment,
+         .binding = 2},
+        {.type = RHIDescriptorBinding::Type::Sampler,
+         .stage = RHIDescriptorBinding::ShaderStage::Fragment,
+         .binding = 3},
+
+    };
     RHIDescriptorLayout *descriptorLayout = device.createDescriptorLayout(binding);
     RHIDescriptorLayout *shadowDescriptorLayout = device.createDescriptorLayout(shadowBinding);
+    RHIDescriptorLayout *textureDescriptorLayout = device.createDescriptorLayout(shadowTextureBinding);
     PipelineDesc shadowPipelineDesc{};
     PipelineDesc pipelineDesc{};
 #ifdef USE_METAL
-    pipelineDesc.shaders.push_back({"vs", shaderPath + ".metallib", ShaderStage::Vertex});
-    pipelineDesc.shaders.push_back({"fs", shaderPath + ".metallib", ShaderStage::Fragment});
+    pipelineDesc.shaders.push_back({"vs", mainShaderPath + ".metallib", ShaderStage::Vertex});
+    pipelineDesc.shaders.push_back({"fs", mainShaderPath + ".metallib", ShaderStage::Fragment});
     shadowPipelineDesc.shaders.push_back({"vs", shadowShaderPath + ".metallib", ShaderStage::Vertex});
 #else
-    pipelineDesc.shaders.push_back({"main", shaderPath + ".vert.spv", ShaderStage::Vertex});
-    pipelineDesc.shaders.push_back({"main", shaderPath + ".frag.spv", ShaderStage::Fragment});
+    pipelineDesc.shaders.push_back({"main", mainShaderPath + ".vert.spv", ShaderStage::Vertex});
+    pipelineDesc.shaders.push_back({"main", mainShaderPath + ".frag.spv", ShaderStage::Fragment});
     shadowPipelineDesc.shaders.push_back({"main", shadowShaderPath + ".vert.spv", ShaderStage::Vertex});
 #endif
     pipelineDesc.vertexLayout = Vertex::getVertexLayout();
     pipelineDesc.depthTest = true;
-    pipelineDesc.layout = descriptorLayout;
+    pipelineDesc.layouts = {descriptorLayout, textureDescriptorLayout};
+    pipelineDesc.pushConstantSize = sizeof(PushConstant);
     RHIPipeline *pipeline = device.createPipeline(pipelineDesc);
-    pipelineDesc.topology = PipelineTopology::LineList;
-    RHIPipeline *normalPipeline = device.createPipeline(pipelineDesc);
 
+    Scene mainScene;
     Mesh sphere = MeshGenerator::createUVSphere(5, 10, 100);
 
-    MeshRenderer sphereRenderer(sphere, &device);
-    sphereRenderer.transformation.translate(
-        glm::vec3(0.0f, 20.0f, 0.0f));
+    auto sphereRenderer = std::make_shared<MeshRenderer>(sphere, &device);
+
     Mesh plane = MeshGenerator::createPlane(50, 50);
     plane.calculateNormals();
-    MeshRenderer planeRenderer(plane, &device);
-
+    auto planeRenderer = std::make_shared<MeshRenderer>(plane, &device);
+    mainScene.objects.push_back(
+        RenderObject(
+            planeRenderer,
+            MeshTransformation()));
+    mainScene.objects.push_back(
+        RenderObject(
+            sphereRenderer,
+            MeshTransformation(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 10.0f, 0.0f)))));
     OrbitalCamera camera;
-
+    // camera.radius = 10.0f;
+    camera.radius = 3.0f;
     OrbitalCamera light;
-    light.radius = 30.0f;
+    light.radius = 200.0f;
     light.theta = glm::radians(30.0f);
-    light.phi = glm::radians(45.0f);
+    light.phi = glm::radians(40.0f);
     AppState appState{
         .camera = &camera};
 
@@ -169,27 +190,15 @@ int main()
 
                               state->camera->onScroll(yoffset); });
 
-    TextureDesc shadowDesc{};
-    shadowDesc.size.width = 2048;
-    shadowDesc.size.height = 2048;
-    shadowDesc.format = TextureDesc::ImageFormat::Depth32Float;
-    shadowDesc.usage = TextureDesc::Usage::DepthStencil | TextureDesc::Usage::ShaderRead;
-    shadowDesc.sampler = TextureDesc::Sampler::Depth;
-
-    RHITexture *shadowDepthTexture = device.createTexture(shadowDesc);
     shadowPipelineDesc.vertexLayout = Vertex::getVertexLayout();
     shadowPipelineDesc.depthTest = true;
     shadowPipelineDesc.hasColorAttachment = false;
-    shadowPipelineDesc.layout = shadowDescriptorLayout;
-
+    shadowPipelineDesc.layouts = {shadowDescriptorLayout};
+    shadowPipelineDesc.pushConstantSize = sizeof(ShadowPushConstant);
     RHIPipeline *shadowPipeline = device.createPipeline(shadowPipelineDesc);
-    RenderPassDesc shadowRenderPassDesc;
-    RenderPassDesc::Attachment shadowDepthAttachment;
-    shadowDepthAttachment.texture = shadowDepthTexture;
-    shadowDepthAttachment.store = RenderPassDesc::StoreOp::Store;
-    shadowRenderPassDesc.depthAttachment = &shadowDepthAttachment;
 
-    RHIRenderPass *shadowRenderPass = device.createRenderPass(shadowRenderPassDesc);
+    float CAMERA_NEAR = 0.1f;
+    float CAMERA_FAR = 100.0f;
 
     BufferDesc lightUboDesc;
     lightUboDesc.size = sizeof(LightView);
@@ -202,7 +211,12 @@ int main()
     frameDataUBODesc.usage = BufferDesc::Usage::Uniform;
 
     std::vector<FrameResource> frameResources;
+    std::vector<ShadowPass> cascades;
 
+    for (int i = 0; i < 4; i++)
+    {
+        cascades.push_back(ShadowPass(&device, i));
+    }
     for (int i = 0; i < 2; i++)
     {
         FrameResource frameResource(&device);
@@ -217,10 +231,16 @@ int main()
 
         RHIDescriptorSet *mainDescriptorSet = device.createDescriptorSet(descriptorLayout);
         mainDescriptorSet->writeBuffer(frameResource.getBuffer(FrameResourceId::FrameDataUniformBuffer), 2);
-        mainDescriptorSet->writeTexture(shadowDepthTexture, 0);
         mainDescriptorSet->commit();
 
+        RHIDescriptorSet *textureDescriptorSet = device.createDescriptorSet(textureDescriptorLayout);
+        for (int i = 0; i < cascades.size(); i++)
+        {
+            textureDescriptorSet->writeTexture(cascades[i].shadowTexture, i);
+        }
+        textureDescriptorSet->commit();
         frameResource.setDescriptorSet(FrameResourceId::MainDescriptorSet, mainDescriptorSet);
+        frameResource.setDescriptorSet(FrameResourceId::TextureDescriptor, textureDescriptorSet);
 
         frameResources.push_back(std::move(frameResource));
     }
@@ -229,6 +249,9 @@ int main()
 
     auto lightEye = light.getEye();
 
+    glm::vec3 sphereCenter(0, 10, 0);
+    glm::vec4 sphereLS =
+        light.getView() * glm::vec4(sphereCenter, 1.0f);
     RHITimer *timer = device.createTimer();
 
     while (!glfwWindowShouldClose(window))
@@ -238,36 +261,38 @@ int main()
         GlobalTransformation globalUbo{};
         int width, height;
         currentTime = glfwGetTime();
-        light.phi = float(glfwGetTime() * glm::radians(20.0f));
+        // light.phi = float(glfwGetTime() * glm::radians(20.0f));
 
         glfwGetFramebufferSize(window, &width, &height);
         float aspect = (float)width / (float)height;
 
         RHICommandBuffer *cmd = device.beginFrame();
         timer->beginFrame(cmd);
-        LightView lightView;
-        float orthoSize = 20.0f;
 
-        lightView.lightSpaceMatrix = glm::orthoRH_ZO(-orthoSize,
-                                                     orthoSize,
-                                                     -orthoSize,
-                                                     orthoSize,
-                                                     10.0f,
-                                                     50.0f) *
-                                     light.getView();
-        timer->begin(cmd, "shadow_pass");
-        cmd->beginRenderPass(shadowRenderPass);
-        cmd->bindPipeline(shadowPipeline);
         uint32_t frameIdx = device.getCurrentFrameIndex();
         FrameResource &frameResource = frameResources[frameIdx];
+        FrameData frameData;
+        LightView lightView;
+        for (int i = 0; i < cascades.size(); i++)
+        {
+            lightView.lightSpaceMatrix[i] = ShadowPass::s_calculateLightOrthoProj(
+                CAMERA_NEAR,
+                CAMERA_FAR,
+                4,
+                i,
+                glm::radians(60.0f),
+                aspect,
+                camera.getView(),
+                camera.getEye(),
+                light.getView());
+            frameData.cascadeSplit[i] = ShadowPass::s_getPracticalSplit(CAMERA_NEAR, CAMERA_FAR, 4, i + 1);
+        }
 
         frameResource.getBuffer(FrameResourceId::LightUniformBuffer)->upload(&lightView, sizeof(LightView));
-
-        cmd->bindDescriptorSet(frameResource.getDescriptorSet(FrameResourceId::ShadowDescriptorSet));
-        planeRenderer.draw(cmd);
-        sphereRenderer.draw(cmd);
-        cmd->endRenderPass();
-        timer->end(cmd, "shadow_pass");
+        for (int i = 0; i < cascades.size(); i++)
+        {
+            cascades[i].execute(cmd, shadowPipeline, frameResource.getDescriptorSet(FrameResourceId::ShadowDescriptorSet), mainScene);
+        }
         RHIRenderPassDesc rpDesc{};
         rpDesc.clearColor[0] = 0.3f;
         rpDesc.clearColor[1] = 0.3f;
@@ -275,34 +300,37 @@ int main()
         rpDesc.clearColor[3] = 1.0f;
         rpDesc.clearDepth = 1.0f;
         rpDesc.hasDepth = true;
-        globalUbo.proj = glm::perspective(glm::radians(60.0f), aspect, 0.1f, 100.0f);
+        globalUbo.proj = glm::perspective(glm::radians(60.0f), aspect, CAMERA_NEAR, CAMERA_FAR);
         globalUbo.view = camera.getView();
 
         if (!isMetal)
         {
             globalUbo.proj[1][1] *= -1.0f;
         }
-        FrameData frameData;
+
         frameData.view = camera.getView();
         frameData.cameraPos = glm::vec4(camera.getEye(), 1.0f);
         frameData.proj = globalUbo.proj;
         frameData.lightPos = glm::vec4(light.getEye(), 1.0f);
-        frameData.lightViewProj = lightView.lightSpaceMatrix;
+        for (int i = 0; i < cascades.size(); i++)
+        {
+            frameData.lightViewProj[i] = lightView.lightSpaceMatrix[i];
+        }
         cmd->beginRenderPass(rpDesc);
         cmd->bindPipeline(pipeline);
 
         frameResource.getBuffer(FrameResourceId::FrameDataUniformBuffer)->upload(&frameData, sizeof(FrameData));
 
-        cmd->bindDescriptorSet(frameResource.getDescriptorSet(FrameResourceId::MainDescriptorSet));
-        planeRenderer.draw(cmd);
-        sphereRenderer.draw(cmd);
+        cmd->bindDescriptorSet(frameResource.getDescriptorSet(FrameResourceId::MainDescriptorSet), 0);
+        cmd->bindDescriptorSet(frameResource.getDescriptorSet(FrameResourceId::TextureDescriptor), 1);
+        mainScene.draw(cmd);
         cmd->endRenderPass();
 
         cmd->present();
 
         device.endFrame(cmd);
         timer->endFrame();
-        std::cout << "shadow: " << timer->getResult("shadow_pass") << " ms\n";
+        // std::cout << "shadow: " << timer->getResult("shadow_pass") << " ms\n";
     }
 
     device.waitIdle();

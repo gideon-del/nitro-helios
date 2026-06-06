@@ -6,16 +6,16 @@ layout(location =2) in vec3 aNormal;
 layout(location =3) in vec2 aUV;
 
 layout(set =0, binding=2) uniform LightTransform {
-    mat4 lightSpaceView;
+    mat4 lightSpaceView[4];
 
 } lt;
 
 layout(push_constant) uniform PushConstant {
     mat4 model;
-    mat4 normal;
+    int cascadeIndex;
 } pc;
 
 void main() {
- gl_Position = lt.lightSpaceView * pc.model * vec4(aPos,1.0);   
+ gl_Position = lt.lightSpaceView[pc.cascadeIndex] * pc.model * vec4(aPos,1.0);   
 }
 

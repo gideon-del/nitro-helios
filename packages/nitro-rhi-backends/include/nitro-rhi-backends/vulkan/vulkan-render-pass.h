@@ -20,7 +20,8 @@ namespace nitro::rhi::vulkan
         VkRenderingInfo renderingInfo;
         VulkanTexture *depthTexture = nullptr;
         VulkanTexture *colorTexture = nullptr;
-
+        uint32_t width;
+        uint32_t height;
         void startTransition(VkCommandBuffer cmd);
         void endTransition(VkCommandBuffer cmd);
 

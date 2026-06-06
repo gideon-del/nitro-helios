@@ -30,7 +30,7 @@ namespace nitro::rhi
         virtual void bindVertexBuffer(RHIBuffer *buffer) = 0;
         virtual void bindIndexBuffer(RHIBuffer *buffer) = 0;
         virtual void bindUniformBuffer(RHIBuffer *buffer, uint32_t binding) = 0;
-        virtual void bindDescriptorSet(RHIDescriptorSet *descriptorSet) = 0;
+        virtual void bindDescriptorSet(RHIDescriptorSet *descriptorSet, uint32_t binding) = 0;
         virtual void setPushConstant(void *data, size_t size, uint32_t binding) = 0;
         virtual void draw(uint32_t vertexCount) = 0;
         virtual void drawIndexed(uint32_t indexCount) = 0;

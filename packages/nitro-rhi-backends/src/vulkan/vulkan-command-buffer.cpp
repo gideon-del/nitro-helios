@@ -115,6 +115,7 @@ namespace nitro::rhi::vulkan
     void VulkanCommandBuffer::beginRenderPass(RHIRenderPass *renderPass)
     {
         VulkanRenderPass *vulkanRenderPass = reinterpret_cast<VulkanRenderPass *>(renderPass);
+
         vulkanRenderPass->startTransition(cmd);
         vulkanRenderPass->renderingInfo.renderArea.extent = swapchain->extent;
         if (vulkanRenderPass->depthTexture)
@@ -137,6 +138,7 @@ namespace nitro::rhi::vulkan
         }
 
         m_activeRenderPass->endTransition(cmd);
+
         m_activeRenderPass = nullptr;
     }
     void VulkanCommandBuffer::bindPipeline(RHIPipeline *pipeline)
@@ -148,8 +150,17 @@ namespace nitro::rhi::vulkan
         VkViewport viewport{};
         viewport.x = 0;
         viewport.y = 0;
-        viewport.width = (float)swapchain->extent.width;
-        viewport.height = (float)swapchain->extent.height;
+        if (m_activeRenderPass != nullptr)
+        {
+            viewport.width = (float)m_activeRenderPass->width;
+            viewport.height = (float)m_activeRenderPass->height;
+        }
+        else
+        {
+            viewport.width = (float)swapchain->extent.width;
+            viewport.height = (float)swapchain->extent.height;
+        }
+
         viewport.maxDepth = 1.0f;
         viewport.minDepth = 0.0f;
         m_pipeline = vulkanPipeline;
@@ -161,7 +172,17 @@ namespace nitro::rhi::vulkan
 
         VkRect2D scissors{};
 
-        scissors.extent = swapchain->extent;
+        if (m_activeRenderPass != nullptr)
+        {
+            scissors.extent = {
+                m_activeRenderPass->width,
+                m_activeRenderPass->height};
+        }
+        else
+        {
+            scissors.extent = swapchain->extent;
+        }
+
         scissors.offset = {0, 0};
 
         vkCmdSetScissor(
@@ -186,7 +207,7 @@ namespace nitro::rhi::vulkan
         vkCmdBindIndexBuffer(cmd, indexBuffer->buffer, 0, VK_INDEX_TYPE_UINT32);
     }
 
-    void VulkanCommandBuffer::bindDescriptorSet(RHIDescriptorSet *set)
+    void VulkanCommandBuffer::bindDescriptorSet(RHIDescriptorSet *set, uint32_t binding)
     {
 
         if (!m_pipeline)
@@ -198,7 +219,7 @@ namespace nitro::rhi::vulkan
             cmd,
             VK_PIPELINE_BIND_POINT_GRAPHICS,
             m_pipeline->layout,
-            0,
+            binding,
             1,
             &vkSet->descriptorSet,
             0,
