@@ -28,6 +28,7 @@ namespace nitro::renderer
 
         cmd->beginRenderPass(m_renderPass);
         cmd->bindPipeline(pipeline);
+
         cmd->bindDescriptorSet(descriptorSet, 0);
         RHIViewport viewport;
         viewport.width = ShadowPass::c_ShadowResolution;
@@ -97,10 +98,11 @@ namespace nitro::renderer
         float aspect,
         glm::mat4 cameraView,
         glm::vec3 cameraPos,
-        glm::mat4 lightView)
+        glm::mat4 lightView,
+        float lambda)
     {
-        float currentNear = cascadeIndex == 0 ? nearPlane : ShadowPass::s_getPracticalSplit(nearPlane, farPlane, cascadeCount, cascadeIndex);
-        float currentFar = cascadeIndex == cascadeCount - 1 ? farPlane : ShadowPass::s_getPracticalSplit(nearPlane, farPlane, cascadeCount, cascadeIndex + 1);
+        float currentNear = cascadeIndex == 0 ? nearPlane : ShadowPass::s_getPracticalSplit(nearPlane, farPlane, cascadeCount, cascadeIndex, lambda);
+        float currentFar = cascadeIndex == cascadeCount - 1 ? farPlane : ShadowPass::s_getPracticalSplit(nearPlane, farPlane, cascadeCount, cascadeIndex + 1, lambda);
 
         glm::mat4 invView = glm::inverse(cameraView);
         glm::vec3 right = glm::normalize(glm::vec3(invView[0]));

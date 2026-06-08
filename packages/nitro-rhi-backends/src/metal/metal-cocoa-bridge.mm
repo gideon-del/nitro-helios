@@ -13,6 +13,16 @@ extern "C" void* createMetalLayer(void* glfwWindow, void* mtlDevice) {
     layer.device = (__bridge id<MTLDevice>)mtlDevice;
     layer.pixelFormat = MTLPixelFormatBGRA8Unorm_sRGB;
     layer.framebufferOnly = YES;
+    CGFloat scale = nsWindow.backingScaleFactor;
+
+layer.contentsScale = scale;
+
+CGSize size = view.bounds.size;
+
+layer.drawableSize = CGSizeMake(
+    size.width * scale,
+    size.height * scale
+);
     view.layer = layer;
 
     return (__bridge void*)layer;

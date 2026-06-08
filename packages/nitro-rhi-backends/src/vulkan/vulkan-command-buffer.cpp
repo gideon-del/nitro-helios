@@ -147,49 +147,7 @@ namespace nitro::rhi::vulkan
 
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, vulkanPipeline->pipeline);
 
-        // VkViewport viewport{};
-        // viewport.x = 0;
-        // viewport.y = 0;
-        // if (m_activeRenderPass != nullptr)
-        // {
-        //     viewport.width = (float)m_activeRenderPass->width;
-        //     viewport.height = (float)m_activeRenderPass->height;
-        // }
-        // else
-        // {
-        //     viewport.width = (float)swapchain->extent.width;
-        //     viewport.height = (float)swapchain->extent.height;
-        // }
-
-        // viewport.maxDepth = 1.0f;
-        // viewport.minDepth = 0.0f;
-        // m_pipeline = vulkanPipeline;
-        // vkCmdSetViewport(
-        //     cmd,
-        //     0,
-        //     1,
-        //     &viewport);
-
-        // VkRect2D scissors{};
-
-        // if (m_activeRenderPass != nullptr)
-        // {
-        //     scissors.extent = {
-        //         m_activeRenderPass->width,
-        //         m_activeRenderPass->height};
-        // }
-        // else
-        // {
-        //     scissors.extent = swapchain->extent;
-        // }
-
-        // scissors.offset = {0, 0};
-
-        // vkCmdSetScissor(
-        //     cmd,
-        //     0,
-        //     1,
-        //     &scissors);
+        m_pipeline = vulkanPipeline;
     }
 
     void VulkanCommandBuffer::setViewPort(const RHIViewport &viewport)

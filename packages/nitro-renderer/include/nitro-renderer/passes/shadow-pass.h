@@ -49,7 +49,7 @@ namespace nitro::renderer
             float aspect,
             glm::mat4 cameraView,
             glm::vec3 cameraPos,
-            glm::mat4 lightView);
+            glm::mat4 lightView, float lambda = 0.75f);
         static constexpr uint32_t c_ShadowResolution = 2048;
 
     private:

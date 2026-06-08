@@ -38,5 +38,8 @@ namespace nitro::rhi
         virtual uint32_t getCurrentFrameIndex() const = 0;
         virtual RHICommandBuffer *beginFrame() = 0;
         virtual void endFrame(RHICommandBuffer *cmd) = 0;
+        virtual void beginImGuiFrame() = 0;
+        virtual void endImGuiFrame() = 0;
+        virtual void drawImGui(RHICommandBuffer *cmd) = 0;
     };
 }

@@ -46,6 +46,10 @@ namespace nitro::rhi::vulkan
         void destroyPipeline(RHIPipeline *pipeline) override;
 
         uint32_t getCurrentFrameIndex() const override;
+
+        void beginImGuiFrame() override;
+        void endImGuiFrame() override;
+        void drawImGui(RHICommandBuffer *cmd) override;
         void copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
         void copyBufferToImage(VkBuffer &src, VkImage &image, VkDeviceSize size, VkExtent3D imageExtent);
 

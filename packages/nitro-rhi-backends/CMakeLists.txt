@@ -20,12 +20,20 @@ src/vulkan/vulkan-descriptor-layout.cpp
 src/vulkan/vulkan-descriptor-set.cpp
 src/vulkan/vulkan-render-pass.cpp
 src/vulkan/vulkan-timer.cpp
+imgui/imgui_demo.cpp
+imgui/imgui_draw.cpp
+imgui/imgui_tables.cpp
+imgui/imgui_widgets.cpp
+imgui/imgui.cpp
+imgui/imgui_impl_glfw.cpp
+imgui/imgui_impl_vulkan.cpp
 )
 
 
 
 target_include_directories(nitro-rhi-backends
 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/imgui
 SYSTEM PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/vendor
 )
 
@@ -43,11 +51,14 @@ if(APPLE)
         src/metal/metal-render-pass.cpp
         src/metal/metal-cocoa-bridge.mm
         src/metal/metal-timer.cpp
+        imgui/imgui_impl_metal.mm
+
     )
 
     target_include_directories(nitro-rhi-metal
         PUBLIC  ${CMAKE_CURRENT_SOURCE_DIR}/include
         PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/vendor/metal-cpp
+        PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/imgui
     )
 
     target_link_libraries(nitro-rhi-metal
@@ -57,6 +68,10 @@ if(APPLE)
         "-framework Foundation"
         "-framework QuartzCore"
     )
+    target_compile_definitions(
+    nitro-rhi-metal
+    PRIVATE IMGUI_IMPL_METAL_CPP
+)
 endif()
 
 target_link_libraries(nitro-rhi-backends

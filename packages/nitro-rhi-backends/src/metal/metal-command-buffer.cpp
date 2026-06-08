@@ -16,7 +16,7 @@ namespace nitro::rhi::metal
     }
     void MetalCommandBuffer::beginRenderPass(const RHIRenderPassDesc &desc)
     {
-        MTL::RenderPassDescriptor *rpd = MTL::RenderPassDescriptor::alloc()->init();
+        rpd = MTL::RenderPassDescriptor::alloc()->init();
 
         rpd->colorAttachments()->object(0)->setTexture(
             swapchain->currentDrawable->texture());
@@ -51,7 +51,7 @@ namespace nitro::rhi::metal
         // scissors.width = swapchain->currentDrawable->texture()->width();
         // scissors.height = swapchain->currentDrawable->texture()->height();
         // encoder->setScissorRect(scissors);
-        rpd->release();
+        // rpd->release();
     }
     void MetalCommandBuffer::beginRenderPass(RHIRenderPass *renderPass)
     {

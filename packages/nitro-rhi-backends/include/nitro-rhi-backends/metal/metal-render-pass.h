@@ -1,6 +1,6 @@
 #pragma once
 #include <nitro-rhi/rhi-render-pass.h>
-#include <SingleHeader/MetalCpp.h>
+#include <Metal/Metal.hpp>
 
 namespace nitro::rhi::metal
 {

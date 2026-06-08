@@ -29,12 +29,15 @@ struct FrameUniformBuffer {
     float4 lightColor;
 
     float4x4 lightViewProj[4];
-    float cascadeSplit[4];
+    float4 cascadeSplit;
     float ambient;
     float Ka;
     float Kd;
     float Ks;
     float shininess;
+        float shadowBias;
+    float shadowNormalBias;
+    float showCascadeColors;
 };
 vertex VertexOut vs(VertexIn in [[stage_in]],
                     constant PushConstant& p [[buffer(1)]],
@@ -157,9 +160,12 @@ fragment float4 fs(VertexOut in [[stage_in]],
 
 
 float bias = max(
-    0.005 * (1.0 - dot(N, L)),
+   fub.shadowBias * (1.0 - dot(N, L)),
     0.0005
 );
+float normalBias = (1.0 - dot(N,L)) * fub.shadowNormalBias;
+float3 shadowPos = in.fragPos + N * normalBias;
+
 float4 viewPos = fub.view * float4(in.fragPos,1.0);
 float viewDepth = -viewPos.z;
 
@@ -169,25 +175,29 @@ float blendWidth2 = (fub.cascadeSplit[3] - fub.cascadeSplit[2] ) * 0.15;
   float shadow = 0.0;
   float3 cascadeColor;
   if(viewDepth <= fub.cascadeSplit[0]+blendWidth0) {
-  float  shadow0 = shadowPoisson(depthTex0,samp0,fub.lightViewProj[0] * float4(in.fragPos, 1.0),bias);
-float   shadow1 = shadowPoisson(depthTex1,samp1,fub.lightViewProj[1] * float4(in.fragPos, 1.0),bias);
+  float  shadow0 = shadowPoisson(depthTex0,samp0,fub.lightViewProj[0] * float4(shadowPos, 1.0),bias);
+float   shadow1 = shadowPoisson(depthTex1,samp1,fub.lightViewProj[1] * float4(shadowPos, 1.0),bias);
     shadow = blendCascade(shadow0, shadow1, fub.cascadeSplit[0],blendWidth0,viewDepth);
     cascadeColor = float3(1,0,0);
   }else if (viewDepth <= fub.cascadeSplit[1]+blendWidth1) {
-float    shadow1 = shadowPoisson(depthTex1,samp1,fub.lightViewProj[1] * float4(in.fragPos, 1.0),bias);
-float   shadow2 = shadowPoisson(depthTex2,samp2,fub.lightViewProj[2] * float4(in.fragPos, 1.0),bias);
+float    shadow1 = shadowPoisson(depthTex1,samp1,fub.lightViewProj[1] * float4(shadowPos, 1.0),bias);
+float   shadow2 = shadowPoisson(depthTex2,samp2,fub.lightViewProj[2] * float4(shadowPos, 1.0),bias);
     shadow = blendCascade(shadow1, shadow2, fub.cascadeSplit[1],blendWidth1,viewDepth);
       cascadeColor = float3(0,1,0);
   } else if (viewDepth < fub.cascadeSplit[2]+blendWidth2) {
-   float shadow2 = shadowPoisson(depthTex2,samp2,fub.lightViewProj[2] * float4(in.fragPos, 1.0),bias);
-    float shadow3 = shadowPoisson(depthTex3,samp3,fub.lightViewProj[3] * float4(in.fragPos, 1.0),bias);
+   float shadow2 = shadowPoisson(depthTex2,samp2,fub.lightViewProj[2] * float4(shadowPos, 1.0),bias);
+    float shadow3 = shadowPoisson(depthTex3,samp3,fub.lightViewProj[3] * float4(shadowPos, 1.0),bias);
     shadow = blendCascade(shadow2, shadow3, fub.cascadeSplit[2],blendWidth2,viewDepth);
-      cascadeColor = float3(0,1,0);
+      cascadeColor = float3(0,0,1);
   }else {
-     shadow = shadowPoisson(depthTex3,samp3,fub.lightViewProj[3] * float4(in.fragPos, 1.0),bias);
+     shadow = shadowPoisson(depthTex3,samp3,fub.lightViewProj[3] * float4(shadowPos, 1.0),bias);
        cascadeColor = float3(1,1,0);
   }
   float3 color = float3(0.4,0.5,0.9);
  float3 finalColor = (ambientColor + shadow * (diffuseColor + specularColor)) * color; 
+
+ if(fub.showCascadeColors > 0.5) {
+  finalColor = cascadeColor;
+ }
 return float4(finalColor, 1.0);
 }

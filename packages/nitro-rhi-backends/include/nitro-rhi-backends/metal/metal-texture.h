@@ -1,6 +1,6 @@
 #pragma once
 #include <nitro-rhi/rhi-texture.h>
-#include <SingleHeader/MetalCpp.h>
+#include <Metal/Metal.hpp>
 
 namespace nitro::rhi::metal
 {

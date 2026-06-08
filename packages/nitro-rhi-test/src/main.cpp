@@ -13,7 +13,7 @@ using DeviceType = nitro::rhi::vulkan::VulkanDevice;
 #endif
 #include <iostream>
 #include <string>
-
+#include <imgui.h>
 using namespace nitro::rhi;
 using namespace nitro::geometry;
 using namespace nitro::renderer;
@@ -43,15 +43,205 @@ struct FrameData
     glm::vec4 lightColor = glm::vec4(1.0f);
 
     glm::mat4 lightViewProj[4];
-    float cascadeSplit[4];
+    glm::vec4 cascadeSplit;
 
     float ambient = 0.3f;
     float Ka = 1.0f;
     float Kd = 0.8f;
     float Ks = 0.9f;
     float shininess = 32.0f;
-    float padding[3];
+
+    float shadowBias;
+    float shadowNormalBias;
+    float showCascadeColors;
+    float padding;
 };
+
+struct RendererSettings
+{
+    float ambient = 0.3f;
+    float Ka = 1.0f;
+    float Kd = 0.8f;
+    float Ks = 0.9f;
+    float shininess = 32.0f;
+
+    glm::vec3 lightColor = glm::vec3(1.0f);
+};
+
+struct RendererPanel
+{
+    void draw(
+        RendererSettings &settings,
+        OrbitalCamera &light)
+    {
+        ImGui::Begin("Renderer");
+
+        if (ImGui::CollapsingHeader("Light Camera"))
+        {
+            ImGui::SliderFloat(
+                "Phi",
+                &light.phi,
+                0.0f,
+                2 * M_PI);
+
+            ImGui::SliderFloat(
+                "Theta",
+                &light.theta,
+                0.0f,
+                M_PI);
+
+            ImGui::SliderFloat(
+                "Radius",
+                &light.radius,
+                0.0f,
+                100.0f);
+        }
+
+        if (ImGui::CollapsingHeader("Lighting"))
+        {
+            ImGui::SliderFloat(
+                "Ambient",
+                &settings.ambient,
+                0,
+                1);
+
+            ImGui::SliderFloat(
+                "Ka",
+                &settings.Ka,
+                0,
+                1);
+
+            ImGui::SliderFloat(
+                "Kd",
+                &settings.Kd,
+                0,
+                1);
+
+            ImGui::SliderFloat(
+                "Ks",
+                &settings.Ks,
+                0,
+                1);
+
+            ImGui::ColorEdit3(
+                "Light Color",
+                &settings.lightColor.x);
+        }
+
+        ImGui::End();
+    }
+};
+
+struct ShadowSettings
+{
+    float bias = 0.005f;
+    float normalBias = 0.05f;
+
+    float lambda = 0.5f;
+
+    bool showCascadeColors = false;
+};
+
+struct ShadowPanel
+{
+    void draw(ShadowSettings &settings)
+    {
+        ImGui::Begin("Shadows");
+
+        ImGui::SliderFloat(
+            "Bias",
+            &settings.bias,
+            0.0f,
+            0.02f);
+
+        ImGui::SliderFloat(
+            "Normal Bias",
+            &settings.normalBias,
+            0.0f,
+            0.2f);
+
+        ImGui::SliderFloat(
+            "Lambda",
+            &settings.lambda,
+            0.0f,
+            1.0f);
+
+        ImGui::Checkbox(
+            "Show Cascade Colors",
+            &settings.showCascadeColors);
+
+        ImGui::End();
+    }
+};
+void handleKeyboard(GLFWwindow *window, OrbitalCamera &camera)
+{
+    const float speed = 0.4f;
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS ||
+        glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+    {
+        camera.moveForward(speed);
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS ||
+        glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+    {
+        camera.moveForward(-speed);
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS ||
+        glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+    {
+        camera.moveRight(-speed);
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS ||
+        glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+    {
+        camera.moveRight(speed);
+    }
+}
+
+void handleMouse(
+    GLFWwindow *window,
+    AppState &state,
+    const ImGuiIO &io)
+{
+    if (io.WantCaptureMouse)
+    {
+        state.mousePressed = false;
+        return;
+    }
+
+    bool pressed =
+        glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
+
+    double x, y;
+    glfwGetCursorPos(window, &x, &y);
+
+    if (pressed)
+    {
+        if (!state.mousePressed)
+        {
+            state.mousePressed = true;
+            state.lastX = x;
+            state.lastY = y;
+        }
+        else
+        {
+            state.camera->onMouseMove(
+                x - state.lastX,
+                y - state.lastY);
+
+            state.lastX = x;
+            state.lastY = y;
+        }
+    }
+    else
+    {
+        state.mousePressed = false;
+    }
+}
 int main()
 {
     glfwInit();
@@ -143,37 +333,37 @@ int main()
 
     glfwSetWindowUserPointer(window, &appState);
 
-    glfwSetKeyCallback(window, [](GLFWwindow *window, int key, int scancode, int action, int mods)
-                       {
-                           auto state = reinterpret_cast<AppState *>(glfwGetWindowUserPointer(window));
+    // glfwSetKeyCallback(window, [](GLFWwindow *window, int key, int scancode, int action, int mods)
+    //                    {
+    //                        auto state = reinterpret_cast<AppState *>(glfwGetWindowUserPointer(window));
 
-                           if (key == GLFW_KEY_W || key == GLFW_KEY_UP)
-                           {
-                               state->camera->moveForward(0.4f);
-                           }
+    //                        if (key == GLFW_KEY_W || key == GLFW_KEY_UP)
+    //                        {
+    //                            state->camera->moveForward(0.4f);
+    //                        }
 
-                           if (key == GLFW_KEY_S || key == GLFW_KEY_DOWN)
-                           {
-                               state->camera->moveForward(-0.4f);
-                           }
-                           if (key == GLFW_KEY_A || key == GLFW_KEY_RIGHT)
-                           {
-                               state->camera->moveRight(0.4f);
-                           }
+    //                        if (key == GLFW_KEY_S || key == GLFW_KEY_DOWN)
+    //                        {
+    //                            state->camera->moveForward(-0.4f);
+    //                        }
+    //                        if (key == GLFW_KEY_A || key == GLFW_KEY_RIGHT)
+    //                        {
+    //                            state->camera->moveRight(0.4f);
+    //                        }
 
-                           if (key == GLFW_KEY_D || key == GLFW_KEY_LEFT)
-                           {
-                               state->camera->moveRight(-0.4f);
-                           } });
-    glfwSetMouseButtonCallback(window, [](GLFWwindow *w, int button, int action, int mods)
-                               {
-                                   auto state = reinterpret_cast<AppState *>(glfwGetWindowUserPointer(w));
+    //                        if (key == GLFW_KEY_D || key == GLFW_KEY_LEFT)
+    //                        {
+    //                            state->camera->moveRight(-0.4f);
+    //                        } });
+    // glfwSetMouseButtonCallback(window, [](GLFWwindow *w, int button, int action, int mods)
+    //                            {
+    //                                auto state = reinterpret_cast<AppState *>(glfwGetWindowUserPointer(w));
 
-                                   if (button == GLFW_MOUSE_BUTTON_LEFT)
-                                   {
-                                       state->mousePressed = (action == GLFW_PRESS);
-                                       glfwGetCursorPos(w, &state->lastX, &state->lastY);
-                                   } });
+    //                                if (button == GLFW_MOUSE_BUTTON_LEFT)
+    //                                {
+    //                                    state->mousePressed = (action == GLFW_PRESS);
+    //                                    glfwGetCursorPos(w, &state->lastX, &state->lastY);
+    //                                } });
     glfwSetCursorPosCallback(window, [](GLFWwindow *w, double x, double y)
                              {
      auto state = reinterpret_cast<AppState *>(glfwGetWindowUserPointer(w));
@@ -185,7 +375,7 @@ int main()
 
     glfwSetScrollCallback(window, [](GLFWwindow *w, double xoffset, double yoffset)
                           {
-        
+
                               auto state = reinterpret_cast<AppState *>(glfwGetWindowUserPointer(w));
 
                               state->camera->onScroll(yoffset); });
@@ -253,11 +443,26 @@ int main()
     glm::vec4 sphereLS =
         light.getView() * glm::vec4(sphereCenter, 1.0f);
     RHITimer *timer = device.createTimer();
-
+    FrameData frameData;
+    RendererSettings rendererSettings;
+    RendererPanel rendererPanel;
+    ShadowSettings shadowSettings;
+    ShadowPanel shadowPanel;
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
 
+        ImGuiIO &io = ImGui::GetIO();
+
+        if (!io.WantCaptureKeyboard)
+        {
+            handleKeyboard(window, camera);
+        }
+
+        if (!io.WantCaptureMouse)
+        {
+            handleMouse(window, appState, io);
+        }
         GlobalTransformation globalUbo{};
         int width, height;
         currentTime = glfwGetTime();
@@ -271,7 +476,7 @@ int main()
 
         uint32_t frameIdx = device.getCurrentFrameIndex();
         FrameResource &frameResource = frameResources[frameIdx];
-        FrameData frameData;
+
         LightView lightView;
         for (int i = 0; i < cascades.size(); i++)
         {
@@ -284,8 +489,8 @@ int main()
                 aspect,
                 camera.getView(),
                 camera.getEye(),
-                light.getView());
-            frameData.cascadeSplit[i] = ShadowPass::s_getPracticalSplit(CAMERA_NEAR, CAMERA_FAR, 4, i + 1);
+                light.getView(), shadowSettings.lambda);
+            frameData.cascadeSplit[i] = ShadowPass::s_getPracticalSplit(CAMERA_NEAR, CAMERA_FAR, 4, i + 1, shadowSettings.lambda);
         }
 
         frameResource.getBuffer(FrameResourceId::LightUniformBuffer)->upload(&lightView, sizeof(LightView));
@@ -319,6 +524,16 @@ int main()
         cmd->beginRenderPass(rpDesc);
         cmd->bindPipeline(pipeline);
 
+        frameData.ambient = rendererSettings.ambient;
+        frameData.Ka = rendererSettings.Ka;
+        frameData.Kd = rendererSettings.Kd;
+        frameData.Ks = rendererSettings.Ks;
+        frameData.lightColor =
+            glm::vec4(rendererSettings.lightColor, 1.0f);
+
+        frameData.shadowBias = shadowSettings.bias;
+        frameData.shadowNormalBias = shadowSettings.normalBias;
+        frameData.showCascadeColors = shadowSettings.showCascadeColors ? 1.0f : 0.0f;
         frameResource.getBuffer(FrameResourceId::FrameDataUniformBuffer)->upload(&frameData, sizeof(FrameData));
 
         cmd->bindDescriptorSet(frameResource.getDescriptorSet(FrameResourceId::MainDescriptorSet), 0);
@@ -332,6 +547,13 @@ int main()
         mainScissor.height = swapchain->getHeight();
         cmd->setScissor(mainScissor);
         mainScene.draw(cmd);
+
+        device.beginImGuiFrame();
+
+        rendererPanel.draw(rendererSettings, light);
+        shadowPanel.draw(shadowSettings);
+        device.endImGuiFrame();
+        device.drawImGui(cmd);
         cmd->endRenderPass();
 
         cmd->present();

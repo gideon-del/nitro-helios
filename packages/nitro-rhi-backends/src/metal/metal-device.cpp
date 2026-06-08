@@ -9,13 +9,34 @@
 #include <nitro-rhi-backends/metal/metal-render-pass.h>
 #include <nitro-rhi-backends/metal/metal-descriptor-layout.h>
 #include <nitro-rhi-backends/metal/metal-timer.h>
-
+#include <imgui_impl_glfw.h>
+#define IMGUI_IMPL_METAL_CPP
+#include <imgui_impl_metal.h>
+#include <GLFW/glfw3.h>
 namespace nitro::rhi::metal
 {
     MetalDevice::MetalDevice(void *window) : m_window(window)
     {
         device = MTL::CreateSystemDefaultDevice();
         commandQueue = device->newCommandQueue();
+
+        float main_scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor());
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImGuiIO &io = ImGui::GetIO();
+        (void)io;
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+
+        ImGui::StyleColorsDark();
+
+        ImGuiStyle &style = ImGui::GetStyle();
+        style.ScaleAllSizes(main_scale);
+        style.FontScaleDpi = main_scale;
+
+        GLFWwindow *glfwWindow = reinterpret_cast<GLFWwindow *>(window);
+        ImGui_ImplGlfw_InitForOther(glfwWindow, true);
+        ImGui_ImplMetal_Init(device);
     }
     MetalDevice::~MetalDevice()
     {
@@ -82,7 +103,8 @@ namespace nitro::rhi::metal
             throw std::runtime_error("Metal Swapchain not found");
         }
         m_swapchain->currentDrawable = m_swapchain->layer->nextDrawable();
-        return new MetalCommandBuffer(this, m_swapchain);
+        m_currentCommandBuffer = new MetalCommandBuffer(this, m_swapchain);
+        return m_currentCommandBuffer;
     }
     void MetalDevice::endFrame(RHICommandBuffer *cmd)
     {
@@ -96,5 +118,29 @@ namespace nitro::rhi::metal
     uint32_t MetalDevice::getCurrentFrameIndex() const
     {
         return 0;
+    }
+    void MetalDevice::beginImGuiFrame()
+    {
+        if (!m_currentCommandBuffer)
+        {
+            throw std::runtime_error("Must begin frame first befor imgui frame");
+        }
+        if (!m_currentCommandBuffer->rpd)
+        {
+            throw std::runtime_error("Must call in main render pass");
+        }
+        ImGui_ImplMetal_NewFrame(m_currentCommandBuffer->rpd);
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+    }
+    void MetalDevice::endImGuiFrame()
+    {
+        ImGui::Render();
+    }
+    void MetalDevice::drawImGui(RHICommandBuffer *cmd)
+    {
+        MetalCommandBuffer *metalCmd = reinterpret_cast<MetalCommandBuffer *>(cmd);
+
+        ImGui_ImplMetal_RenderDrawData(ImGui::GetDrawData(), metalCmd->commandBuffer, metalCmd->encoder);
     }
 } // namespace nitro::rhi::metal

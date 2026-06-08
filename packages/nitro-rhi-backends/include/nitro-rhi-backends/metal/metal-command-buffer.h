@@ -1,6 +1,6 @@
 #pragma once
 #include <nitro-rhi/rhi-command-buffer.h>
-#include <SingleHeader/MetalCpp.h>
+#include <Metal/Metal.hpp>
 
 namespace nitro::rhi::metal
 {
@@ -32,6 +32,7 @@ namespace nitro::rhi::metal
         MTL::CommandBuffer *commandBuffer = nullptr;
         MTL::RenderCommandEncoder *encoder = nullptr;
         MetalSwapchain *swapchain;
+        MTL::RenderPassDescriptor *rpd = nullptr;
 
     private:
         MetalDevice *m_device;

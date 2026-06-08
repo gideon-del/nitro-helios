@@ -1,6 +1,7 @@
 #pragma once
 #include <nitro-rhi/rhi-swapchain.h>
-#include <SingleHeader/MetalCpp.h>
+#include <Metal/Metal.hpp>
+#include <QuartzCore/QuartzCore.hpp>
 extern "C" void *createMetalLayer(void *glfwWindow, void *mtlDevice);
 namespace nitro::rhi::metal
 {
@@ -23,6 +24,8 @@ namespace nitro::rhi::metal
         MetalTexture *depthTexture;
         uint32_t width;
         uint32_t height;
+        float xScale;
+        float yScale;
 
     private:
         MetalDevice *m_device;

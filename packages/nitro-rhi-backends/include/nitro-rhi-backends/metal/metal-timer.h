@@ -1,7 +1,7 @@
 #pragma once
 #include <nitro-rhi/rhi-timer.h>
 #include <nitro-rhi/rhi-command-buffer.h>
-#include <SingleHeader/MetalCpp.h>
+#include <Metal/Metal.hpp>
 #include <unordered_map>
 #include <string>
 namespace nitro::rhi::metal

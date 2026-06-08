@@ -1,5 +1,5 @@
 #pragma once
-#include <SingleHeader/MetalCpp.h>
+#include <Metal/Metal.hpp>
 #include <iostream>
 namespace nitro::rhi::metal
 {

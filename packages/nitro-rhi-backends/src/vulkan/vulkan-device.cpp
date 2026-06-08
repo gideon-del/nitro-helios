@@ -10,6 +10,9 @@
 #include <nitro-rhi-backends/vulkan/vulkan-render-pass.h>
 #include <nitro-rhi-backends/vulkan/vulkan-timer.h>
 #include <vk_mem_alloc.h>
+#include <imgui.h>
+#include <imgui_impl_vulkan.h>
+#include <imgui_impl_glfw.h>
 #include <vector>
 #include <set>
 namespace nitro::rhi::vulkan
@@ -392,6 +395,48 @@ namespace nitro::rhi::vulkan
         defaultRenderPass = create_render_pass(device, m_surfaceFormat);
         queryPool = create_query_pool(device);
         timestampPeriod = get_gpu_timestamp(physicalDevice);
+
+        // ImGUI
+        float main_scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor());
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImGuiIO &io = ImGui::GetIO();
+        (void)io;
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+
+        ImGui::StyleColorsDark();
+
+        ImGuiStyle &style = ImGui::GetStyle();
+        style.ScaleAllSizes(main_scale);
+        style.FontScaleDpi = main_scale;
+
+        GLFWwindow *glfwWindow = reinterpret_cast<GLFWwindow *>(window);
+        ImGui_ImplGlfw_InitForVulkan(glfwWindow, true);
+        ImGui_ImplVulkan_InitInfo init_info = {};
+        init_info.Instance = m_instance;
+        init_info.Device = device;
+        init_info.PhysicalDevice = physicalDevice;
+        init_info.QueueFamily = m_queueFamilyIndices.graphicsFamily.value();
+        init_info.Queue = graphicsQueue;
+        init_info.MinImageCount = VulkanDevice::MAX_FRAMES_IN_FLIGHT;
+        init_info.ImageCount = VulkanDevice::MAX_FRAMES_IN_FLIGHT;
+        init_info.DescriptorPoolSize = 8;
+
+        VkPipelineRenderingCreateInfo pipelineInfo{};
+        pipelineInfo.sType =
+            VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+
+        pipelineInfo.colorAttachmentCount = 1;
+
+        VkFormat colorFormat = m_surfaceFormat;
+
+        pipelineInfo.pColorAttachmentFormats =
+            &colorFormat;
+        init_info.UseDynamicRendering = true;
+        init_info.PipelineInfoMain.PipelineRenderingCreateInfo = pipelineInfo;
+
+        ImGui_ImplVulkan_Init(&init_info);
     }
 
     VulkanDevice::~VulkanDevice()
@@ -675,5 +720,27 @@ namespace nitro::rhi::vulkan
     uint32_t VulkanDevice::getCurrentFrameIndex() const
     {
         return m_currentFrame;
+    }
+
+    void VulkanDevice::beginImGuiFrame()
+    {
+        ImGui_ImplVulkan_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+    }
+
+    void VulkanDevice::endImGuiFrame()
+    {
+        ImGui::Render();
+    }
+
+    void VulkanDevice::drawImGui(RHICommandBuffer *cmd)
+    {
+        VulkanCommandBuffer *vulkanCmd = reinterpret_cast<VulkanCommandBuffer *>(cmd);
+        ImDrawData *draw_data = ImGui::GetDrawData();
+        const bool is_minimized = (draw_data->DisplaySize.x <= 0.0f || draw_data->DisplaySize.y <= 0.0f);
+        if (is_minimized)
+            return;
+        ImGui_ImplVulkan_RenderDrawData(draw_data, vulkanCmd->cmd);
     }
 }

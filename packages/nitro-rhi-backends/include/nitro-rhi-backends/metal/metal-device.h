@@ -1,10 +1,11 @@
 #pragma once
 #include <nitro-rhi/rhi-device.h>
-#include <SingleHeader/MetalCpp.h>
+#include <Metal/Metal.hpp>
 namespace nitro::rhi::metal
 {
 
     class MetalSwapchain;
+    class MetalCommandBuffer;
     class MetalDevice : public RHIDevice
     {
     public:
@@ -29,6 +30,10 @@ namespace nitro::rhi::metal
         RHICommandBuffer *beginFrame() override;
         void endFrame(RHICommandBuffer *cmd) override;
         uint32_t getCurrentFrameIndex() const override;
+        void beginImGuiFrame() override;
+        void endImGuiFrame() override;
+        void drawImGui(RHICommandBuffer *cmd) override;
+
         void waitIdle();
         MTL::Device *device;
         MTL::CommandQueue *commandQueue;
@@ -36,5 +41,6 @@ namespace nitro::rhi::metal
     private:
         MetalSwapchain *m_swapchain = nullptr;
         void *m_window = nullptr;
+        MetalCommandBuffer *m_currentCommandBuffer = nullptr;
     };
 } // namespace nitro::rhi::metal

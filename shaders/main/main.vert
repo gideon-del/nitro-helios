@@ -21,12 +21,15 @@ layout(set=0, binding=2) uniform FrameUniformBuffer {
     vec4 lightColor;
 
     mat4 lightViewProj[4];
-    float cascadeSplit[4];
+    vec4 cascadeSplit;
     float ambient;
     float Ka;
     float Kd;
     float Ks;
     float shininess;
+      float shadowBias;
+    float shadowNormalBias;
+    float showCascadeColors;
 } frameUbo;
 layout(push_constant)uniform PushConstant {
     mat4 model;

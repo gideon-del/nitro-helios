@@ -23,12 +23,15 @@ layout(set=0, binding=2) uniform FrameUniformBuffer {
     vec4 lightPos;
     vec4 lightColor;
     mat4 lightViewProj[4];
-    float cascadeSplit[4];
+    vec4 cascadeSplit;
      float ambient;
     float Ka;
     float Kd;
     float Ks;
     float shininess;
+      float shadowBias;
+    float shadowNormalBias;
+    float showCascadeColors;
 } frameUbo;
 
 layout(set=0, binding=5) uniform CameraView {
@@ -129,10 +132,15 @@ void main() {
    vec3 lightColor = frameUbo.lightColor.xyz;
 
   float bias = max(
-    0.005 * (1.0 - dot(N, L)),
+   frameUbo.shadowBias * (1.0 - dot(N, L)),
     0.0005
 );
 
+float normalBias =
+    (1.0 - dot(N, L)) * frameUbo.shadowNormalBias;
+
+vec3 shadowPos =
+    fragPos + N * normalBias;
 
 float shadow = 0.0;
 vec4 viewPos =
@@ -145,25 +153,25 @@ float blendWidth1 = (frameUbo.cascadeSplit[2] - frameUbo.cascadeSplit[1] ) * 0.1
 float blendWidth2 = (frameUbo.cascadeSplit[3] - frameUbo.cascadeSplit[2] ) * 0.15;
 float blend =0.0;
   if( viewDepth <= frameUbo.cascadeSplit[0]+blendWidth0) {
-   float shadow0 =shadowPoisson(frameUbo.lightViewProj[0] * vec4(fragPos,1.0),bias,shadowMap0);
-   float  shadow1 =shadowPoisson(frameUbo.lightViewProj[1] * vec4(fragPos,1.0),bias,shadowMap1);
+   float shadow0 =shadowPoisson(frameUbo.lightViewProj[0] * vec4(shadowPos,1.0),bias,shadowMap0);
+   float  shadow1 =shadowPoisson(frameUbo.lightViewProj[1] * vec4(shadowPos,1.0),bias,shadowMap1);
     shadow = blendCascade(shadow0, shadow1, frameUbo.cascadeSplit[0], blendWidth0, viewDepth);
  
     
     cascadeColor = vec3(1,0,0);
   } else if(viewDepth <= frameUbo.cascadeSplit[1]+blendWidth1 ) {
-   float  shadow1 =shadowPoisson(frameUbo.lightViewProj[1] * vec4(fragPos,1.0),bias,shadowMap1);
-   float shadow2 =shadowPoisson(frameUbo.lightViewProj[2] * vec4(fragPos,1.0),bias,shadowMap2);
+   float  shadow1 =shadowPoisson(frameUbo.lightViewProj[1] * vec4(shadowPos,1.0),bias,shadowMap1);
+   float shadow2 =shadowPoisson(frameUbo.lightViewProj[2] * vec4(shadowPos,1.0),bias,shadowMap2);
     shadow = blendCascade(shadow1, shadow2, frameUbo.cascadeSplit[1], blendWidth1, viewDepth);   
     cascadeColor = vec3(0,1,0);
   } else if(viewDepth <= frameUbo.cascadeSplit[2]+blendWidth2) {
-    float shadow2 =shadowPoisson(frameUbo.lightViewProj[2] * vec4(fragPos,1.0),bias,shadowMap2);
-    float  shadow3 =shadowPoisson(frameUbo.lightViewProj[3] * vec4(fragPos,1.0),bias,shadowMap3);
+    float shadow2 =shadowPoisson(frameUbo.lightViewProj[2] * vec4(shadowPos,1.0),bias,shadowMap2);
+    float  shadow3 =shadowPoisson(frameUbo.lightViewProj[3] * vec4(shadowPos,1.0),bias,shadowMap3);
     shadow = blendCascade(shadow2, shadow3, frameUbo.cascadeSplit[2], blendWidth2, viewDepth);
    
     cascadeColor = vec3(0,0,1);
   } else {
-    shadow = shadowPoisson(frameUbo.lightViewProj[3] * vec4(fragPos,1.0),bias,shadowMap3);
+    shadow = shadowPoisson(frameUbo.lightViewProj[3] * vec4(shadowPos,1.0),bias,shadowMap3);
     cascadeColor = vec3(1,1,0);
   }
 
@@ -171,13 +179,15 @@ float blend =0.0;
    vec3 diffuseColor = lightColor * diffuse ;
    vec3 specularColor = lightColor * specular * frameUbo.Ks;
    vec3 color = vec3(0.4,0.5,0.9);
-   vec3 finalColor = (ambientColor + shadow * (diffuseColor + specularColor)) * color; 
+   vec3 finalColor; 
 
+
+if(frameUbo.showCascadeColors > 0.5) {
+  finalColor = cascadeColor;
+}else {
+  finalColor = (ambientColor + shadow * (diffuseColor + specularColor)) * color;
+}
 
     outColor = vec4(finalColor,1.0);
-    // outColor =  vec4(
-    //     blend,
-    //     0,
-    //     1.0 - blend,
-    //     1);
+   
 }
