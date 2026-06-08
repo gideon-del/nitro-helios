@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <vector>
 #include "rhi-descriptor-layout.h"
+#include "rhi-texture.h"
 namespace nitro::rhi
 {
 
@@ -52,6 +53,7 @@ namespace nitro::rhi
         std::vector<ShaderDesc> shaders;
         bool depthTest = true;
         bool hasColorAttachment = true;
+        std::vector<TextureDesc::ImageFormat> colorAttachments;
         bool hasPushConstant = true;
         uint32_t pushConstantSize;
         std::vector<RHIDescriptorLayout *> layouts;

@@ -13,7 +13,7 @@ namespace nitro::rhi::metal
         ~MetalRenderPass() override;
         MTL::RenderPassDescriptor *renderPassDescriptor;
         MetalTexture *depthTexture = nullptr;
-        MetalTexture *colorTexture = nullptr;
+        std::vector<MetalTexture *> colorTextures;
 
         uint32_t width;
         uint32_t height;

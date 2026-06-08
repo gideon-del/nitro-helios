@@ -27,7 +27,7 @@ namespace nitro::rhi
             bool hasDepth = true;
         };
 
-        Attachment *colorAttachment = nullptr;
+        std::vector<Attachment> colorAttachments;
         Attachment *depthAttachment = nullptr;
 
         uint32_t width;

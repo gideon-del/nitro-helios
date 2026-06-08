@@ -2,10 +2,10 @@
 #include <nitro-rhi-backends/vulkan/vulkan-utils.h>
 #include <nitro-rhi-backends/vulkan/vulkan-device.h>
 #include <nitro-rhi-backends/vulkan/vulkan-descriptor-layout.h>
+#include <nitro-rhi-backends/vulkan/vulkan-texture.h>
 #include <fstream>
 #include <iostream>
 #include <vector>
-#include <nitro-rhi-backends/common/push-constant.h>
 namespace nitro::rhi::vulkan
 {
     std::vector<char> readFile(const std::string filePath)
@@ -264,14 +264,22 @@ namespace nitro::rhi::vulkan
         VkPipelineRenderingCreateInfo renderingInfo{};
         renderingInfo.sType =
             VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
-        VkFormat colorFormats[] = {
-            m_device->getSurfaceFormat()};
+        std::vector<VkFormat> colorFormats;
         renderingInfo.colorAttachmentCount = 0;
+        for (auto &colorFormat : desc.colorAttachments)
+        {
+            colorFormats.push_back(convertToFormat(colorFormat));
+        }
+
+        if (desc.colorAttachments.empty())
+        {
+            colorFormats.push_back(m_device->getSurfaceFormat());
+        }
         if (desc.hasColorAttachment)
         {
-            renderingInfo.colorAttachmentCount = 1;
+            renderingInfo.colorAttachmentCount = static_cast<uint32_t>(colorFormats.size());
             renderingInfo.pColorAttachmentFormats =
-                colorFormats;
+                colorFormats.data();
         }
 
         if (desc.depthTest)

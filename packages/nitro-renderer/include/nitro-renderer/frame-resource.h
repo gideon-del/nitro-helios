@@ -18,6 +18,8 @@ namespace nitro::renderer
         ShadowDescriptorSet,
         ShadowTexture,
         TextureDescriptor,
+        GeometryCameraBuffer,
+        GeometryDescriptorSet,
     };
 
     class FrameResource
@@ -34,6 +36,7 @@ namespace nitro::renderer
         rhi::RHIBuffer *getBuffer(FrameResourceId id);
         rhi::RHITexture *getTexture(FrameResourceId id);
         rhi::RHIDescriptorSet *getDescriptorSet(FrameResourceId id);
+        static constexpr uint32_t MAX_FRAME_RESOURCES = 2;
 
     private:
         std::unordered_map<FrameResourceId, rhi::RHIBuffer *> m_buffers;

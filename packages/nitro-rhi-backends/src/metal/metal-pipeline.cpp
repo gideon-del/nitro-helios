@@ -1,6 +1,7 @@
 #include <nitro-rhi-backends/metal/metal-device.h>
 #include <nitro-rhi-backends/metal/metal-pipeline.h>
 #include <nitro-rhi-backends/metal/metal-utils.h>
+#include <nitro-rhi-backends/metal/metal-texture.h>
 
 namespace nitro::rhi::metal
 {
@@ -92,9 +93,23 @@ namespace nitro::rhi::metal
             }
         }
 
+        std::cout << "Color attachment size: " << desc.colorAttachments.size();
         if (desc.hasColorAttachment)
         {
-            pipeDesc->colorAttachments()->object(0)->setPixelFormat(MTL::PixelFormatBGRA8Unorm_sRGB);
+            if (desc.colorAttachments.empty())
+            {
+                pipeDesc->colorAttachments()->object(0)->setPixelFormat(MTL::PixelFormatBGRA8Unorm_sRGB);
+            }
+            else
+            {
+                for (int i = 0; i < desc.colorAttachments.size(); i++)
+                {
+
+                    pipeDesc->colorAttachments()->object(i)->setPixelFormat(convertToPixelFormat(
+                        desc.colorAttachments[i]));
+                    std::cout << "Added color Attachment for " << i << std::endl;
+                }
+            }
         }
         if (desc.depthTest)
         {

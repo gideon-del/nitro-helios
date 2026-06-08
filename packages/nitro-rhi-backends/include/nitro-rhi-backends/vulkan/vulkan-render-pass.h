@@ -14,12 +14,12 @@ namespace nitro::rhi::vulkan
 
         ~VulkanRenderPass() override;
 
-        VkRenderingAttachmentInfo colorAttachment;
+        std::vector<VkRenderingAttachmentInfo> colorAttachments;
         VkRenderingAttachmentInfo depthAttachment;
 
         VkRenderingInfo renderingInfo;
         VulkanTexture *depthTexture = nullptr;
-        VulkanTexture *colorTexture = nullptr;
+        std::vector<VulkanTexture *> colorTextures;
         uint32_t width;
         uint32_t height;
         void startTransition(VkCommandBuffer cmd);

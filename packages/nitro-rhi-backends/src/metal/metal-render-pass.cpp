@@ -44,16 +44,20 @@ namespace nitro::rhi::metal
             renderPassDescriptor->depthAttachment()->setTexture(depthTexture->texture);
         }
 
-        if (desc.colorAttachment)
+        if (!desc.colorAttachments.empty())
         {
-            colorTexture = reinterpret_cast<MetalTexture *>(desc.colorAttachment->texture);
-            renderPassDescriptor->colorAttachments()->object(0)->setClearColor({desc.colorAttachment->clearColor[0],
-                                                                                desc.colorAttachment->clearColor[1],
-                                                                                desc.colorAttachment->clearColor[2],
-                                                                                desc.colorAttachment->clearColor[3]});
-            renderPassDescriptor->colorAttachments()->object(0)->setTexture(colorTexture->texture);
-            renderPassDescriptor->colorAttachments()->object(0)->setStoreAction(convertToStoreAction(desc.colorAttachment->store));
-            renderPassDescriptor->colorAttachments()->object(0)->setLoadAction(convertToLoadAction(desc.colorAttachment->load));
+            for (int i = 0; i < desc.colorAttachments.size(); i++)
+            {
+                auto &currentColorAttachment = desc.colorAttachments[i];
+                MetalTexture *colorTexture = reinterpret_cast<MetalTexture *>(currentColorAttachment.texture);
+                renderPassDescriptor->colorAttachments()->object(i)->setClearColor({currentColorAttachment.clearColor[0],
+                                                                                    currentColorAttachment.clearColor[1],
+                                                                                    currentColorAttachment.clearColor[2],
+                                                                                    currentColorAttachment.clearColor[3]});
+                renderPassDescriptor->colorAttachments()->object(i)->setTexture(colorTexture->texture);
+                renderPassDescriptor->colorAttachments()->object(i)->setStoreAction(convertToStoreAction(currentColorAttachment.store));
+                renderPassDescriptor->colorAttachments()->object(i)->setLoadAction(convertToLoadAction(currentColorAttachment.load));
+            }
         }
     }
     MetalRenderPass::~MetalRenderPass()

@@ -35,28 +35,37 @@ namespace nitro::rhi::vulkan
     {
         renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
         renderingInfo.colorAttachmentCount = 0;
-        if (desc.colorAttachment != nullptr)
+        if (!desc.colorAttachments.empty())
         {
-            colorTexture = reinterpret_cast<VulkanTexture *>(desc.colorAttachment->texture);
-            colorAttachment.sType =
-                VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
 
-            colorAttachment.imageView =
-                colorTexture->imageView;
+            for (auto &colorAttachment : desc.colorAttachments)
+            {
 
-            colorAttachment.imageLayout =
-                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+                VulkanTexture *colorTexture = reinterpret_cast<VulkanTexture *>(colorAttachment.texture);
+                VkRenderingAttachmentInfo colorAttachmentInfo{};
+                colorAttachmentInfo.sType =
+                    VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
 
-            colorAttachment.loadOp =
-                convertToLoadOp(desc.colorAttachment->load);
+                colorAttachmentInfo.imageView =
+                    colorTexture->imageView;
 
-            colorAttachment.storeOp =
-                convertToStoreOp(desc.colorAttachment->store);
+                colorAttachmentInfo.imageLayout =
+                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-            colorAttachment.clearValue.color =
-                {{desc.colorAttachment->clearColor[0], desc.colorAttachment->clearColor[1], desc.colorAttachment->clearColor[2], desc.colorAttachment->clearColor[3]}};
-            renderingInfo.colorAttachmentCount = 1;
-            renderingInfo.pColorAttachments = &colorAttachment;
+                colorAttachmentInfo.loadOp =
+                    convertToLoadOp(colorAttachment.load);
+
+                colorAttachmentInfo.storeOp =
+                    convertToStoreOp(colorAttachment.store);
+
+                colorAttachmentInfo.clearValue.color =
+                    {{colorAttachment.clearColor[0], colorAttachment.clearColor[1], colorAttachment.clearColor[2], colorAttachment.clearColor[3]}};
+
+                colorTextures.push_back(colorTexture);
+                colorAttachments.push_back(colorAttachmentInfo);
+            }
+            renderingInfo.colorAttachmentCount = static_cast<uint32_t>(colorAttachments.size());
+            renderingInfo.pColorAttachments = colorAttachments.data();
         }
 
         if (desc.depthAttachment != nullptr)
@@ -106,7 +115,7 @@ namespace nitro::rhi::vulkan
                 VK_IMAGE_ASPECT_DEPTH_BIT);
             depthTexture->currentLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
         }
-        if (colorTexture != nullptr)
+        for (auto &colorTexture : colorTextures)
         {
             m_device->transitionImageLayout(
                 cmd,
@@ -139,7 +148,7 @@ namespace nitro::rhi::vulkan
             depthTexture->currentLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         }
 
-        if (colorTexture != nullptr)
+        for (auto &colorTexture : colorTextures)
         {
             m_device->transitionImageLayout(
                 cmd,

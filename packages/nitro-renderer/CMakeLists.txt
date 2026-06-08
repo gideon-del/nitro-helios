@@ -9,6 +9,7 @@ add_library(nitro-renderer STATIC
  src/frame-resource.cpp
  src/render-object.cpp
  src/passes/shadow-pass.cpp
+ src/passes/geometry-pass.cpp
 )
 
 find_package(glm REQUIRED)

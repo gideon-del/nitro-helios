@@ -6,6 +6,7 @@
 namespace nitro::rhi::vulkan
 {
     class VulkanDevice;
+    VkFormat convertToFormat(TextureDesc::ImageFormat format);
     class VulkanTexture : public RHITexture
     {
 

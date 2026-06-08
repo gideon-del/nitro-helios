@@ -448,6 +448,7 @@ int main()
     RendererPanel rendererPanel;
     ShadowSettings shadowSettings;
     ShadowPanel shadowPanel;
+    GeometryPass geometryPass(&device, swapchain->getWidth(), swapchain->getHeight(), std::string(SHADER_DIR), isMetal);
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
@@ -515,6 +516,11 @@ int main()
 
         frameData.view = camera.getView();
         frameData.cameraPos = glm::vec4(camera.getEye(), 1.0f);
+
+        GeometryCameraBuffer geometryCameraBuffer;
+        geometryCameraBuffer.proj = globalUbo.proj;
+        geometryCameraBuffer.view = camera.getView();
+        geometryPass.execute(cmd, geometryCameraBuffer, mainScene);
         frameData.proj = globalUbo.proj;
         frameData.lightPos = glm::vec4(light.getEye(), 1.0f);
         for (int i = 0; i < cascades.size(); i++)

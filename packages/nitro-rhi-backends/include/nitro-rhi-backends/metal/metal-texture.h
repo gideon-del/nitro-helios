@@ -4,6 +4,7 @@
 
 namespace nitro::rhi::metal
 {
+    MTL::PixelFormat convertToPixelFormat(const TextureDesc::ImageFormat &format);
     class MetalDevice;
     class MetalTexture : public RHITexture
     {
