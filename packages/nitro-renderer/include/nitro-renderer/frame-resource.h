@@ -20,6 +20,11 @@ namespace nitro::renderer
         TextureDescriptor,
         GeometryCameraBuffer,
         GeometryDescriptorSet,
+        ForwardLightingUniformBuffer,
+        ForwardLightingMainDescriptorSet,
+        ForwardLightingShadowDescriptorSet,
+        CSMUniformBuffer,
+        CSMDescriptorSet,
     };
 
     class FrameResource

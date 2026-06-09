@@ -10,6 +10,10 @@ add_library(nitro-renderer STATIC
  src/render-object.cpp
  src/passes/shadow-pass.cpp
  src/passes/geometry-pass.cpp
+ src/panels.cpp
+ src/passes/forward-lighting-pass.cpp
+ src/passes/cascade-shadow-map-pass.cpp
+ src/renderers/forward-renderer.cpp
 )
 
 find_package(glm REQUIRED)
@@ -22,4 +26,5 @@ target_link_libraries(nitro-renderer
 PUBLIC nitro-rhi
 PUBLIC nitro-geometry
 PUBLIC glm::glm
+PUBLIC nitro-rhi-backends
 )

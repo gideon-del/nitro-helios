@@ -2,7 +2,7 @@
 
 namespace nitro::renderer
 {
-    MeshRenderer::MeshRenderer(const geometry::Mesh &mesh, rhi::RHIDevice *device) : m_device(device)
+    MeshRenderer::MeshRenderer(const geometry::Mesh &mesh, std::shared_ptr<rhi::RHIDevice> device) : m_device(device)
     {
         rhi::BufferDesc vertexDesc;
         vertexDesc.initialData = mesh.vertices.data();

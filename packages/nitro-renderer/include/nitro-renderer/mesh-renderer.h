@@ -10,7 +10,7 @@ namespace nitro::renderer
     class MeshRenderer
     {
     public:
-        MeshRenderer(const geometry::Mesh &mesh, rhi::RHIDevice *device);
+        MeshRenderer(const geometry::Mesh &mesh, std::shared_ptr<rhi::RHIDevice> device);
         ~MeshRenderer();
         void draw(rhi::RHICommandBuffer *cmd);
 
@@ -18,6 +18,6 @@ namespace nitro::renderer
         rhi::RHIBuffer *m_vertexBuffer;
         rhi::RHIBuffer *m_indexBuffer;
         uint32_t m_indexCount;
-        rhi::RHIDevice *m_device;
+        std::shared_ptr<rhi::RHIDevice> m_device;
     };
 }
