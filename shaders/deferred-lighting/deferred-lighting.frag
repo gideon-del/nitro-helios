@@ -1,59 +1,65 @@
 #version 450
 
-layout(location = 0) in vec2 fragUV;
-layout(location = 1) in vec3 fragNormal;
-layout(location = 2) in vec3 fragPos;
 
-layout(location = 0) out vec4 outColor;
-
-
-
-
-layout(set=1, binding=0) uniform sampler2DShadow shadowMap0;
-layout(set=1, binding=1) uniform sampler2DShadow shadowMap1;
-layout(set=1, binding=2) uniform sampler2DShadow shadowMap2;
-layout(set=1, binding=3) uniform sampler2DShadow shadowMap3;
-
-layout(set=0, binding=2) uniform FrameUniformBuffer {
-    mat4 view;
-    mat4 proj;
-
-    vec4 cameraPos;
-    
-    vec4 lightPos;
+layout(set=0, binding=2)uniform  FrameUniformBuffer {
+    vec4 cameraPosition;
+    vec4 lightPosition;
     vec4 lightColor;
+    
+    mat4 invViewProj;
+    mat4 view;
     mat4 lightViewProj[4];
     vec4 cascadeSplit;
-     float ambient;
+   
+    float ambient;
     float Ka;
     float Kd;
     float Ks;
     float shininess;
-      float shadowBias;
+
+    float shadowBias;
     float shadowNormalBias;
     float showCascadeColors;
+    
+    float gBufferMode;    
 } frameUbo;
 
-layout(set=0, binding=5) uniform CameraView {
- vec4 position;
-}camera;
 
-float kernel_shadow(vec4 fragLightPos, float bias, sampler2DShadow shadowMap) {
-   vec3 projCoords = fragLightPos.xyz / fragLightPos.w;
-   projCoords.xy = projCoords.xy * 0.5 + 0.5;
-   vec2 texelSize = 1.0 / vec2(textureSize(shadowMap, 0));
+layout(set=1, binding=0) uniform sampler2D gAlbedo;
+layout(set=1, binding=1) uniform sampler2D gNormal;
+layout(set=1, binding=2) uniform sampler2D gMaterial;
+layout(set=1, binding=3) uniform sampler2D gEmissive;
+layout(set=1, binding=4) uniform sampler2D gDepth;
 
-   float shadow = 0.0;
+layout(set=2, binding=0) uniform sampler2DShadow shadowMap0;
+layout(set=2, binding=1) uniform sampler2DShadow shadowMap1;
+layout(set=2, binding=2) uniform sampler2DShadow shadowMap2;
+layout(set=2, binding=3) uniform sampler2DShadow shadowMap3;
+
+layout(location = 0) out vec4 outColor;
+layout(location = 0) in vec2  fragUV;
+vec3 reconstructPosition(vec2 uv, float depth, mat4 invViewProj) {
+ vec4 clipPos = vec4(uv * 2.0 - 1.0, depth, 1.0);
+ vec4 worldPos = invViewProj * clipPos;
+ return worldPos.xyz /worldPos.w;
+}
 
 
-   for(int y=-1; y <= 1; y++) {
-     for(int x=-1; x <= 1; x++) {     
-     vec2 offset = vec2(x, y) * texelSize;
-      shadow += texture(shadowMap, vec3(projCoords.xy + offset, projCoords.z -bias));
-   }
-   }
-   
-   return shadow / 9.0;
+vec3 decodeNormal(vec2 n) {
+vec2 f = n * 2.0 - 1.0;
+vec3 v = vec3(
+    f.x,
+    f.y,
+    1.0 - abs(f.x) - abs(f.y));
+
+if (v.z < 0.0)
+{
+    v.xy =
+        (1.0 - abs(v.yx))
+        * sign(v.xy);
+}
+
+return normalize(v);
 }
 vec2 poissonDisk[16] = vec2[](
    vec2(-0.94201624, -0.39906216),
@@ -74,27 +80,6 @@ vec2 poissonDisk[16] = vec2[](
    vec2( 0.14383161, -0.14100790)
 );
 
-float blendCascade( 
-  float shadow0, 
-  float shadow1,
-  float split,
-  float blendWidth, 
-  float viewDepth
-  ) {
-float blend = smoothstep(
-  split - blendWidth,
-  split+ blendWidth,
-  viewDepth
-);
-
-if(viewDepth < split-blendWidth) {
-  return shadow0;
-}else if(viewDepth <= split+blendWidth) {
-return mix(shadow0,shadow1, blend);
-}else {
-  return shadow1;
-}
-}
 float shadowPoisson(vec4 fragLightPos, float bias, sampler2DShadow shadowMap) {
      vec3 projCoords = fragLightPos.xyz / fragLightPos.w;
    projCoords.xy = projCoords.xy * 0.5 + 0.5;
@@ -117,21 +102,46 @@ float shadowPoisson(vec4 fragLightPos, float bias, sampler2DShadow shadowMap) {
    return shadow / 16.0;
 }
 
+float blendCascade( 
+  float shadow0, 
+  float shadow1,
+  float split,
+  float blendWidth, 
+  float viewDepth
+  ) {
+float blend = smoothstep(
+  split - blendWidth,
+  split+ blendWidth,
+  viewDepth
+);
+
+if(viewDepth < split-blendWidth) {
+  return shadow0;
+}else if(viewDepth <= split+blendWidth) {
+return mix(shadow0,shadow1, blend);
+}else {
+  return shadow1;
+}
+}
 void main() {
-
-   vec3 N = normalize(fragNormal);
-   vec3 L = normalize(frameUbo.lightPos.xyz - fragPos);
-   vec3 V = normalize(frameUbo.cameraPos.xyz - fragPos);
+  vec3 albedo = texture(gAlbedo, fragUV).rgb;
+  float depth   = texture(gDepth, fragUV).x;
+  if(depth >= 1.0)
+{
+    outColor = vec4(0,0,0,1);
+    return;
+}
+  vec3  worldPos = reconstructPosition(fragUV, depth, frameUbo.invViewProj);
+  vec3 N = decodeNormal(texture(gNormal,fragUV).rg);
+   vec3 L = normalize(frameUbo.lightPosition.xyz - worldPos);
+   vec3 V = normalize(frameUbo.cameraPosition.xyz - worldPos);
    vec3 H = normalize(L + V);
-
-   float diffuse = max(0.0, dot(N,L));
+    float diffuse = max(0.0, dot(N,L));
   float specular = diffuse > 0.0 
     ? pow(max(0.0, dot(N, H)), frameUbo.shininess) 
     : 0.0;
 
-   vec3 lightColor = frameUbo.lightColor.xyz;
-
-  float bias = max(
+   float bias = max(
    frameUbo.shadowBias * (1.0 - dot(N, L)),
     0.0005
 );
@@ -140,19 +150,19 @@ float normalBias =
     (1.0 - dot(N, L)) * frameUbo.shadowNormalBias;
 
 vec3 shadowPos =
-    fragPos + N * normalBias;
+    worldPos + N * normalBias;
 
-float shadow = 0.0;
+float shadow = 0.0;   
 vec4 viewPos =
-    frameUbo.view * vec4(fragPos, 1.0);
+    frameUbo.view * vec4(worldPos, 1.0);
 
 float viewDepth = -viewPos.z;
 vec3 cascadeColor;
 float blendWidth0 = (frameUbo.cascadeSplit[1] - frameUbo.cascadeSplit[0] ) * 0.15;
 float blendWidth1 = (frameUbo.cascadeSplit[2] - frameUbo.cascadeSplit[1] ) * 0.15;
-float blendWidth2 = (frameUbo.cascadeSplit[3] - frameUbo.cascadeSplit[2] ) * 0.15;
-float blend =0.0;
-  if( viewDepth <= frameUbo.cascadeSplit[0]+blendWidth0) {
+float blendWidth2 = (frameUbo.cascadeSplit[3] - frameUbo.cascadeSplit[2] ) * 0.15; 
+
+ if( viewDepth <= frameUbo.cascadeSplit[0]+blendWidth0) {
    float shadow0 =shadowPoisson(frameUbo.lightViewProj[0] * vec4(shadowPos,1.0),bias,shadowMap0);
    float  shadow1 =shadowPoisson(frameUbo.lightViewProj[1] * vec4(shadowPos,1.0),bias,shadowMap1);
     shadow = blendCascade(shadow0, shadow1, frameUbo.cascadeSplit[0], blendWidth0, viewDepth);
@@ -175,19 +185,24 @@ float blend =0.0;
     cascadeColor = vec3(1,1,0);
   }
 
+vec3 lightColor = frameUbo.lightColor.xyz;
    vec3 ambientColor = (lightColor * (frameUbo.ambient) * frameUbo.Ka);
    vec3 diffuseColor = lightColor * diffuse ;
    vec3 specularColor = lightColor * specular * frameUbo.Ks;
-   vec3 color = vec3(0.4,0.5,0.9);
    vec3 finalColor; 
 
 
 if(frameUbo.showCascadeColors > 0.5) {
   finalColor = cascadeColor;
-}else {
-  finalColor = (ambientColor + shadow * (diffuseColor+specularColor)) * color;
+} else if(frameUbo.gBufferMode  == 1.0) {
+    finalColor = albedo;
+} else if(frameUbo.gBufferMode  == 2.0) {
+    finalColor = N;
+} else {
+  finalColor = (ambientColor + shadow * (diffuseColor + specularColor)) * albedo;
 }
+  outColor = vec4(
+ fragUV * 2.0 - 1.0, depth,
+    1.0);
 
-    outColor = vec4(finalColor,1.0);
-   
 }

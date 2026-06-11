@@ -1,82 +1,74 @@
 #include <metal_stdlib>
 using namespace metal;
 
-struct VertexIn {
-    float3 position [[attribute(0)]];
-    float3 color [[attribute(1)]];
-    float3 normal [[attribute(2)]];
-    float2 uv [[attribute(3)]];
-};
+
+
+
 struct VertexOut {
     float4 position [[position]];
-    float3 color;
-    float3 normal;
-     float2 uv;
-     float3 fragPos;
+    float2 uv;
 };
 
-struct PushConstant {
-    float4x4 model;
-    float4x4 normalMatrix;
-};
 struct FrameUniformBuffer {
-    float4x4 view;
-    float4x4 proj;
-
-    float4 cameraPos;
-    
-    float4 lightPos;
+    float4 cameraPosition;
+    float4 lightPosition;
     float4 lightColor;
-
+    
+    float4x4 invViewProj;
+    float4x4 view;
     float4x4 lightViewProj[4];
     float4 cascadeSplit;
+   
     float ambient;
     float Ka;
     float Kd;
     float Ks;
     float shininess;
-        float shadowBias;
+
+    float shadowBias;
     float shadowNormalBias;
     float showCascadeColors;
+    
+    float gBufferMode;    
 };
-vertex VertexOut vs(VertexIn in [[stage_in]],
-                    constant PushConstant& p [[buffer(1)]],
-                      constant FrameUniformBuffer& fub [[buffer(2)]]
-                    ) {
-   
+
+vertex VertexOut vs(
+    uint vid [[vertex_id]]
+) {
+    float2 positions[3] = {   
+    
+    float2(-1,-1),
+     float2(3,-1),
+     float2(-1,3)
+} ;
     VertexOut out;
-    float4 worldPos =  p.model * float4(in.position, 1.0);
-    out.position = fub.proj * fub.view * worldPos;
-    out.color = in.color;
-    float3x3 normalMatrix = {
-        p.normalMatrix[0].xyz,
-        p.normalMatrix[1].xyz,
-        p.normalMatrix[2].xyz,
-    };
-    out.normal = normalMatrix * in.normal;
-    out.uv = in.uv;
-    out.fragPos = worldPos.xyz;
+    out.position = float4(positions[vid], 0.0,1.0);
+    out.uv =( positions[vid] + 1.0) * 0.5;
+    out.uv.y = 1.0 -out.uv.y;
     return out;
 }
 
-float kernel_shadow( depth2d<float> shadowMap, sampler samp,float3 projCoords, float bias) {
- float2 texelSize = 1.0 / float2(
-    shadowMap.get_width(),
-    shadowMap.get_height()
-);
+float3 reconstructPosition(float2 uv, float depth, float4x4 invViewProj) {  
+float4 clipPos =
+    float4(
+        uv.x * 2.0 - 1.0,
+        (1.0 - uv.y) * 2.0 - 1.0,
+        depth,
+        1.0);
+ float4 worldPos = invViewProj * clipPos;
+ return worldPos.xyz / worldPos.w;
+};
 
-   float shadow = 0.0;
+float3 decodeNormal(float2 n) {
+   float2  f = n * 2.0 - 1.0;
+   float3 v = float3(f, 1.0 - abs(f.x) - abs(f.y));
 
-
-   for(int y=-1; y <= 1; y++) {
-     for(int x=-1; x <= 1; x++) {     
-     float2 offset = float2(x, y) * texelSize;
-      shadow += shadowMap.sample_compare(samp, projCoords.xy + offset, projCoords.z - bias);
+   if(v.z < 0) {
+    v.xy =( 1.0 - abs(v.yx)) * sign(v.xy);
    }
-   }
-   
-   return shadow / 9.0;
-}
+   return normalize(v);
+} 
+
 constant float2 poissonDisk[16] = {
    float2(-0.94201624, -0.39906216),
    float2( 0.94558609, -0.76890725),
@@ -134,17 +126,35 @@ return mix(shadow0,shadow1, blend);
   return shadow1;
 }
 }
-fragment float4 fs(VertexOut in [[stage_in]],
+
+fragment float4 fs(
+    VertexOut in [[stage_in]],
   constant FrameUniformBuffer& fub [[buffer(2)]],
-  depth2d<float> depthTex0 [[texture(16)]],
-  depth2d<float> depthTex1 [[texture(17)]],
-  depth2d<float> depthTex2 [[texture(18)]],
-  depth2d<float> depthTex3 [[texture(19)]],
-  sampler depthTexSamp [[sampler(1)]]
+
+   texture2d<float> gAlbedoTex [[texture(16)]],    
+   texture2d<float> gNormalTex [[texture(17)]], 
+   texture2d<float> gMaterialTex [[texture(18)]], 
+   texture2d<float> gEmissiveTex [[texture(19)]], 
+   texture2d<float> gDepthTex [[texture(20)]], 
+    sampler gSamp [[sampler(1)]],
+
+   depth2d<float> depthTex0 [[texture(32)]],
+  depth2d<float> depthTex1 [[texture(33)]],
+  depth2d<float> depthTex2 [[texture(34)]],
+  depth2d<float> depthTex3 [[texture(35)]],
+  sampler depthTexSamp [[sampler(2)]]
 ) {
-    float3 N = normalize(in.normal);
-    float3 L = normalize(fub.lightPos.xyz - in.fragPos);
-    float3 V = normalize(fub.cameraPos.xyz - in.fragPos);
+  float depth = gDepthTex.sample(gSamp, in.uv).r;
+  if(depth >= 1.0) {
+    return float4(0.0,0.0,0.0,1.0);
+  }
+  float3 albedo = gAlbedoTex.sample(gSamp, in.uv).rgb;
+  float3 N = decodeNormal(gNormalTex.sample(gSamp,in.uv).rg);
+  float3 worldPos = reconstructPosition(in.uv, depth, fub.invViewProj);
+
+
+   float3 L = normalize(fub.lightPosition.xyz - worldPos);
+    float3 V = normalize(fub.cameraPosition.xyz - worldPos);
     float3 H = normalize(L + V);
 
     float3 lightColor = fub.lightColor.xyz;
@@ -153,19 +163,15 @@ fragment float4 fs(VertexOut in [[stage_in]],
     float3 ambientColor = lightColor * fub.ambient * fub.Ka;
     float3 diffuseColor = lightColor * diffuse * fub.Kd;
     float3 specularColor = lightColor * specular * fub.Ks;
-   
-
-
-float bias = max(
+    float bias = max(
    fub.shadowBias * (1.0 - dot(N, L)),
     0.0005
 );
 float normalBias = (1.0 - dot(N,L)) * fub.shadowNormalBias;
-float3 shadowPos = in.fragPos + N * normalBias;
+float3 shadowPos =worldPos + N * normalBias;
 
-float4 viewPos = fub.view * float4(in.fragPos,1.0);
+float4 viewPos = fub.view * float4(worldPos,1.0);
 float viewDepth = -viewPos.z;
-
 float blendWidth0 = (fub.cascadeSplit[1] - fub.cascadeSplit[0] ) * 0.15;
 float blendWidth1 = (fub.cascadeSplit[2] - fub.cascadeSplit[1] ) * 0.15;
 float blendWidth2 = (fub.cascadeSplit[3] - fub.cascadeSplit[2] ) * 0.15;
@@ -190,13 +196,18 @@ float   shadow2 = shadowPoisson(depthTex2,depthTexSamp,fub.lightViewProj[2] * fl
      shadow = shadowPoisson(depthTex3,depthTexSamp,fub.lightViewProj[3] * float4(shadowPos, 1.0),bias);
        cascadeColor = float3(1,1,0);
   }
-  float3 color = float3(0.4,0.5,0.9);
- float3 finalColor = (ambientColor +  shadow*(diffuseColor + specularColor)) * color; 
-
+float3 finalColor;
  if(fub.showCascadeColors > 0.5) {
   finalColor = cascadeColor;
+ }else if(fub.gBufferMode == 1) {
+    finalColor = albedo;
+ } else if(fub.gBufferMode == 2) {
+    finalColor = N;
+ }else {
+ finalColor   = (ambientColor + shadow * (diffuseColor + specularColor)) * albedo;
  }
-return float4(
+ return float4(
 finalColor,
     1.0);
 }
+

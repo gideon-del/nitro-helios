@@ -1,12 +1,7 @@
 #pragma once
-#include <nitro-rhi/rhi-render-pass.h>
-#include <nitro-rhi/rhi-texture.h>
-#include <nitro-rhi/rhi-device.h>
-#include <nitro-rhi/rhi-device.h>
-#include <nitro-rhi/rhi-descriptor-layout.h>
-#include <nitro-rhi/rhi-command-buffer.h>
+#include <nitro-rhi/rhi.h>
 #include <nitro-renderer/scene.h>
-#include <nitro-renderer/frame-resource.h>
+#include <nitro-renderer/per-frame.h>
 #include <glm/glm.hpp>
 namespace nitro::renderer
 {
@@ -20,6 +15,12 @@ namespace nitro::renderer
         rhi::RHITexture *depth;
     };
 
+    struct GeometryPassResource
+    {
+        rhi::RHIBuffer *uniformBuffer;
+        rhi::RHIDescriptorSet *descriptorSet;
+    };
+
     struct GeometryCameraBuffer
     {
         glm::mat4 view;
@@ -29,7 +30,7 @@ namespace nitro::renderer
     class GeometryPass
     {
     public:
-        GeometryPass(rhi::RHIDevice *device, uint32_t width, uint32_t height, std::string shaderDir, bool isMetal = false);
+        GeometryPass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, std::string shaderDir, bool isMetal = false);
 
         ~GeometryPass();
         void execute(rhi::RHICommandBuffer *cmd, GeometryCameraBuffer geometryCamera, Scene &scene);
@@ -39,10 +40,10 @@ namespace nitro::renderer
         uint32_t height;
 
     private:
-        rhi::RHIDevice *m_device;
+        std::shared_ptr<rhi::RHIDevice> m_device;
         rhi::RHIRenderPass *m_renderPass;
         rhi::RHIPipeline *m_pipeline;
         rhi::RHIDescriptorLayout *m_descriptorLayout;
-        std::vector<FrameResource> m_frameResources;
+        PerFrame<GeometryPassResource> m_resources;
     };
 }

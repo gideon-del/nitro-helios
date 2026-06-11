@@ -428,6 +428,7 @@ namespace nitro::rhi::vulkan
             VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
 
         pipelineInfo.colorAttachmentCount = 1;
+        pipelineInfo.depthAttachmentFormat = VK_FORMAT_D32_SFLOAT;
 
         VkFormat colorFormat = m_surfaceFormat;
 

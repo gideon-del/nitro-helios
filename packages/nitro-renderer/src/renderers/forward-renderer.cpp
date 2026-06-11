@@ -24,9 +24,9 @@ namespace nitro::renderer
 
         m_csmPass->execute(cmd, *ctx.scene, shadowCtx);
         rhi::RHIRenderPassDesc rpDesc{};
-        rpDesc.clearColor[0] = 0.3f;
-        rpDesc.clearColor[1] = 0.3f;
-        rpDesc.clearColor[2] = 0.3f;
+        rpDesc.clearColor[0] = 0.0f;
+        rpDesc.clearColor[1] = 0.0f;
+        rpDesc.clearColor[2] = 0.0f;
         rpDesc.clearColor[3] = 1.0f;
         rpDesc.clearDepth = 1.0f;
         rpDesc.hasDepth = true;
@@ -59,6 +59,7 @@ namespace nitro::renderer
         m_device->beginImGuiFrame();
         m_lightPanel.draw(settings.light);
         m_shadowPanel.draw(settings.shadow);
+        m_rendererPanel.draw(settings);
         m_device->endImGuiFrame();
         m_device->drawImGui(cmd);
         cmd->endRenderPass();

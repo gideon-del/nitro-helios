@@ -11,4 +11,9 @@ namespace nitro::renderer
     {
         void draw(ShadowSettings &settings);
     };
+
+    struct RendererPanel
+    {
+        void draw(RendererSettings &settings);
+    };
 } // namespace nitro::renderer

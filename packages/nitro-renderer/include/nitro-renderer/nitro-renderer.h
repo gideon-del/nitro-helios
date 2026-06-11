@@ -4,3 +4,4 @@
 #include "passes/render-passes.h"
 #include "interface/renderer.h"
 #include "renderers/forward-renderer.h"
+#include "renderers/deferred-renderer.h"

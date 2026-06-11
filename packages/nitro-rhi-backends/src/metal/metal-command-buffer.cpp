@@ -156,18 +156,18 @@ namespace nitro::rhi::metal
             MetalBuffer *metalBuffer = reinterpret_cast<MetalBuffer *>(buffer);
             if (metalSet->descriptorLayout->bufferBindings[binding] == RHIDescriptorBinding::ShaderStage::Vertex || metalSet->descriptorLayout->bufferBindings[binding] == RHIDescriptorBinding::ShaderStage::Both)
             {
-                encoder->setVertexBuffer(metalBuffer->buffer, 0, mainBinding + binding);
+                encoder->setVertexBuffer(metalBuffer->buffer, 0, MetalDescriptorSet::s_getMetalBufferBinding(mainBinding, binding));
             }
             if (metalSet->descriptorLayout->bufferBindings[binding] == RHIDescriptorBinding::ShaderStage::Fragment || metalSet->descriptorLayout->bufferBindings[binding] == RHIDescriptorBinding::ShaderStage::Both)
             {
-                encoder->setFragmentBuffer(metalBuffer->buffer, 0, mainBinding + binding);
+                encoder->setFragmentBuffer(metalBuffer->buffer, 0, MetalDescriptorSet::s_getMetalTextureBinding(mainBinding, binding));
             }
         }
         for (auto &[texture, binding] : metalSet->textureBindings)
         {
             MetalTexture *metalTex = reinterpret_cast<MetalTexture *>(texture);
-            encoder->setFragmentTexture(metalTex->texture, binding);
-            encoder->setFragmentSamplerState(metalTex->samplerState, binding);
+            encoder->setFragmentTexture(metalTex->texture, MetalDescriptorSet::s_getMetalTextureBinding(mainBinding, binding));
+            encoder->setFragmentSamplerState(metalTex->samplerState, mainBinding);
         }
     }
     void MetalCommandBuffer::drawIndexed(uint32_t indexCount)

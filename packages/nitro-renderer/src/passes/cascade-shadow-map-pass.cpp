@@ -24,12 +24,10 @@ namespace nitro::renderer
         if (isMetal)
         {
             pipelineDesc.shaders.push_back({"vs", shaderPath + ".metallib", rhi::ShaderStage::Vertex});
-            pipelineDesc.shaders.push_back({"fs", shaderPath + ".metallib", rhi::ShaderStage::Fragment});
         }
         else
         {
             pipelineDesc.shaders.push_back({"main", shaderPath + ".vert.spv", rhi::ShaderStage::Vertex});
-            pipelineDesc.shaders.push_back({"main", shaderPath + ".frag.spv", rhi::ShaderStage::Fragment});
         }
 
         m_pipeline = m_device->createPipeline(pipelineDesc);
@@ -45,36 +43,35 @@ namespace nitro::renderer
         uboDesc.storage = rhi::BufferDesc::StorageMode::Shared;
         uboDesc.usage = rhi::BufferDesc::Usage::Uniform;
 
-        for (int i = 0; i < FrameResource::MAX_FRAME_RESOURCES; i++)
-        {
-            FrameResource frameResource(m_device.get());
-
-            rhi::RHIBuffer *uboBuffer = m_device->createBuffer(uboDesc);
-
-            frameResource.setBuffer(FrameResourceId::CSMUniformBuffer, uboBuffer);
-
-            rhi::RHIDescriptorSet *descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
-
-            descriptorSet->writeBuffer(uboBuffer, 2);
-            descriptorSet->commit();
-            frameResource.setDescriptorSet(FrameResourceId::CSMDescriptorSet, descriptorSet);
-
-            m_frameResources.push_back(frameResource);
-        }
+        m_resources.create(
+            g_MAX_FRAMES_IN_FLIGHT,
+            [&](uint32_t frame)
+            {
+                CascadeShadowMapResource resource;
+                rhi::BufferDesc uboDesc;
+                uboDesc.size = sizeof(LightView);
+                uboDesc.storage = rhi::BufferDesc::StorageMode::Shared;
+                uboDesc.usage = rhi::BufferDesc::Usage::Uniform;
+                resource.uniformBuffer = m_device->createBuffer(uboDesc);
+                resource.descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
+                resource.descriptorSet->writeBuffer(resource.uniformBuffer, 2);
+                resource.descriptorSet->commit();
+                return resource;
+            });
     }
 
     CascadeShadowMapPass::~CascadeShadowMapPass()
     {
-        for (auto &frameResource : m_frameResources)
+        for (auto &frameResource : m_resources)
         {
-            m_device->destroyBuffer(frameResource.getBuffer(FrameResourceId::CSMUniformBuffer));
+            m_device->destroyBuffer(frameResource.uniformBuffer);
         }
         m_device->destroyPipeline(m_pipeline);
     };
     void CascadeShadowMapPass::execute(rhi::RHICommandBuffer *cmd, Scene &scene, CascadeShadowContext ctx)
     {
 
-        uint32_t frameIdx = m_device->getCurrentFrameIndex();
+        auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
 
         LightView lightView;
 
@@ -86,11 +83,11 @@ namespace nitro::renderer
             cascadeSplit[i] = ShadowPass::s_getPracticalSplit(ctx.cameraNear, ctx.cameraFar, CascadeShadowMapPass::CASCADE_COUNT, i, ctx.lambda);
         };
 
-        m_frameResources[frameIdx].getBuffer(FrameResourceId::CSMUniformBuffer)->upload(&lightView, sizeof(lightView));
+        resource.uniformBuffer->upload(&lightView, sizeof(lightView));
 
         for (auto &shadowPass : m_shadowPasses)
         {
-            shadowPass.execute(cmd, m_pipeline, m_frameResources[frameIdx].getDescriptorSet(FrameResourceId::CSMDescriptorSet), scene);
+            shadowPass.execute(cmd, m_pipeline, resource.descriptorSet, scene);
         }
     };
 } // namespace nitro::renderer

@@ -93,8 +93,6 @@ namespace nitro::rhi::metal
             }
         }
 
-        std::cout << "Color attachment size: " << desc.colorAttachments.size();
-        if (desc.hasColorAttachment)
         {
             if (desc.colorAttachments.empty())
             {
@@ -107,7 +105,6 @@ namespace nitro::rhi::metal
 
                     pipeDesc->colorAttachments()->object(i)->setPixelFormat(convertToPixelFormat(
                         desc.colorAttachments[i]));
-                    std::cout << "Added color Attachment for " << i << std::endl;
                 }
             }
         }

@@ -25,10 +25,18 @@ namespace nitro::renderer
         bool showCascadeColors = false;
     };
 
+    enum class RendererType
+    {
+        Forward,
+        Deferred
+    };
+
     struct RendererSettings
     {
         ShadowSettings shadow;
         LightingSettings light;
+
+        RendererType renderer = RendererType::Forward;
     };
 
 } // namespace nitro::renderer

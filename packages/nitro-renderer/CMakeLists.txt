@@ -13,7 +13,9 @@ add_library(nitro-renderer STATIC
  src/panels.cpp
  src/passes/forward-lighting-pass.cpp
  src/passes/cascade-shadow-map-pass.cpp
+ src/passes/deferred-lighting-pass.cpp
  src/renderers/forward-renderer.cpp
+ src/renderers/deferred-renderer.cpp
 )
 
 find_package(glm REQUIRED)

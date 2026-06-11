@@ -1,9 +1,7 @@
 #pragma once
-#include <nitro-rhi/rhi-render-pass.h>
-#include <nitro-rhi/rhi-device.h>
-#include <nitro-rhi/rhi-texture.h>
-#include <nitro-rhi/rhi-descriptor-layout.h>
+
 #include <nitro-renderer/frame-resource.h>
+#include <nitro-renderer/per-frame.h>
 #include <nitro-renderer/scene.h>
 #include <glm/glm.hpp>
 namespace nitro::renderer
@@ -33,6 +31,13 @@ namespace nitro::renderer
         float showCascadeColors;
         float padding;
     };
+
+    struct ForwardLightingResource
+    {
+        rhi::RHIBuffer *uniformBuffer;
+        rhi::RHIDescriptorSet *mainDescriptorSet;
+        rhi::RHIDescriptorSet *shadowDescriptorSet;
+    };
     class ForwardLightingPass
     {
     public:
@@ -46,6 +51,6 @@ namespace nitro::renderer
         rhi::RHIPipeline *m_pipeline;
         rhi::RHIDescriptorLayout *m_mainDescriptorLayout;
         rhi::RHIDescriptorLayout *m_shadowDescriptorLayout;
-        std::vector<FrameResource> m_frameResources;
+        PerFrame<ForwardLightingResource> m_resources;
     };
 } // namespace nitro::renderer

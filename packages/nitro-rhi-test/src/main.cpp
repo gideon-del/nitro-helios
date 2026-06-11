@@ -196,7 +196,8 @@ int main()
 
     rendererSettings.light.lightCamera = light;
     ForwardRenderer forwardRenderer = ForwardRenderer(device, swapchain, std::string(SHADER_DIR), isMetal);
-    IRenderer *currentRenderer = &forwardRenderer;
+    DeferredRenderer deferredRenderer = DeferredRenderer(device, swapchain, std::string(SHADER_DIR), isMetal);
+    IRenderer *currentRenderer = &deferredRenderer;
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
@@ -220,7 +221,22 @@ int main()
 
         RHICommandBuffer *cmd = device->beginFrame();
         timer->beginFrame(cmd);
-        currentRenderer->execute(cmd, renderContext, rendererSettings);
+        switch (rendererSettings.renderer)
+        {
+        case RendererType::Forward:
+            forwardRenderer.execute(
+                cmd,
+                renderContext,
+                rendererSettings);
+            break;
+
+        case RendererType::Deferred:
+            deferredRenderer.execute(
+                cmd,
+                renderContext,
+                rendererSettings);
+            break;
+        }
 
         // uint32_t frameIdx = device.getCurrentFrameIndex();
         // FrameResource &frameResource = frameResources[frameIdx];

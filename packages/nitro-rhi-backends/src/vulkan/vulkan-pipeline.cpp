@@ -189,10 +189,21 @@ namespace nitro::rhi::vulkan
                                          VK_COLOR_COMPONENT_R_BIT |
                                          VK_COLOR_COMPONENT_G_BIT;
 
+        std::vector<VkPipelineColorBlendAttachmentState> colorBlendStates;
+
+        if (desc.colorAttachments.empty())
+        {
+            colorBlendStates.push_back(colorBlendState);
+        }
+
+        for (auto colorAttachment : desc.colorAttachments)
+        {
+            colorBlendStates.push_back(colorBlendState);
+        }
         VkPipelineColorBlendStateCreateInfo colorBlendInfo{};
         colorBlendInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-        colorBlendInfo.attachmentCount = 1;
-        colorBlendInfo.pAttachments = &colorBlendState;
+        colorBlendInfo.attachmentCount = static_cast<uint32_t>(colorBlendStates.size());
+        colorBlendInfo.pAttachments = colorBlendStates.data();
         colorBlendInfo.logicOpEnable = VK_FALSE;
         colorBlendInfo.logicOp = VK_LOGIC_OP_COPY;
 
@@ -268,6 +279,7 @@ namespace nitro::rhi::vulkan
         renderingInfo.colorAttachmentCount = 0;
         for (auto &colorFormat : desc.colorAttachments)
         {
+
             colorFormats.push_back(convertToFormat(colorFormat));
         }
 

@@ -91,4 +91,25 @@ namespace nitro::renderer
         ImGui::End();
     };
 
+    void RendererPanel::draw(RendererSettings &settings)
+    {
+        const char *renderers[] =
+            {
+                "Forward",
+                "Deferred"};
+
+        int current =
+            static_cast<int>(settings.renderer);
+
+        if (ImGui::Combo(
+                "Renderer",
+                &current,
+                renderers,
+                IM_ARRAYSIZE(renderers)))
+        {
+            settings.renderer =
+                static_cast<RendererType>(current);
+        }
+    }
+
 } // namespace nitro::renderer

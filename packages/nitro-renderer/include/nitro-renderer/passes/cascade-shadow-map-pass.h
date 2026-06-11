@@ -1,10 +1,7 @@
 #pragma once
-#include <nitro-rhi/rhi-render-pass.h>
-#include <nitro-rhi/rhi-device.h>
-#include <nitro-rhi/rhi-texture.h>
-#include <nitro-rhi/rhi-descriptor-layout.h>
-#include <nitro-renderer/frame-resource.h>
+#include <nitro-rhi/rhi.h>
 #include <nitro-renderer/scene.h>
+#include <nitro-renderer/per-frame.h>
 #include <glm/glm.hpp>
 #include "shadow-pass.h"
 
@@ -25,6 +22,12 @@ namespace nitro::renderer
         float aspect;
         float lambda = 0.75f;
     };
+
+    struct CascadeShadowMapResource
+    {
+        rhi::RHIBuffer *uniformBuffer;
+        rhi::RHIDescriptorSet *descriptorSet;
+    };
     class CascadeShadowMapPass
     {
     public:
@@ -44,6 +47,6 @@ namespace nitro::renderer
         std::vector<ShadowPass> m_shadowPasses;
         rhi::RHIPipeline *m_pipeline;
         rhi::RHIDescriptorLayout *m_descriptorLayout;
-        std::vector<FrameResource> m_frameResources;
+        PerFrame<CascadeShadowMapResource> m_resources;
     };
 } // namespace nitro::renderer

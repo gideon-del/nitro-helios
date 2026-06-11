@@ -41,7 +41,6 @@ vertex VertexOut vs(
      VertexOut out;
     float4 worldPos =  p.model * float4(in.position, 1.0);
     out.position = fub.proj * fub.view * worldPos; 
-
     float3x3 normalMatrix = {
         p.normalMatrix[0].xyz,
         p.normalMatrix[1].xyz,

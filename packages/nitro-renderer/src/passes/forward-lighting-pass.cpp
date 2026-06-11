@@ -23,7 +23,7 @@ namespace nitro::renderer
         pipelineDesc.pushConstantSize = sizeof(geometry::PushConstant);
         pipelineDesc.layouts = {m_mainDescriptorLayout, m_shadowDescriptorLayout};
         pipelineDesc.vertexLayout = geometry::Vertex::getVertexLayout();
-
+        pipelineDesc.depthTest = true;
         std::string shaderPath = shaderDir + "/forward-lighting/forward-lighting";
 
         if (isMetal)
@@ -39,43 +39,37 @@ namespace nitro::renderer
 
         m_pipeline = m_device->createPipeline(pipelineDesc);
 
-        rhi::BufferDesc uboDesc;
-        uboDesc.size = sizeof(FrameData);
-        uboDesc.storage = rhi::BufferDesc::StorageMode::Shared;
-        uboDesc.usage = rhi::BufferDesc::Usage::Uniform;
+        m_resources.create(g_MAX_FRAMES_IN_FLIGHT,
+                           [&, cascades](uint32_t frame)
+                           {
+                               ForwardLightingResource resource;
+                               rhi::BufferDesc uboDesc;
+                               uboDesc.size = sizeof(FrameData);
+                               uboDesc.storage = rhi::BufferDesc::StorageMode::Shared;
+                               uboDesc.usage = rhi::BufferDesc::Usage::Uniform;
 
-        for (int i = 0; i < FrameResource::MAX_FRAME_RESOURCES; i++)
-        {
-            FrameResource frameResource(m_device.get());
+                               resource.uniformBuffer = m_device->createBuffer(uboDesc);
+                               resource.mainDescriptorSet = m_device->createDescriptorSet(m_mainDescriptorLayout);
 
-            rhi::RHIBuffer *uboBuffer = m_device->createBuffer(uboDesc);
+                               resource.mainDescriptorSet->writeBuffer(resource.uniformBuffer, 2);
+                               resource.mainDescriptorSet->commit();
 
-            frameResource.setBuffer(FrameResourceId::ForwardLightingUniformBuffer, uboBuffer);
+                               resource.shadowDescriptorSet = m_device->createDescriptorSet(m_shadowDescriptorLayout);
+                               for (uint32_t j = 0; j < cascades.size(); j++)
+                               {
+                                   resource.shadowDescriptorSet->writeTexture(cascades[j], j);
+                               }
+                               resource.shadowDescriptorSet->commit();
 
-            rhi::RHIDescriptorSet *uboDescriptorSet = m_device->createDescriptorSet(m_mainDescriptorLayout);
-
-            uboDescriptorSet->writeBuffer(uboBuffer, 2);
-            uboDescriptorSet->commit();
-            frameResource.setDescriptorSet(FrameResourceId::ForwardLightingMainDescriptorSet, uboDescriptorSet);
-
-            rhi::RHIDescriptorSet *shadowDescriptorSet = m_device->createDescriptorSet(m_shadowDescriptorLayout);
-
-            for (uint32_t j = 0; j < cascades.size(); j++)
-            {
-                shadowDescriptorSet->writeTexture(cascades[j], j);
-            }
-            shadowDescriptorSet->commit();
-            frameResource.setDescriptorSet(FrameResourceId::ForwardLightingShadowDescriptorSet, shadowDescriptorSet);
-
-            m_frameResources.push_back(frameResource);
-        }
+                               return resource;
+                           });
     }
 
     ForwardLightingPass::~ForwardLightingPass()
     {
-        for (auto &frameResource : m_frameResources)
+        for (auto &frameResource : m_resources)
         {
-            m_device->destroyBuffer(frameResource.getBuffer(FrameResourceId::ForwardLightingUniformBuffer));
+            m_device->destroyBuffer(frameResource.uniformBuffer);
         }
         m_device->destroyPipeline(m_pipeline);
     }
@@ -83,12 +77,12 @@ namespace nitro::renderer
     void ForwardLightingPass::execute(rhi::RHICommandBuffer *cmd, Scene &scene, FrameData frameData)
     {
 
-        uint32_t frameIdx = m_device->getCurrentFrameIndex();
-        m_frameResources[frameIdx].getBuffer(FrameResourceId::ForwardLightingUniformBuffer)->upload(&frameData, sizeof(FrameData));
+        auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
+        resource.uniformBuffer->upload(&frameData, sizeof(FrameData));
 
         cmd->bindPipeline(m_pipeline);
-        cmd->bindDescriptorSet(m_frameResources[frameIdx].getDescriptorSet(FrameResourceId::ForwardLightingMainDescriptorSet), 0);
-        cmd->bindDescriptorSet(m_frameResources[frameIdx].getDescriptorSet(FrameResourceId::ForwardLightingShadowDescriptorSet), 1);
+        cmd->bindDescriptorSet(resource.mainDescriptorSet, 0);
+        cmd->bindDescriptorSet(resource.shadowDescriptorSet, 1);
 
         RHIViewport mainViewPort;
         mainViewPort.width = m_swapchain->getWidth();

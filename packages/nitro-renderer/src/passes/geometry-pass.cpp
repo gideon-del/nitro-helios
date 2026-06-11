@@ -3,7 +3,7 @@
 #include <nitro-geometry/vertex.h>
 namespace nitro::renderer
 {
-    GeometryPass::GeometryPass(rhi::RHIDevice *device, uint32_t width, uint32_t height, std::string shaderDir, bool isMetal) : width(width), height(height), m_device(device)
+    GeometryPass::GeometryPass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, std::string shaderDir, bool isMetal) : width(width), height(height), m_device(device)
     {
         rhi::TextureDesc colorAttachmentDesc;
         colorAttachmentDesc.size = {width, height};
@@ -23,6 +23,8 @@ namespace nitro::renderer
         depthAttachmentDesc.usage = rhi::TextureDesc::Usage::DepthStencil |
                                     rhi::TextureDesc::Usage::ShaderRead;
         depthAttachmentDesc.format = rhi::TextureDesc::ImageFormat::Depth32Float;
+        depthAttachmentDesc.sampler = rhi::TextureDesc::Sampler::Sampler2D;
+
         gBuffer.depth = m_device->createTexture(depthAttachmentDesc);
 
         rhi::RenderPassDesc renderPassDesc;
@@ -54,7 +56,6 @@ namespace nitro::renderer
         m_descriptorLayout = m_device->createDescriptorLayout(bindings);
 
         rhi::PipelineDesc pipelineDesc;
-        pipelineDesc.depthTest = true;
         pipelineDesc.hasColorAttachment = true;
         pipelineDesc.colorAttachments = {rhi::TextureDesc::ImageFormat::ColorRGBA8, rhi::TextureDesc::ImageFormat::ColorSRGBA16, rhi::TextureDesc::ImageFormat::ColorRGBA8,
                                          rhi::TextureDesc::ImageFormat::ColorSRGBA16};
@@ -75,34 +76,30 @@ namespace nitro::renderer
         pipelineDesc.vertexLayout = geometry::Vertex::getVertexLayout();
         pipelineDesc.hasPushConstant = true;
         pipelineDesc.pushConstantSize = sizeof(geometry::PushConstant);
-
+        pipelineDesc.depthTest = true;
         m_pipeline = m_device->createPipeline(pipelineDesc);
 
-        rhi::BufferDesc bufferDesc;
-        bufferDesc.size = sizeof(GeometryCameraBuffer);
-        bufferDesc.storage = rhi::BufferDesc::StorageMode::Shared;
-        bufferDesc.usage = rhi::BufferDesc::Usage::Uniform;
-
-        for (int i = 0; i < FrameResource::MAX_FRAME_RESOURCES; i++)
-        {
-            FrameResource frameResource(m_device);
-
-            rhi::RHIBuffer *geometryCameraBuffer = m_device->createBuffer(bufferDesc);
-
-            frameResource.setBuffer(FrameResourceId::GeometryCameraBuffer, geometryCameraBuffer);
-
-            rhi::RHIDescriptorSet *descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
-            descriptorSet->writeBuffer(geometryCameraBuffer, 2);
-            descriptorSet->commit();
-            frameResource.setDescriptorSet(FrameResourceId::GeometryDescriptorSet, descriptorSet);
-
-            m_frameResources.push_back(frameResource);
-        }
+        m_resources.create(
+            g_MAX_FRAMES_IN_FLIGHT,
+            [&](uint32_t frame)
+            {
+                rhi::BufferDesc bufferDesc;
+                bufferDesc.size = sizeof(GeometryCameraBuffer);
+                bufferDesc.storage = rhi::BufferDesc::StorageMode::Shared;
+                bufferDesc.usage = rhi::BufferDesc::Usage::Uniform;
+                GeometryPassResource resource;
+                resource.uniformBuffer = m_device->createBuffer(bufferDesc);
+                resource.descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
+                resource.descriptorSet->writeBuffer(resource.uniformBuffer, 2);
+                resource.descriptorSet->commit();
+                return resource;
+            });
     }
 
     void GeometryPass::execute(rhi::RHICommandBuffer *cmd, GeometryCameraBuffer geometryCamera, Scene &scene)
     {
         uint32_t frameIdx = m_device->getCurrentFrameIndex();
+        auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
         cmd->beginRenderPass(m_renderPass);
         cmd->bindPipeline(m_pipeline);
         RHIViewport viewport;
@@ -113,8 +110,8 @@ namespace nitro::renderer
         scissor.width = width;
         scissor.height = height;
         cmd->setScissor(scissor);
-        m_frameResources[frameIdx].getBuffer(FrameResourceId::GeometryCameraBuffer)->upload(&geometryCamera, sizeof(GeometryCameraBuffer));
-        cmd->bindDescriptorSet(m_frameResources[frameIdx].getDescriptorSet(FrameResourceId::GeometryDescriptorSet), 0);
+        resource.uniformBuffer->upload(&geometryCamera, sizeof(GeometryCameraBuffer));
+        cmd->bindDescriptorSet(resource.descriptorSet, 0);
 
         scene.draw(cmd);
 
@@ -123,9 +120,9 @@ namespace nitro::renderer
 
     GeometryPass::~GeometryPass()
     {
-        for (auto &frameResource : m_frameResources)
+        for (auto &frameResource : m_resources)
         {
-            m_device->destroyBuffer(frameResource.getBuffer(FrameResourceId::GeometryCameraBuffer));
+            m_device->destroyBuffer(frameResource.uniformBuffer);
         }
 
         m_device->destroyPipeline(m_pipeline);

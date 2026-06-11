@@ -15,6 +15,8 @@ namespace nitro::rhi::vulkan
         case TextureDesc::ImageFormat::Depth32Float:
             return VK_FORMAT_D32_SFLOAT;
         }
+
+        return VK_FORMAT_R8G8B8A8_SRGB;
     };
     VkImageAspectFlags convertToAspectFlag(TextureDesc::Usage usage)
     {
