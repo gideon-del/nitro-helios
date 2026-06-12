@@ -218,6 +218,8 @@ namespace nitro::rhi::vulkan
 
     void VulkanCommandBuffer::draw(uint32_t vertexCount)
     {
+        m_FrameStats.triangles += vertexCount / 3;
+        m_FrameStats.drawCalls += 1;
         vkCmdDraw(
             cmd,
             vertexCount,
@@ -227,6 +229,8 @@ namespace nitro::rhi::vulkan
     }
     void VulkanCommandBuffer::drawIndexed(uint32_t indexCount)
     {
+        m_FrameStats.triangles += indexCount / 3;
+        m_FrameStats.drawCalls += 1;
         vkCmdDrawIndexed(
             cmd,
             indexCount,
@@ -305,6 +309,20 @@ namespace nitro::rhi::vulkan
     {
     }
 
+    FrameStats VulkanCommandBuffer::getFrameStats()
+    {
+        return m_FrameStats;
+    }
+    void VulkanCommandBuffer::resetFrameStats()
+    {
+        m_FrameStats.drawCalls = 0;
+        m_FrameStats.triangles = 0;
+        m_FrameStats.vertices = 0;
+    }
+    void VulkanCommandBuffer::updateVertexCount(uint32_t count)
+    {
+        m_FrameStats.vertices += count;
+    }
     void VulkanCommandBuffer::setPushConstant(void *data, size_t size, uint32_t binding)
     {
         if (!m_pipeline)

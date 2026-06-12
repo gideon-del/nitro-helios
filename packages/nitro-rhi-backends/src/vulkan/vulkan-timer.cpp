@@ -32,6 +32,7 @@ namespace nitro::rhi::vulkan
         auto *vkCmd = reinterpret_cast<VulkanCommandBuffer *>(cmd);
         vkCmdResetQueryPool(vkCmd->cmd, m_queryPool, 0, m_queryCount);
         m_nextIndex = 0;
+        m_nameToIndex.clear();
     }
 
     void VulkanTimer::begin(RHICommandBuffer *cmd, const std::string &name)
@@ -66,6 +67,7 @@ namespace nitro::rhi::vulkan
 
     void VulkanTimer::endFrame()
     {
+
         if (m_nextIndex == 0)
             return;
 

@@ -28,6 +28,9 @@ namespace nitro::rhi::metal
         void draw(uint32_t vertexCount) override;
         void drawIndexed(uint32_t indexCount) override;
         void present() override;
+        FrameStats getFrameStats() override;
+        void resetFrameStats() override;
+        void updateVertexCount(uint32_t count) override;
 
         MTL::CommandBuffer *commandBuffer = nullptr;
         MTL::RenderCommandEncoder *encoder = nullptr;
@@ -38,5 +41,6 @@ namespace nitro::rhi::metal
         MetalDevice *m_device;
         MetalBuffer *m_currentIndexBuffer = nullptr;
         MetalPipeline *m_pipeline = nullptr;
+        FrameStats m_FrameStats;
     };
 } // namespace nitro::rhi::metal

@@ -18,6 +18,7 @@ namespace nitro::renderer
         rhi::RHIBuffer *m_vertexBuffer;
         rhi::RHIBuffer *m_indexBuffer;
         uint32_t m_indexCount;
+        uint32_t m_vertexCount;
         std::shared_ptr<rhi::RHIDevice> m_device;
     };
 }

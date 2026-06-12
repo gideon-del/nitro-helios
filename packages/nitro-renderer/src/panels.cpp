@@ -111,5 +111,19 @@ namespace nitro::renderer
                 static_cast<RendererType>(current);
         }
     }
+    void StatPanel::draw(StatSettings &stats)
+    {
+        if (ImGui::Begin("Frame Stats"))
+        {
+            ImGui::Text("FPS: %.1f", stats.fps);
+            ImGui::Text("Frame Time: %.2f ms", stats.frameTime);
 
+            ImGui::Separator();
+
+            ImGui::Text("Draw Calls: %u", stats.drawCalls);
+            ImGui::Text("Triangles: %u", stats.triangles);
+            ImGui::Text("Vertices: %u", stats.vertices);
+        }
+        ImGui::End();
+    }
 } // namespace nitro::renderer

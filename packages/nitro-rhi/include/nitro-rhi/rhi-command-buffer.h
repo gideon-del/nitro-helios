@@ -4,7 +4,12 @@
 
 namespace nitro::rhi
 {
-
+    struct FrameStats
+    {
+        uint32_t drawCalls = 0;
+        uint32_t triangles = 0;
+        uint32_t vertices = 0;
+    };
     class RHIBuffer;
     class RHITexture;
     class RHIPipeline;
@@ -54,7 +59,9 @@ namespace nitro::rhi
 
         virtual void draw(uint32_t vertexCount) = 0;
         virtual void drawIndexed(uint32_t indexCount) = 0;
-
+        virtual FrameStats getFrameStats() = 0;
+        virtual void resetFrameStats() = 0;
+        virtual void updateVertexCount(uint32_t count) = 0;
         virtual void present() = 0;
     };
 

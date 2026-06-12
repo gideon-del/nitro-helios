@@ -138,37 +138,6 @@ int main()
 
     glfwSetWindowUserPointer(window, &appState);
 
-    // glfwSetKeyCallback(window, [](GLFWwindow *window, int key, int scancode, int action, int mods)
-    //                    {
-    //                        auto state = reinterpret_cast<AppState *>(glfwGetWindowUserPointer(window));
-
-    //                        if (key == GLFW_KEY_W || key == GLFW_KEY_UP)
-    //                        {
-    //                            state->camera->moveForward(0.4f);
-    //                        }
-
-    //                        if (key == GLFW_KEY_S || key == GLFW_KEY_DOWN)
-    //                        {
-    //                            state->camera->moveForward(-0.4f);
-    //                        }
-    //                        if (key == GLFW_KEY_A || key == GLFW_KEY_RIGHT)
-    //                        {
-    //                            state->camera->moveRight(0.4f);
-    //                        }
-
-    //                        if (key == GLFW_KEY_D || key == GLFW_KEY_LEFT)
-    //                        {
-    //                            state->camera->moveRight(-0.4f);
-    //                        } });
-    // glfwSetMouseButtonCallback(window, [](GLFWwindow *w, int button, int action, int mods)
-    //                            {
-    //                                auto state = reinterpret_cast<AppState *>(glfwGetWindowUserPointer(w));
-
-    //                                if (button == GLFW_MOUSE_BUTTON_LEFT)
-    //                                {
-    //                                    state->mousePressed = (action == GLFW_PRESS);
-    //                                    glfwGetCursorPos(w, &state->lastX, &state->lastY);
-    //                                } });
     glfwSetCursorPosCallback(window, [](GLFWwindow *w, double x, double y)
                              {
      auto state = reinterpret_cast<AppState *>(glfwGetWindowUserPointer(w));
@@ -220,7 +189,10 @@ int main()
         float aspect = (float)width / (float)height;
 
         RHICommandBuffer *cmd = device->beginFrame();
+        cmd->resetFrameStats();
         timer->beginFrame(cmd);
+
+        timer->begin(cmd, "frame-time");
         switch (rendererSettings.renderer)
         {
         case RendererType::Forward:
@@ -237,99 +209,18 @@ int main()
                 rendererSettings);
             break;
         }
-
-        // uint32_t frameIdx = device.getCurrentFrameIndex();
-        // FrameResource &frameResource = frameResources[frameIdx];
-
-        // LightView lightView;
-        // for (int i = 0; i < cascades.size(); i++)
-        // {
-        //     lightView.lightSpaceMatrix[i] = ShadowPass::s_calculateLightOrthoProj(
-        //         CAMERA_NEAR,
-        //         CAMERA_FAR,
-        //         4,
-        //         i,
-        //         glm::radians(60.0f),
-        //         aspect,
-        //         camera.getView(),
-        //         camera.getEye(),
-        //         light.getView(), shadowSettings.lambda);
-        //     frameData.cascadeSplit[i] = ShadowPass::s_getPracticalSplit(CAMERA_NEAR, CAMERA_FAR, 4, i + 1, shadowSettings.lambda);
-        // }
-
-        // frameResource.getBuffer(FrameResourceId::LightUniformBuffer)->upload(&lightView, sizeof(LightView));
-        // for (int i = 0; i < cascades.size(); i++)
-        // {
-        //     cascades[i].execute(cmd, shadowPipeline, frameResource.getDescriptorSet(FrameResourceId::ShadowDescriptorSet), mainScene);
-        // }
-        // RHIRenderPassDesc rpDesc{};
-        // rpDesc.clearColor[0] = 0.3f;
-        // rpDesc.clearColor[1] = 0.3f;
-        // rpDesc.clearColor[2] = 0.3f;
-        // rpDesc.clearColor[3] = 1.0f;
-        // rpDesc.clearDepth = 1.0f;
-        // rpDesc.hasDepth = true;
-        // globalUbo.proj = glm::perspective(glm::radians(60.0f), aspect, CAMERA_NEAR, CAMERA_FAR);
-        // globalUbo.view = camera.getView();
-
-        // if (!isMetal)
-        // {
-        //     globalUbo.proj[1][1] *= -1.0f;
-        // }
-
-        // frameData.view = camera.getView();
-        // frameData.cameraPos = glm::vec4(camera.getEye(), 1.0f);
-
-        // GeometryCameraBuffer geometryCameraBuffer;
-        // geometryCameraBuffer.proj = globalUbo.proj;
-        // geometryCameraBuffer.view = camera.getView();
-        // geometryPass.execute(cmd, geometryCameraBuffer, mainScene);
-        // frameData.proj = globalUbo.proj;
-        // frameData.lightPos = glm::vec4(light.getEye(), 1.0f);
-        // for (int i = 0; i < cascades.size(); i++)
-        // {
-        //     frameData.lightViewProj[i] = lightView.lightSpaceMatrix[i];
-        // }
-        // cmd->beginRenderPass(rpDesc);
-        // cmd->bindPipeline(pipeline);
-
-        // frameData.ambient = rendererSettings.ambient;
-        // frameData.Ka = rendererSettings.Ka;
-        // frameData.Kd = rendererSettings.Kd;
-        // frameData.Ks = rendererSettings.Ks;
-        // frameData.lightColor =
-        //     glm::vec4(rendererSettings.lightColor, 1.0f);
-
-        // frameData.shadowBias = shadowSettings.bias;
-        // frameData.shadowNormalBias = shadowSettings.normalBias;
-        // frameData.showCascadeColors = shadowSettings.showCascadeColors ? 1.0f : 0.0f;
-        // frameResource.getBuffer(FrameResourceId::FrameDataUniformBuffer)->upload(&frameData, sizeof(FrameData));
-
-        // cmd->bindDescriptorSet(frameResource.getDescriptorSet(FrameResourceId::MainDescriptorSet), 0);
-        // cmd->bindDescriptorSet(frameResource.getDescriptorSet(FrameResourceId::TextureDescriptor), 1);
-        // RHIViewport mainViewPort;
-        // mainViewPort.width = swapchain->getWidth();
-        // mainViewPort.height = swapchain->getHeight();
-        // cmd->setViewPort(mainViewPort);
-        // RHIScissor mainScissor;
-        // mainScissor.width = swapchain->getWidth();
-        // mainScissor.height = swapchain->getHeight();
-        // cmd->setScissor(mainScissor);
-        // mainScene.draw(cmd);
-
-        // device.beginImGuiFrame();
-
-        // rendererPanel.draw(rendererSettings, light);
-        // shadowPanel.draw(shadowSettings);
-        // device.endImGuiFrame();
-        // device.drawImGui(cmd);
-        // cmd->endRenderPass();
-
+        auto frameStat = cmd->getFrameStats();
+        timer->end(cmd, "frame-time");
         cmd->present();
 
         device->endFrame(cmd);
         timer->endFrame();
-        // std::cout << "shadow: " << timer->getResult("shadow_pass") << " ms\n";
+        rendererSettings.stats.fps = 1000.0f / timer->getResult("frame-time");
+        rendererSettings.stats.frameTime = timer->getResult("frame-time");
+
+        rendererSettings.stats.drawCalls = frameStat.drawCalls;
+        rendererSettings.stats.triangles = frameStat.triangles;
+        rendererSettings.stats.vertices = frameStat.vertices;
     }
 
     device->waitIdle();

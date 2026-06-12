@@ -23,5 +23,6 @@ namespace nitro::renderer
         ShadowPanel m_shadowPanel;
         LightPanel m_lightPanel;
         RendererPanel m_rendererPanel;
+        StatPanel m_statsPanel;
     };
 } // namespace nitro::renderer

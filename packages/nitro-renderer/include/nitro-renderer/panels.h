@@ -16,4 +16,8 @@ namespace nitro::renderer
     {
         void draw(RendererSettings &settings);
     };
+    struct StatPanel
+    {
+        void draw(StatSettings &settings);
+    };
 } // namespace nitro::renderer

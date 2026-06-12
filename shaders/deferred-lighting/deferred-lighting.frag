@@ -202,7 +202,7 @@ if(frameUbo.showCascadeColors > 0.5) {
   finalColor = (ambientColor + shadow * (diffuseColor + specularColor)) * albedo;
 }
   outColor = vec4(
- fragUV * 2.0 - 1.0, depth,
+finalColor,
     1.0);
 
 }

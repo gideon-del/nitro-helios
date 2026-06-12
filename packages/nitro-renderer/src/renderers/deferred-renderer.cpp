@@ -79,6 +79,7 @@ namespace nitro::renderer
         m_lightPanel.draw(settings.light);
         m_shadowPanel.draw(settings.shadow);
         m_rendererPanel.draw(settings);
+        m_statsPanel.draw(settings.stats);
         m_device->endImGuiFrame();
         m_device->drawImGui(cmd);
         cmd->endRenderPass();

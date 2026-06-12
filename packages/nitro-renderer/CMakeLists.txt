@@ -28,5 +28,5 @@ target_link_libraries(nitro-renderer
 PUBLIC nitro-rhi
 PUBLIC nitro-geometry
 PUBLIC glm::glm
-PUBLIC nitro-rhi-backends
+PRIVATE nitro-rhi-backends
 )

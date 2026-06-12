@@ -30,13 +30,23 @@ namespace nitro::renderer
         Forward,
         Deferred
     };
-
+    struct StatSettings
+    {
+        float fps;
+        float frameTime;
+        uint32_t drawCalls;
+        uint32_t vertices;
+        uint32_t triangles;
+        std::string renderer;
+        std::string backend;
+    };
     struct RendererSettings
     {
         ShadowSettings shadow;
         LightingSettings light;
 
         RendererType renderer = RendererType::Forward;
+        StatSettings stats;
     };
 
 } // namespace nitro::renderer

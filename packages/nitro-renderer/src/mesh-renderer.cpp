@@ -20,6 +20,7 @@ namespace nitro::renderer
         m_indexBuffer = m_device->createBuffer(indexDesc);
 
         m_indexCount = static_cast<uint32_t>(mesh.indices.size());
+        m_vertexCount = static_cast<uint32_t>(mesh.vertices.size());
     }
 
     MeshRenderer::~MeshRenderer()
@@ -31,6 +32,7 @@ namespace nitro::renderer
     void MeshRenderer::draw(rhi::RHICommandBuffer *cmd)
     {
         cmd->bindVertexBuffer(m_vertexBuffer);
+        cmd->updateVertexCount(m_vertexCount);
         cmd->bindIndexBuffer(m_indexBuffer);
         cmd->drawIndexed(m_indexCount);
     }

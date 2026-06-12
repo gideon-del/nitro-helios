@@ -30,6 +30,9 @@ namespace nitro::rhi::vulkan
         void setScissor(const RHIScissor &scissor) override;
         void draw(uint32_t vertexCount) override;
         void drawIndexed(uint32_t indexCount) override;
+        FrameStats getFrameStats() override;
+        void resetFrameStats() override;
+        void updateVertexCount(uint32_t count) override;
         void present() override;
 
         VkCommandBuffer cmd;
@@ -43,5 +46,6 @@ namespace nitro::rhi::vulkan
         uint32_t m_frameIdx;
         VulkanPipeline *m_pipeline = nullptr;
         VulkanRenderPass *m_activeRenderPass = nullptr;
+        FrameStats m_FrameStats;
     };
 } // namespace nitro::rhi::vulkan

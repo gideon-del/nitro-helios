@@ -145,6 +145,8 @@ namespace nitro::rhi::metal
         {
             throw std::runtime_error("Must bind pipeline for draws");
         }
+        m_FrameStats.drawCalls += 1;
+        m_FrameStats.triangles += vertexCount / 3;
         encoder->drawPrimitives(m_pipeline->topology, NS::UInteger(0), NS::UInteger(vertexCount));
     }
     void MetalCommandBuffer::bindDescriptorSet(RHIDescriptorSet *set, uint32_t mainBinding)
@@ -177,6 +179,9 @@ namespace nitro::rhi::metal
             throw std::runtime_error("Must bind pipeline for draws");
         }
 
+        m_FrameStats.drawCalls += 1;
+        m_FrameStats.triangles += indexCount / 3;
+
         encoder->drawIndexedPrimitives(m_pipeline->topology,
                                        NS::UInteger(indexCount),
                                        MTL::IndexTypeUInt32,
@@ -193,5 +198,20 @@ namespace nitro::rhi::metal
             encoder->release();
         if (commandBuffer)
             commandBuffer->release();
+    }
+
+    FrameStats MetalCommandBuffer::getFrameStats()
+    {
+        return m_FrameStats;
+    }
+    void MetalCommandBuffer::resetFrameStats()
+    {
+        m_FrameStats.drawCalls = 0;
+        m_FrameStats.triangles = 0;
+        m_FrameStats.vertices = 0;
+    }
+    void MetalCommandBuffer::updateVertexCount(uint32_t count)
+    {
+        m_FrameStats.vertices += count;
     }
 } // namespace nitro::rhi::metal
