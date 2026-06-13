@@ -94,7 +94,7 @@ namespace nitro::rhi::metal
         }
 
         {
-            if (desc.colorAttachments.empty())
+            if (desc.colorAttachments.empty() && desc.hasColorAttachment)
             {
                 pipeDesc->colorAttachments()->object(0)->setPixelFormat(MTL::PixelFormatBGRA8Unorm_sRGB);
             }

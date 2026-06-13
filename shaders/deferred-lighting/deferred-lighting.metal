@@ -2,7 +2,12 @@
 using namespace metal;
 
 
-
+struct PointLight {
+  float4 position;
+  float4 color;
+  float radius;
+  float intensity;
+};
 
 struct VertexOut {
     float4 position [[position]];
@@ -12,24 +17,21 @@ struct VertexOut {
 struct FrameUniformBuffer {
     float4 cameraPosition;
     float4 lightPosition;
-    float4 lightColor;
-    
+    float4 lightColor;  
     float4x4 invViewProj;
     float4x4 view;
     float4x4 lightViewProj[4];
-    float4 cascadeSplit;
-   
+    float4 cascadeSplit;  
     float ambient;
     float Ka;
     float Kd;
     float Ks;
     float shininess;
-
     float shadowBias;
     float shadowNormalBias;
-    float showCascadeColors;
-    
-    float gBufferMode;    
+    float showCascadeColors;    
+    float debugMode;
+    PointLight pointLights[100];    
 };
 
 vertex VertexOut vs(
@@ -127,6 +129,29 @@ return mix(shadow0,shadow1, blend);
 }
 }
 
+
+float3 calculatePointLightColor(float3 worldPos, float3 albedo, constant FrameUniformBuffer& fub, float3 normal) {
+
+float3 PLColor = float3(0.0);
+
+for(int i =0; i <100; i++) {
+  float3 P = fub.pointLights[i].position.xyz - worldPos;
+  float dist = length(P);
+  if(dist >fub.pointLights[i].radius ) {
+    continue;
+  }
+  P = normalize(P);
+  float diffuse = max(0.0, dot(normal, P));
+  float attenuation = pow(max(0.0, 1.0 - pow(dist/fub.pointLights[i].radius, 4)), 2)
+   / (dist * dist);
+
+ PLColor +=   albedo * fub.pointLights[i].color.xyz * diffuse *attenuation * fub.pointLights[i].intensity;
+  
+}
+
+return PLColor;
+};
+
 fragment float4 fs(
     VertexOut in [[stage_in]],
   constant FrameUniformBuffer& fub [[buffer(2)]],
@@ -197,15 +222,35 @@ float   shadow2 = shadowPoisson(depthTex2,depthTexSamp,fub.lightViewProj[2] * fl
        cascadeColor = float3(1,1,0);
   }
 float3 finalColor;
- if(fub.showCascadeColors > 0.5) {
-  finalColor = cascadeColor;
- }else if(fub.gBufferMode == 1) {
-    finalColor = albedo;
- } else if(fub.gBufferMode == 2) {
-    finalColor = N;
- }else {
- finalColor   = (ambientColor + shadow * (diffuseColor + specularColor)) * albedo;
- }
+ float3 directionalLightColor = (ambientColor +  shadow*(diffuseColor + specularColor)) * albedo; 
+ float3 pointLightColor = calculatePointLightColor(worldPos, albedo,fub,N);
+switch(int(fub.debugMode)) {
+case 1: 
+  finalColor = albedo;
+  break;
+case 2:
+   finalColor = N;
+   break;
+case 3:
+   finalColor =float3(worldPos.z * 0.05);
+   break;
+case 4:
+   finalColor =worldPos * 0.05;
+   break;
+case 5:
+   finalColor =cascadeColor;
+   break;
+case 6:
+   finalColor =pointLightColor;
+   break;
+case 7:
+   finalColor =directionalLightColor;
+   break;
+default:
+  finalColor = directionalLightColor + pointLightColor;
+  break;   
+}
+
  return float4(
 finalColor,
     1.0);

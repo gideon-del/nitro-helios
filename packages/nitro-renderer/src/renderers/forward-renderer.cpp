@@ -53,6 +53,11 @@ namespace nitro::renderer
         frameData.shadowBias = settings.shadow.bias;
         frameData.shadowNormalBias = settings.shadow.normalBias;
         frameData.showCascadeColors = settings.shadow.showCascadeColors ? 1.0f : 0.0f;
+        frameData.debugMode = static_cast<float>(settings.selectedDebugMode);
+        for (int i = 0; i < settings.light.pointLights.size(); i++)
+        {
+            frameData.pointLights[i] = settings.light.pointLights[i];
+        }
 
         m_forwardLightPass->execute(cmd, *ctx.scene, frameData);
 

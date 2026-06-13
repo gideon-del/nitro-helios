@@ -14,6 +14,7 @@ using DeviceType = nitro::rhi::vulkan::VulkanDevice;
 #include <iostream>
 #include <string>
 #include <imgui.h>
+#include <random>
 using namespace nitro::rhi;
 using namespace nitro::geometry;
 using namespace nitro::renderer;
@@ -27,6 +28,40 @@ struct AppState
     double lastX, lastY;
 };
 
+std::vector<PointLight> createRandomLights(
+    uint32_t count,
+    float areaSize)
+{
+    std::vector<PointLight> lights;
+
+    std::mt19937 rng(42); // fixed seed
+    std::uniform_real_distribution<float> pos(-areaSize, areaSize);
+    std::uniform_real_distribution<float> color(0.2f, 1.0f);
+
+    for (uint32_t i = 0; i < count; i++)
+    {
+        PointLight light;
+
+        light.position = glm::vec4(
+            pos(rng),
+            2.0f + std::abs(pos(rng)),
+            pos(rng),
+            1.0f);
+
+        light.color = glm::vec4(
+            color(rng),
+            color(rng),
+            color(rng),
+            1.0f);
+
+        light.radius = 20.0f;
+        light.intensity = 2.0f;
+
+        lights.push_back(light);
+    }
+
+    return lights;
+};
 void handleKeyboard(GLFWwindow *window, OrbitalCamera &camera)
 {
     const float speed = 0.4f;
@@ -56,6 +91,17 @@ void handleKeyboard(GLFWwindow *window, OrbitalCamera &camera)
     }
 }
 
+void addRandomSpheres(uint32_t count, float areaSize, Scene &scene, std::shared_ptr<MeshRenderer> renderer)
+{
+    std::mt19937 rng(50); // fixed seed
+    std::uniform_real_distribution<float> pos(-areaSize, areaSize);
+
+    for (int i = 0; i < count; i++)
+    {
+        scene.objects.push_back({renderer,
+                                 MeshTransformation(glm::translate(glm::mat4(1.0f), glm::vec3(pos(rng), 10.0f, pos(rng))))});
+    }
+}
 void handleMouse(
     GLFWwindow *window,
     AppState &state,
@@ -115,17 +161,11 @@ int main()
 
     auto sphereRenderer = std::make_shared<MeshRenderer>(sphere, device);
 
-    Mesh plane = MeshGenerator::createPlane(50, 50);
+    Mesh plane = MeshGenerator::createPlane(500, 500);
     plane.calculateNormals();
     auto planeRenderer = std::make_shared<MeshRenderer>(plane, device);
-    mainScene.objects.push_back(
-        RenderObject(
-            planeRenderer,
-            MeshTransformation()));
-    mainScene.objects.push_back(
-        RenderObject(
-            sphereRenderer,
-            MeshTransformation(glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 10.0f, 0.0f)))));
+    mainScene.objects.push_back(RenderObject(planeRenderer));
+    addRandomSpheres(400, 500, mainScene, sphereRenderer);
     OrbitalCamera camera;
     // camera.radius = 10.0f;
     camera.radius = 3.0f;
@@ -138,15 +178,6 @@ int main()
 
     glfwSetWindowUserPointer(window, &appState);
 
-    glfwSetCursorPosCallback(window, [](GLFWwindow *w, double x, double y)
-                             {
-     auto state = reinterpret_cast<AppState *>(glfwGetWindowUserPointer(w));
-     if(state->mousePressed){
-        state->camera->onMouseMove(x - state->lastX, y - state->lastY);
-        state->lastX =x;
-        state->lastY = y;
-     } });
-
     glfwSetScrollCallback(window, [](GLFWwindow *w, double xoffset, double yoffset)
                           {
 
@@ -154,11 +185,9 @@ int main()
 
                               state->camera->onScroll(yoffset); });
 
-    glm::vec3 sphereCenter(0, 10, 0);
-    glm::vec4 sphereLS =
-        light.getView() * glm::vec4(sphereCenter, 1.0f);
     RHITimer *timer = device->createTimer();
     RendererSettings rendererSettings;
+    rendererSettings.light.pointLights = createRandomLights(100, 40);
     RenderContext renderContext;
     renderContext.camera = &camera;
     renderContext.scene = &mainScene;
@@ -167,6 +196,7 @@ int main()
     ForwardRenderer forwardRenderer = ForwardRenderer(device, swapchain, std::string(SHADER_DIR), isMetal);
     DeferredRenderer deferredRenderer = DeferredRenderer(device, swapchain, std::string(SHADER_DIR), isMetal);
     IRenderer *currentRenderer = &deferredRenderer;
+
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();

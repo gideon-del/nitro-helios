@@ -4,6 +4,7 @@
 #include <nitro-renderer/per-frame.h>
 #include <nitro-renderer/scene.h>
 #include <glm/glm.hpp>
+#include <nitro-renderer/settings.h>
 namespace nitro::renderer
 {
 
@@ -11,25 +12,22 @@ namespace nitro::renderer
     {
         glm::mat4 view;
         glm::mat4 proj;
-
         glm::vec4 cameraPos;
-
         glm::vec4 lightPos;
         glm::vec4 lightColor = glm::vec4(1.0f);
-
         glm::mat4 lightViewProj[4];
         glm::vec4 cascadeSplit;
-
         float ambient = 0.3f;
         float Ka = 1.0f;
         float Kd = 0.8f;
         float Ks = 0.9f;
         float shininess = 32.0f;
-
         float shadowBias;
         float shadowNormalBias;
         float showCascadeColors;
-        float padding;
+        float debugMode;
+        float pad[3];
+        PointLight pointLights[100];
     };
 
     struct ForwardLightingResource

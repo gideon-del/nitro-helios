@@ -97,18 +97,36 @@ namespace nitro::renderer
             {
                 "Forward",
                 "Deferred"};
-
-        int current =
+        const char *debugItems[] = {
+            "Lit",
+            "Albedo",
+            "Normal",
+            "Depth",
+            "World Position",
+            "Cascade Colors",
+            "Point Light",
+            "Directional Light"};
+        int currentRenderer =
             static_cast<int>(settings.renderer);
+        int currentDebugMode =
+            static_cast<int>(settings.selectedDebugMode);
 
         if (ImGui::Combo(
                 "Renderer",
-                &current,
+                &currentRenderer,
                 renderers,
                 IM_ARRAYSIZE(renderers)))
         {
             settings.renderer =
-                static_cast<RendererType>(current);
+                static_cast<RendererType>(currentRenderer);
+        }
+        if (ImGui::Combo(
+                "Debug View",
+                &currentDebugMode,
+                debugItems,
+                IM_ARRAYSIZE(debugItems)))
+        {
+            settings.selectedDebugMode = static_cast<DebugMode>(currentDebugMode);
         }
     }
     void StatPanel::draw(StatSettings &stats)

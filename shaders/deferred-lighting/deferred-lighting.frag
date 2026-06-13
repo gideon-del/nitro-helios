@@ -1,7 +1,13 @@
 #version 450
 
 
-layout(set=0, binding=2)uniform  FrameUniformBuffer {
+struct PointLight {
+ vec4 position;
+ vec4 color;
+ float radius;
+ float intensity;
+};
+layout(set=0, binding=2)uniform  FrameUniformBuffer { 
     vec4 cameraPosition;
     vec4 lightPosition;
     vec4 lightColor;
@@ -9,19 +15,17 @@ layout(set=0, binding=2)uniform  FrameUniformBuffer {
     mat4 invViewProj;
     mat4 view;
     mat4 lightViewProj[4];
-    vec4 cascadeSplit;
-   
+    vec4 cascadeSplit; 
     float ambient;
     float Ka;
     float Kd;
     float Ks;
     float shininess;
-
     float shadowBias;
     float shadowNormalBias;
-    float showCascadeColors;
-    
-    float gBufferMode;    
+    float showCascadeColors;  
+    float debugMode;
+    PointLight pointLights[100];  
 } frameUbo;
 
 
@@ -190,17 +194,52 @@ vec3 lightColor = frameUbo.lightColor.xyz;
    vec3 diffuseColor = lightColor * diffuse ;
    vec3 specularColor = lightColor * specular * frameUbo.Ks;
    vec3 finalColor; 
+  vec3 PLColor = vec3(0.0);
 
+for(int i =0; i < 100; i++) {
+   vec3 PL = frameUbo.pointLights[i].position.xyz - worldPos;
+  float dist = length(PL);
+  if(dist <= frameUbo.pointLights[i].radius ) {
+    PL = normalize(PL);
+   float attenuation =
+    max(0.0, 1.0 - dist / frameUbo.pointLights[i].radius);
 
-if(frameUbo.showCascadeColors > 0.5) {
-  finalColor = cascadeColor;
-} else if(frameUbo.gBufferMode  == 1.0) {
-    finalColor = albedo;
-} else if(frameUbo.gBufferMode  == 2.0) {
-    finalColor = N;
-} else {
-  finalColor = (ambientColor + shadow * (diffuseColor + specularColor)) * albedo;
+    attenuation *= attenuation;
+
+    float diffuse = max(0.0, dot(N, PL));
+    PLColor +=  albedo * frameUbo.pointLights[i].color.xyz * diffuse * attenuation * frameUbo.pointLights[i].intensity;
+  }
 }
+
+ vec3 directionalLighting = (ambientColor + shadow * (diffuseColor + specularColor));
+switch(int(frameUbo.debugMode)) {
+  case 1:
+    finalColor = albedo;
+    break;
+  case 2:
+    finalColor = N;
+    break;
+  case 3:
+    finalColor = vec3(worldPos.z);
+    break;
+  case 4:
+    finalColor = vec3(worldPos * 0.05);
+    break;
+  case 5:
+    finalColor = cascadeColor;
+    break;
+  case 6:
+    finalColor = PLColor;
+    break;
+  case 7:
+    finalColor = directionalLighting * albedo;
+    break;
+  default:
+    finalColor = (directionalLighting  * albedo) + PLColor;
+    break;
+}
+
+
   outColor = vec4(
 finalColor,
     1.0);

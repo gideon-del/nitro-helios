@@ -9,6 +9,6 @@ namespace nitro::renderer
         Scene *scene;
         geometry::OrbitalCamera *camera;
         float CAMERA_NEAR = 0.1f;
-        float CAMERA_FAR = 100.0f;
+        float CAMERA_FAR = 900.0f;
     };
 } // namespace nitro::renderer

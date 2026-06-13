@@ -5,6 +5,25 @@
 namespace nitro::renderer
 {
 
+    enum class DebugMode
+    {
+        Lit = 0,
+        Albedo = 1,
+        Normal = 2,
+        Depth = 3,
+        WorldPosition = 4,
+        CascadeColor = 5,
+        PointLight = 6,
+        DirectionalLight = 7
+    };
+    struct PointLight
+    {
+        glm::vec4 position{5.0f, 5.0f, 5.0f, 1.0f};
+        glm::vec4 color{1.0f, 0.0f, 1.0f, 1.0f};
+        float radius = 20.0f;
+        float intensity = 1.0f;
+        float pad[2];
+    };
     struct LightingSettings
     {
         float ambient = 0.3f;
@@ -15,6 +34,7 @@ namespace nitro::renderer
 
         glm::vec3 lightColor = glm::vec3(1.0f);
         geometry::OrbitalCamera lightCamera;
+        std::vector<PointLight> pointLights;
     };
 
     struct ShadowSettings
@@ -44,9 +64,9 @@ namespace nitro::renderer
     {
         ShadowSettings shadow;
         LightingSettings light;
-
         RendererType renderer = RendererType::Forward;
         StatSettings stats;
+        DebugMode selectedDebugMode = DebugMode::Lit;
     };
 
 } // namespace nitro::renderer

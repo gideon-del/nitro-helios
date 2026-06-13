@@ -1,6 +1,12 @@
 #include <metal_stdlib>
 using namespace metal;
 
+struct PointLight {
+  float4 position;
+  float4 color;
+  float radius;
+  float intensity;
+};
 struct VertexIn {
     float3 position [[attribute(0)]];
     float3 color [[attribute(1)]];
@@ -22,12 +28,9 @@ struct PushConstant {
 struct FrameUniformBuffer {
     float4x4 view;
     float4x4 proj;
-
-    float4 cameraPos;
-    
+    float4 cameraPos;    
     float4 lightPos;
     float4 lightColor;
-
     float4x4 lightViewProj[4];
     float4 cascadeSplit;
     float ambient;
@@ -35,9 +38,11 @@ struct FrameUniformBuffer {
     float Kd;
     float Ks;
     float shininess;
-        float shadowBias;
+    float shadowBias;
     float shadowNormalBias;
     float showCascadeColors;
+    float debugMode;
+    PointLight pointLights[100];
 };
 vertex VertexOut vs(VertexIn in [[stage_in]],
                     constant PushConstant& p [[buffer(1)]],
@@ -134,6 +139,28 @@ return mix(shadow0,shadow1, blend);
   return shadow1;
 }
 }
+
+float3 calculatePointLightColor(float3 worldPos, float3 albedo, constant FrameUniformBuffer& fub, float3 normal) {
+float3 PLColor = float3(0.0);
+
+for(int i =0; i <100; i++) {
+  float3 P = fub.pointLights[i].position.xyz - worldPos;
+  float dist = length(P);
+  if(dist > fub.pointLights[i].radius ) {
+    continue;
+  }
+  P = normalize(P);
+  float diffuse = max(0.0, dot(normal, P));
+  float attenuation = pow(max(0.0, 1.0 - pow(dist/fub.pointLights[i].radius, 4)), 2)
+   / (dist * dist);
+
+ PLColor +=   albedo * fub.pointLights[i].color.xyz * diffuse *attenuation * fub.pointLights[i].intensity;
+  
+}
+
+return PLColor;
+};
+
 fragment float4 fs(VertexOut in [[stage_in]],
   constant FrameUniformBuffer& fub [[buffer(2)]],
   depth2d<float> depthTex0 [[texture(16)]],
@@ -154,8 +181,6 @@ fragment float4 fs(VertexOut in [[stage_in]],
     float3 diffuseColor = lightColor * diffuse * fub.Kd;
     float3 specularColor = lightColor * specular * fub.Ks;
    
-
-
 float bias = max(
    fub.shadowBias * (1.0 - dot(N, L)),
     0.0005
@@ -191,11 +216,35 @@ float   shadow2 = shadowPoisson(depthTex2,depthTexSamp,fub.lightViewProj[2] * fl
        cascadeColor = float3(1,1,0);
   }
   float3 color = float3(0.4,0.5,0.9);
- float3 finalColor = (ambientColor +  shadow*(diffuseColor + specularColor)) * color; 
-
- if(fub.showCascadeColors > 0.5) {
-  finalColor = cascadeColor;
- }
+ float3 directionalLightColor = (ambientColor +  shadow*(diffuseColor + specularColor)) * color; 
+ float3 pointLightColor = calculatePointLightColor(in.fragPos, color,fub,N);
+ float3 finalColor;
+switch(int(fub.debugMode)) {
+case 1: 
+  finalColor = color;
+  break;
+case 2:
+   finalColor = N;
+   break;
+case 3:
+   finalColor =float3(in.fragPos.z * 0.05);
+   break;
+case 4:
+   finalColor =in.fragPos * 0.05;
+   break;
+case 5:
+   finalColor =cascadeColor;
+   break;
+case 6:
+   finalColor =pointLightColor;
+   break;
+case 7:
+   finalColor =directionalLightColor;
+   break;
+default:
+  finalColor = directionalLightColor + pointLightColor;
+  break;   
+}
 return float4(
 finalColor,
     1.0);

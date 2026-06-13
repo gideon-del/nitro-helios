@@ -9,11 +9,12 @@
 #include <nitro-renderer/scene.h>
 #include <nitro-renderer/per-frame.h>
 #include <glm/glm.hpp>
-
+#include <nitro-renderer/settings.h>
 namespace nitro::renderer
 {
     struct DeferredLightingFrameData
     {
+
         glm::vec4 cameraPosition;
         glm::vec4 lightPosition;
         glm::vec4 lightColor;
@@ -32,9 +33,9 @@ namespace nitro::renderer
         float shadowBias;
         float shadowNormalBias;
         float showCascadeColors;
-
-        float gBufferMode;
+        float debugMode;
         float pad[3];
+        PointLight pointLights[100];
     };
 
     struct DeferredLightingResource
