@@ -84,13 +84,14 @@ namespace nitro::renderer
         cmd->bindDescriptorSet(resource.mainDescriptorSet, 0);
         cmd->bindDescriptorSet(resource.shadowDescriptorSet, 1);
 
+        RHIViewScale swapchainViewScale = m_swapchain->getViewScale();
         RHIViewport mainViewPort;
-        mainViewPort.width = m_swapchain->getWidth();
-        mainViewPort.height = m_swapchain->getHeight();
+        mainViewPort.width = m_swapchain->getWidth() * swapchainViewScale.x;
+        mainViewPort.height = m_swapchain->getHeight() * swapchainViewScale.y;
         cmd->setViewPort(mainViewPort);
         RHIScissor mainScissor;
-        mainScissor.width = m_swapchain->getWidth();
-        mainScissor.height = m_swapchain->getHeight();
+        mainScissor.width = m_swapchain->getWidth() * swapchainViewScale.x;
+        mainScissor.height = m_swapchain->getHeight() * swapchainViewScale.y;
         cmd->setScissor(mainScissor);
 
         scene.draw(cmd);

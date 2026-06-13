@@ -17,6 +17,7 @@ namespace nitro::rhi::metal
         RHITexture *getCurrentBackbuffer() override;
         uint32_t getWidth() override;
         uint32_t getHeight() override;
+        RHIViewScale getViewScale() override;
 
         CA::MetalLayer *layer;
         CA::MetalDrawable *currentDrawable = nullptr;
@@ -24,10 +25,9 @@ namespace nitro::rhi::metal
         MetalTexture *depthTexture;
         uint32_t width;
         uint32_t height;
-        float xScale;
-        float yScale;
 
     private:
         MetalDevice *m_device;
+        RHIViewScale m_viewScale;
     };
 }

@@ -70,5 +70,8 @@ namespace nitro::renderer
         m_device->drawImGui(cmd);
         cmd->endRenderPass();
     }
+    void ForwardRenderer::resize(uint32_t width, uint32_t height)
+    {
+    }
 
 } // namespace nitro::renderer

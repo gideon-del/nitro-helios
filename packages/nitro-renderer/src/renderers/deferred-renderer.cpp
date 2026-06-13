@@ -90,4 +90,9 @@ namespace nitro::renderer
         m_device->drawImGui(cmd);
         cmd->endRenderPass();
     }
+    void DeferredRenderer::resize(uint32_t width, uint32_t height)
+    {
+        m_geometryPass->resize(width, height);
+        m_deferredLightingPass->recreate(m_geometryPass->gBuffer);
+    };
 } // namespace nitro::renderer

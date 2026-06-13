@@ -196,7 +196,8 @@ int main()
     ForwardRenderer forwardRenderer = ForwardRenderer(device, swapchain, std::string(SHADER_DIR), isMetal);
     DeferredRenderer deferredRenderer = DeferredRenderer(device, swapchain, std::string(SHADER_DIR), isMetal);
     IRenderer *currentRenderer = &deferredRenderer;
-
+    int cachedWidth, cachedHeight;
+    glfwGetFramebufferSize(window, &cachedWidth, &cachedHeight);
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
@@ -212,12 +213,22 @@ int main()
         {
             handleMouse(window, appState, io);
         }
+
         GlobalTransformation globalUbo{};
         int width, height;
 
         glfwGetFramebufferSize(window, &width, &height);
         float aspect = (float)width / (float)height;
 
+        if ((cachedWidth != width || cachedHeight != height) && width > 0 && height > 0)
+        {
+            device->waitIdle();
+            swapchain->resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+            forwardRenderer.resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+            deferredRenderer.resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+            cachedWidth = width;
+            cachedHeight = height;
+        };
         RHICommandBuffer *cmd = device->beginFrame();
         cmd->resetFrameStats();
         timer->beginFrame(cmd);

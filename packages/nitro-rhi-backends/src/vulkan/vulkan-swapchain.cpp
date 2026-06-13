@@ -203,6 +203,7 @@ namespace nitro::rhi::vulkan
         format = newSwapchain->format;
         extent = newSwapchain->extent;
 
+        notifyResizeCallbacks(width, height);
         newSwapchain->swapchain = VK_NULL_HANDLE;
         newSwapchain->depthTexture = nullptr;
         newSwapchain->backBuffers.clear();

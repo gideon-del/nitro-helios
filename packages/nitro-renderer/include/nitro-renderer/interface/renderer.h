@@ -9,5 +9,6 @@ namespace nitro::renderer
     {
     public:
         virtual void execute(rhi::RHICommandBuffer *cmd, const RenderContext &ctx, RendererSettings &settings) = 0;
+        virtual void resize(uint32_t width, uint32_t height) = 0;
     };
 } // namespace nitro::renderer

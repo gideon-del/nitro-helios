@@ -107,19 +107,34 @@ namespace nitro::renderer
         auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
         cmd->bindPipeline(m_pipeline);
         resource.uniformBuffer->upload(&frameData, sizeof(DeferredLightingFrameData));
+        RHIViewScale swapchainViewScale = m_swapchain->getViewScale();
         rhi::RHIViewport viewport;
-        viewport.width = m_swapchain->getWidth();
-        viewport.height = m_swapchain->getHeight();
+        viewport.width = m_swapchain->getWidth() * swapchainViewScale.x;
+        viewport.height = m_swapchain->getHeight() * swapchainViewScale.y;
 
         cmd->setViewPort(viewport);
 
         rhi::RHIScissor scissor;
-        scissor.width = m_swapchain->getWidth();
-        scissor.height = m_swapchain->getHeight();
+        scissor.width = m_swapchain->getWidth() * swapchainViewScale.x;
+        scissor.height = m_swapchain->getHeight() * swapchainViewScale.y;
         cmd->setScissor(scissor);
         cmd->bindDescriptorSet(resource.mainDescriptorSet, 0);
         cmd->bindDescriptorSet(resource.gBufferDescriptorSet, 1);
         cmd->bindDescriptorSet(resource.shadowDescriptorSet, 2);
         cmd->draw(3);
     }
+
+    void DeferredLightingPass::recreate(GBuffer &gBuffer)
+    {
+        for (auto &resource : m_resources)
+        {
+            resource.gBufferDescriptorSet->writeTexture(gBuffer.albedo, 0);
+            resource.gBufferDescriptorSet->writeTexture(gBuffer.normal, 1);
+            resource.gBufferDescriptorSet->writeTexture(gBuffer.material, 2);
+            resource.gBufferDescriptorSet->writeTexture(gBuffer.emissive, 3);
+            resource.gBufferDescriptorSet->writeTexture(gBuffer.depth, 4);
+            resource.gBufferDescriptorSet->commit();
+        }
+    };
+
 } // namespace nitro::renderer

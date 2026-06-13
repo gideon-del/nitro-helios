@@ -15,6 +15,7 @@ namespace nitro::rhi::vulkan
         void resize(uint32_t width, uint32_t height) override;
         uint32_t getWidth() override;
         uint32_t getHeight() override;
+        RHIViewScale getViewScale() override { return m_viewScale; }
         void cleanup();
         VkSwapchainKHR swapchain;
         std::vector<VulkanTexture *> backBuffers;
@@ -31,6 +32,7 @@ namespace nitro::rhi::vulkan
 
     private:
         VulkanDevice *m_device;
+        RHIViewScale m_viewScale{1.0f, 1.0f};
     };
 
 }

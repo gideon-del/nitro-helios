@@ -24,10 +24,10 @@ namespace nitro::rhi::metal
         depthTextureDesc.format = TextureDesc::ImageFormat::Depth32Float;
         depthTexture = reinterpret_cast<MetalTexture *>(m_device->createTexture(depthTextureDesc));
 
-        glfwGetWindowContentScale(
-            window,
-            &xScale,
-            &yScale);
+        // glfwGetWindowContentScale(
+        //     window,
+        //     &m_viewScale.x,
+        //     &m_viewScale.y);
     };
 
     void MetalSwapchain::resize(uint32_t newWidth, uint32_t newHeight)
@@ -38,14 +38,15 @@ namespace nitro::rhi::metal
         height = newHeight;
 
         delete depthTexture;
+
         TextureDesc depthTextureDesc;
         depthTextureDesc.size = {width, height};
         depthTextureDesc.usage = TextureDesc::Usage::DepthStencil | TextureDesc::Usage::RenderTarget;
         depthTextureDesc.format = TextureDesc::ImageFormat::Depth32Float;
         depthTexture = reinterpret_cast<MetalTexture *>(m_device->createTexture(depthTextureDesc));
-
         layer->setDrawableSize(
-            CGSizeMake(width * xScale, height * yScale));
+            CGSizeMake(width, height));
+        notifyResizeCallbacks(width, height);
     }
 
     MetalSwapchain::~MetalSwapchain()
@@ -70,4 +71,5 @@ namespace nitro::rhi::metal
     {
         return nullptr;
     }
+    RHIViewScale MetalSwapchain::getViewScale() { return m_viewScale; }
 }
