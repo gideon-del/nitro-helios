@@ -17,6 +17,9 @@ namespace nitro::rhi::metal
 
         uint32_t width;
         uint32_t height;
+        float depthBiasConstant = 0.0f;
+        float depthBiasSlopScale = 0.0f;
+        float depthBiasClamp = 0.0f;
 
     private:
         MetalDevice *m_device;

@@ -12,7 +12,7 @@ namespace nitro::renderer
         m_descriptorLayout = m_device->createDescriptorLayout(bindings);
 
         rhi::PipelineDesc pipelineDesc;
-        pipelineDesc.depthTest = true;
+        pipelineDesc.depthWrite = true;
         pipelineDesc.hasColorAttachment = false;
         pipelineDesc.layouts = {m_descriptorLayout};
         pipelineDesc.hasPushConstant = true;

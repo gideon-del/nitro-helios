@@ -10,9 +10,9 @@ struct VertexIn {
 };
 
 struct VertexOut {
-    float4 position [[position]];
+    float4 position [[position]][[invariant]];
     float3 normal;
-     float2 uv;
+    float2 uv;
 
 };
 
@@ -24,7 +24,6 @@ struct PushConstant {
 struct FrameUniformBuffer {
     float4x4 view;
     float4x4 proj;
-
 };   
 
 struct GeometryBuffer {
@@ -39,8 +38,7 @@ vertex VertexOut vs(
     constant FrameUniformBuffer& fub [[buffer(2)]]   
 ){
      VertexOut out;
-    float4 worldPos =  p.model * float4(in.position, 1.0);
-    out.position = fub.proj * fub.view * worldPos; 
+    out.position = fub.proj * fub.view * p.model * float4(in.position, 1.0); 
     float3x3 normalMatrix = {
         p.normalMatrix[0].xyz,
         p.normalMatrix[1].xyz,

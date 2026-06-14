@@ -16,6 +16,7 @@ add_library(nitro-renderer STATIC
  src/passes/deferred-lighting-pass.cpp
  src/renderers/forward-renderer.cpp
  src/renderers/deferred-renderer.cpp
+ src/passes/depth-prepass.cpp
 )
 
 find_package(glm REQUIRED)

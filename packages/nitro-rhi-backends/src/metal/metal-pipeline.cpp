@@ -52,6 +52,31 @@ namespace nitro::rhi::metal
             return MTL::PrimitiveTypeTriangle;
         }
     }
+
+    MTL::CompareFunction convertToCompareFunction(CompareOp test)
+    {
+
+        switch (test)
+        {
+        case CompareOp::Equal:
+            return MTL::CompareFunctionEqual;
+        case CompareOp::Less:
+            return MTL::CompareFunctionLess;
+        case CompareOp::LessOrEqual:
+            return MTL::CompareFunctionLessEqual;
+        case CompareOp::Greater:
+            return MTL::CompareFunctionGreater;
+        case CompareOp::GreaterOrEqual:
+            return MTL::CompareFunctionGreaterEqual;
+        case CompareOp::NotEqual:
+            return MTL::CompareFunctionNotEqual;
+        case CompareOp::Always:
+            return MTL::CompareFunctionAlways;
+
+        default:
+            return MTL::CompareFunctionNever;
+        }
+    }
     MetalPipeline::MetalPipeline(MetalDevice *device, const PipelineDesc &desc) : m_device(device)
     {
         NS::Error *error = nullptr;
@@ -108,9 +133,8 @@ namespace nitro::rhi::metal
                 }
             }
         }
-        if (desc.depthTest)
+        if (desc.hasDepth)
         {
-
             pipeDesc->setDepthAttachmentPixelFormat(MTL::PixelFormatDepth32Float);
         }
 
@@ -124,8 +148,9 @@ namespace nitro::rhi::metal
         checkNSError(error, "Failed to load PipelineState");
         MTL::DepthStencilDescriptor *depthDesc =
             MTL::DepthStencilDescriptor::alloc()->init();
-        depthDesc->setDepthCompareFunction(MTL::CompareFunctionLess);
-        depthDesc->setDepthWriteEnabled(desc.depthTest);
+        depthDesc->setDepthCompareFunction(convertToCompareFunction(desc.depthTest));
+        depthDesc->setDepthWriteEnabled(desc.depthWrite);
+
         depthStencilState = m_device->device->newDepthStencilState(depthDesc);
         topology = convertToPrimitive(desc.topology);
         pipeDesc->release();

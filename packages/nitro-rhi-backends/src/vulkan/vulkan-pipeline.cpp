@@ -8,6 +8,7 @@
 #include <vector>
 namespace nitro::rhi::vulkan
 {
+
     std::vector<char> readFile(const std::string filePath)
     {
         std::ifstream file(filePath, std::ios::ate | std::ios::binary);
@@ -93,6 +94,29 @@ namespace nitro::rhi::vulkan
         }
 
         return VK_SHADER_STAGE_ALL;
+    }
+
+    VkCompareOp convertToCompareOp(CompareOp test)
+    {
+        switch (test)
+        {
+        case CompareOp::Less:
+            return VK_COMPARE_OP_LESS;
+        case CompareOp::LessOrEqual:
+            return VK_COMPARE_OP_LESS_OR_EQUAL;
+        case CompareOp::Greater:
+            return VK_COMPARE_OP_GREATER;
+        case CompareOp::GreaterOrEqual:
+            return VK_COMPARE_OP_GREATER_OR_EQUAL;
+        case CompareOp::Equal:
+            return VK_COMPARE_OP_EQUAL;
+        case CompareOp::NotEqual:
+            return VK_COMPARE_OP_NOT_EQUAL;
+        case CompareOp::Always:
+            return VK_COMPARE_OP_ALWAYS;
+        default:
+            return VK_COMPARE_OP_NEVER;
+        }
     }
     VulkanPipeline::VulkanPipeline(VulkanDevice *device, const PipelineDesc &desc) : m_device(device)
     {
@@ -225,10 +249,10 @@ namespace nitro::rhi::vulkan
 
         VkPipelineDepthStencilStateCreateInfo depthInfo{};
         depthInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-        depthInfo.depthCompareOp = VK_COMPARE_OP_LESS;
+        depthInfo.depthCompareOp = convertToCompareOp(desc.depthTest);
         depthInfo.depthTestEnable = VK_TRUE;
         depthInfo.depthBoundsTestEnable = VK_FALSE;
-        depthInfo.depthWriteEnable = VK_TRUE;
+        depthInfo.depthWriteEnable = desc.depthWrite ? VK_TRUE : VK_FALSE;
 
         VkPushConstantRange pushConstantRange{};
         pushConstantRange.offset = 0;
@@ -294,7 +318,7 @@ namespace nitro::rhi::vulkan
                 colorFormats.data();
         }
 
-        if (desc.depthTest)
+        if (desc.hasDepth)
         {
             renderingInfo.depthAttachmentFormat =
                 VK_FORMAT_D32_SFLOAT;

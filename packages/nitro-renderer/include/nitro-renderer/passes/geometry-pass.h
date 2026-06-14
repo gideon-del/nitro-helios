@@ -30,16 +30,16 @@ namespace nitro::renderer
     class GeometryPass
     {
     public:
-        GeometryPass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, std::string shaderDir, bool isMetal = false);
+        GeometryPass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, rhi::RHITexture *depthTexture, std::string shaderDir, bool isMetal = false);
 
         ~GeometryPass();
         void execute(rhi::RHICommandBuffer *cmd, GeometryCameraBuffer geometryCamera, Scene &scene);
-        void resize(uint32_t newWidth, uint32_t newHeight);
+        void resize(uint32_t width, uint32_t height, rhi::RHITexture *depthTexture);
         GBuffer gBuffer;
-        uint32_t width;
-        uint32_t height;
 
     private:
+        uint32_t m_width;
+        uint32_t m_height;
         std::shared_ptr<rhi::RHIDevice> m_device;
         rhi::RHIRenderPass *m_renderPass;
         rhi::RHIPipeline *m_pipeline;

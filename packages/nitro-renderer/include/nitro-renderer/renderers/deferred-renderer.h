@@ -20,6 +20,7 @@ namespace nitro::renderer
         std::shared_ptr<GeometryPass> m_geometryPass;
         std::shared_ptr<CascadeShadowMapPass> m_csmPass;
         std::shared_ptr<DeferredLightingPass> m_deferredLightingPass;
+        std::shared_ptr<DepthPrepass> m_depthPrepass;
         bool m_isMetal;
         ShadowPanel m_shadowPanel;
         LightPanel m_lightPanel;

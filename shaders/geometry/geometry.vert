@@ -23,8 +23,7 @@ layout(push_constant)uniform PushConstant {
 
 
 void main() {
-     vec4 worldPos = pc.model * vec4(aPos, 1.0);
-    gl_Position = gUbo.proj * gUbo.view * worldPos;
+    gl_Position = gUbo.proj * gUbo.view * pc.model * vec4(aPos, 1.0);
 
     fragUV = aUV;
      mat3 normalMatrix = {

@@ -34,24 +34,7 @@ namespace nitro::rhi::metal
         encoder = commandBuffer->renderCommandEncoder(rpd);
         encoder->setCullMode(MTL::CullModeBack);
         encoder->setFrontFacingWinding(MTL::WindingCounterClockwise);
-        encoder->setDepthBias(2.0, 2.0, 0.0);
-        // MTL::Viewport viewport;
-        // viewport.originX = 0;
-        // viewport.originY = 0;
-        // viewport.width = swapchain->currentDrawable->texture()->width();
-        // viewport.height = swapchain->currentDrawable->texture()->height();
-        // viewport.zfar = 1.0;
-        // viewport.znear = 0.0;
-
-        // encoder->setViewport(viewport);
-
-        // MTL::ScissorRect scissors;
-        // scissors.x = 0;
-        // scissors.y = 0;
-        // scissors.width = swapchain->currentDrawable->texture()->width();
-        // scissors.height = swapchain->currentDrawable->texture()->height();
-        // encoder->setScissorRect(scissors);
-        // rpd->release();
+        // encoder->setDepthBias(2.0, 2.0, 0.0);
     }
     void MetalCommandBuffer::beginRenderPass(RHIRenderPass *renderPass)
     {
@@ -60,24 +43,7 @@ namespace nitro::rhi::metal
         encoder = commandBuffer->renderCommandEncoder(metalRenderPass->renderPassDescriptor);
         encoder->setCullMode(MTL::CullModeBack);
         encoder->setFrontFacingWinding(MTL::WindingCounterClockwise);
-        encoder->setDepthBias(2.0, 2.0, 0.0);
-
-        // MTL::Viewport viewport;
-        // viewport.originX = 0;
-        // viewport.originY = 0;
-        // viewport.width = metalRenderPass->width;
-        // viewport.height = metalRenderPass->height;
-        // viewport.zfar = 1.0;
-        // viewport.znear = 0.0;
-
-        // encoder->setViewport(viewport);
-
-        // MTL::ScissorRect scissors;
-        // scissors.x = 0;
-        // scissors.y = 0;
-        // scissors.width = metalRenderPass->width;
-        // scissors.height = metalRenderPass->height;
-        // encoder->setScissorRect(scissors);
+        encoder->setDepthBias(metalRenderPass->depthBiasConstant, metalRenderPass->depthBiasSlopScale, metalRenderPass->depthBiasSlopScale);
     }
     void MetalCommandBuffer::endRenderPass()
     {

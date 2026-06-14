@@ -66,6 +66,8 @@ if(APPLE)
 
             COMMAND ${XCRUN}
                 -sdk macosx metal
+                -frecord-sources
+                -gline-tables-only
                 -c ${SOURCE}
                 -o ${AIR_FILE}
 

@@ -21,6 +21,9 @@ namespace nitro::rhi
         float clearDepth = 1.0f;
         bool hasDepth = true;
         RHITexture *colorTexture = nullptr;
+        float depthBiasConstant = 0.0f;
+        float depthBiasSlopScale = 0.0f;
+        float depthBiasClamp = 0.0f;
     };
 
     struct RHIViewport

@@ -23,7 +23,7 @@ namespace nitro::renderer
         pipelineDesc.pushConstantSize = sizeof(geometry::PushConstant);
         pipelineDesc.layouts = {m_mainDescriptorLayout, m_shadowDescriptorLayout};
         pipelineDesc.vertexLayout = geometry::Vertex::getVertexLayout();
-        pipelineDesc.depthTest = true;
+        pipelineDesc.depthWrite = true;
         std::string shaderPath = shaderDir + "/forward-lighting/forward-lighting";
 
         if (isMetal)

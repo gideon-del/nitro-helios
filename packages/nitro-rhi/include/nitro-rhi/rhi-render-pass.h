@@ -24,7 +24,7 @@ namespace nitro::rhi
             StoreOp store = StoreOp::DontCare;
             float clearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
             float clearDepth = 1.0f;
-            bool hasDepth = true;
+            bool depthWrite = true;
         };
 
         std::vector<Attachment> colorAttachments;
@@ -32,6 +32,10 @@ namespace nitro::rhi
 
         uint32_t width;
         uint32_t height;
+
+        float depthBiasConstant = 0.0f;
+        float depthBiasSlopScale = 0.0f;
+        float depthBiasClamp = 0.0f;
     };
 
     class RHIRenderPass

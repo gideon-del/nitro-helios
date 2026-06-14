@@ -10,7 +10,8 @@ namespace nitro::renderer
                         m_swapchain(swapchain),
                         m_isMetal(isMetal)
     {
-        m_geometryPass = std::make_shared<GeometryPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
+        m_depthPrepass = std::make_shared<DepthPrepass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
+        m_geometryPass = std::make_shared<GeometryPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), m_depthPrepass->getDepthTexture(), shaderDir, isMetal);
         m_csmPass = std::make_shared<CascadeShadowMapPass>(m_device, shaderDir, isMetal);
         m_deferredLightingPass = std::make_shared<DeferredLightingPass>(
             m_device,
@@ -42,7 +43,10 @@ namespace nitro::renderer
         {
             geometryCamera.proj[1][1] *= -1.0f;
         }
-
+        DepthPrePassCamera depthCamera;
+        depthCamera.view = geometryCamera.view;
+        depthCamera.proj = geometryCamera.proj;
+        m_depthPrepass->execute(cmd, *ctx.scene, depthCamera);
         m_geometryPass->execute(cmd, geometryCamera, *ctx.scene);
 
         rhi::RHIRenderPassDesc rpDesc{};
@@ -92,7 +96,8 @@ namespace nitro::renderer
     }
     void DeferredRenderer::resize(uint32_t width, uint32_t height)
     {
-        m_geometryPass->resize(width, height);
+        m_depthPrepass->resize(width, height);
+        m_geometryPass->resize(width, height, m_depthPrepass->getDepthTexture());
         m_deferredLightingPass->recreate(m_geometryPass->gBuffer);
     };
 } // namespace nitro::renderer

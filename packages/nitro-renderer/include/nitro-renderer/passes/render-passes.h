@@ -5,3 +5,4 @@
 #include "cascade-shadow-map-pass.h"
 #include "forward-lighting-pass.h"
 #include "deferred-lighting-pass.h"
+#include "depth-prepass.h"

@@ -7,6 +7,18 @@
 namespace nitro::rhi
 {
 
+    enum class CompareOp
+    {
+        None,
+        Less,
+        Greater,
+        Equal,
+        LessOrEqual,
+        GreaterOrEqual,
+        NotEqual,
+        Always
+    };
+
     struct RHIVertexLayout
     {
         uint32_t binding;
@@ -51,8 +63,10 @@ namespace nitro::rhi
     {
         RHIVertexLayout vertexLayout;
         std::vector<ShaderDesc> shaders;
-        bool depthTest = true;
+        bool depthWrite = true;
+        CompareOp depthTest = CompareOp::LessOrEqual;
         bool hasColorAttachment = true;
+        bool hasDepth = true;
         std::vector<TextureDesc::ImageFormat> colorAttachments;
         bool hasPushConstant = true;
         uint32_t pushConstantSize;
