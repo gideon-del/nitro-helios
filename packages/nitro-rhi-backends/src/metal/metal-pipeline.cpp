@@ -77,6 +77,76 @@ namespace nitro::rhi::metal
             return MTL::CompareFunctionNever;
         }
     }
+    MTL::BlendOperation convertBlendOp(RHIBlendDesc::BlendOp operation)
+    {
+        switch (operation)
+        {
+        case RHIBlendDesc::BlendOp::Add:
+            return MTL::BlendOperationAdd;
+        case RHIBlendDesc::BlendOp::Substract:
+            return MTL::BlendOperationSubtract;
+        default:
+            return MTL::BlendOperationAdd;
+        }
+    }
+
+    MTL::BlendFactor convertBlendFactor(RHIBlendDesc::BlendFactor factor)
+    {
+        switch (factor)
+        {
+        case RHIBlendDesc::BlendFactor::One:
+            return MTL::BlendFactorOne;
+        case RHIBlendDesc::BlendFactor::Zero:
+            return MTL::BlendFactorZero;
+        default:
+            return MTL::BlendFactorOne;
+        }
+    }
+    MTL::CullMode convertCullMode(PipelineDesc::CullMode cullMode)
+    {
+        switch (cullMode)
+        {
+        case PipelineDesc::CullMode::Back:
+            return MTL::CullModeBack;
+        case PipelineDesc::CullMode::Front:
+            return MTL::CullModeFront;
+
+        default:
+            return MTL::CullModeNone;
+        }
+    }
+
+    MTL::Winding convertFrontFace(PipelineDesc::FrontFace frontFace)
+    {
+        switch (frontFace)
+        {
+        case PipelineDesc::FrontFace::ClockWise:
+            return MTL::WindingClockwise;
+
+        default:
+            return MTL::WindingCounterClockwise;
+        }
+    };
+
+    MTL::StencilOperation convertStencilOp(RHIStencilDesc::StencilOp operation)
+    {
+        switch (operation)
+        {
+        case RHIStencilDesc::StencilOp::DECREMENT:
+            return MTL::StencilOperationDecrementClamp;
+        case RHIStencilDesc::StencilOp::INCREMENT:
+            return MTL::StencilOperationIncrementClamp;
+        case RHIStencilDesc::StencilOp::KEEP:
+            return MTL::StencilOperationKeep;
+        case RHIStencilDesc::StencilOp::REPLACE:
+            return MTL::StencilOperationReplace;
+        case RHIStencilDesc::StencilOp::ZERO:
+            return MTL::StencilOperationZero;
+
+        default:
+            return MTL::StencilOperationKeep;
+        }
+    }
     MetalPipeline::MetalPipeline(MetalDevice *device, const PipelineDesc &desc) : m_device(device)
     {
         NS::Error *error = nullptr;
@@ -127,15 +197,29 @@ namespace nitro::rhi::metal
             {
                 for (int i = 0; i < desc.colorAttachments.size(); i++)
                 {
+                    auto &colorAttachment = desc.colorAttachments[i];
 
                     pipeDesc->colorAttachments()->object(i)->setPixelFormat(convertToPixelFormat(
-                        desc.colorAttachments[i]));
+                        colorAttachment.format));
+
+                    if (colorAttachment.blend.enabled)
+                    {
+                        pipeDesc->colorAttachments()->object(i)->setBlendingEnabled(true);
+                        pipeDesc->colorAttachments()->object(i)->setRgbBlendOperation(convertBlendOp(colorAttachment.blend.operation));
+                        pipeDesc->colorAttachments()->object(i)->setSourceRGBBlendFactor(convertBlendFactor(colorAttachment.blend.srcBlendFactor));
+                        pipeDesc->colorAttachments()->object(i)->setDestinationRGBBlendFactor(convertBlendFactor(colorAttachment.blend.dstBlendFactor));
+                    }
                 }
             }
         }
         if (desc.hasDepth)
         {
             pipeDesc->setDepthAttachmentPixelFormat(MTL::PixelFormatDepth32Float);
+        }
+
+        if (desc.stencil.enabled)
+        {
+            pipeDesc->setStencilAttachmentPixelFormat(MTL::PixelFormatStencil8);
         }
 
         if (!desc.vertexLayout.attributes.empty())
@@ -150,11 +234,49 @@ namespace nitro::rhi::metal
             MTL::DepthStencilDescriptor::alloc()->init();
         depthDesc->setDepthCompareFunction(convertToCompareFunction(desc.depthTest));
         depthDesc->setDepthWriteEnabled(desc.depthWrite);
+        MTL::StencilDescriptor *frontStencilDesc = nullptr;
+        MTL::StencilDescriptor *backStencilDesc = nullptr;
+        if (desc.stencil.enabled)
+        {
+            frontStencilDesc = MTL::StencilDescriptor::alloc()->init();
 
+            frontStencilDesc->setDepthFailureOperation(convertStencilOp(desc.stencil.front.depthFailOp));
+            frontStencilDesc->setStencilFailureOperation(convertStencilOp(desc.stencil.front.failOp));
+            frontStencilDesc->setDepthStencilPassOperation(convertStencilOp(desc.stencil.front.passOp));
+
+            frontStencilDesc->setReadMask(desc.stencil.front.compareMask);
+            frontStencilDesc->setWriteMask(desc.stencil.front.writeMask);
+            frontStencilDesc->setStencilCompareFunction(convertToCompareFunction(desc.stencil.front.compareOp));
+
+            depthDesc->setFrontFaceStencil(frontStencilDesc);
+
+            backStencilDesc = MTL::StencilDescriptor::alloc()->init();
+
+            backStencilDesc->setDepthFailureOperation(convertStencilOp(desc.stencil.back.depthFailOp));
+            backStencilDesc->setStencilFailureOperation(convertStencilOp(desc.stencil.back.failOp));
+            backStencilDesc->setDepthStencilPassOperation(convertStencilOp(desc.stencil.back.passOp));
+
+            backStencilDesc->setReadMask(desc.stencil.back.compareMask);
+            backStencilDesc->setWriteMask(desc.stencil.back.writeMask);
+            backStencilDesc->setStencilCompareFunction(convertToCompareFunction(desc.stencil.back.compareOp));
+
+            depthDesc->setBackFaceStencil(backStencilDesc);
+        }
         depthStencilState = m_device->device->newDepthStencilState(depthDesc);
         topology = convertToPrimitive(desc.topology);
+        frontFace = convertFrontFace(desc.frontFace);
+        cullMode = convertCullMode(desc.cullMode);
         pipeDesc->release();
         depthDesc->release();
+
+        if (frontStencilDesc)
+        {
+            frontStencilDesc->release();
+        }
+        if (backStencilDesc)
+        {
+            backStencilDesc->release();
+        }
         for (auto &function : shaderFunctions)
         {
             function->release();

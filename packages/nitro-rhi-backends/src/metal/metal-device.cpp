@@ -10,7 +10,9 @@
 #include <nitro-rhi-backends/metal/metal-descriptor-layout.h>
 #include <nitro-rhi-backends/metal/metal-timer.h>
 #include <imgui_impl_glfw.h>
+#ifndef IMGUI_IMPL_METAL_CPP
 #define IMGUI_IMPL_METAL_CPP
+#endif
 #include <imgui_impl_metal.h>
 #include <GLFW/glfw3.h>
 namespace nitro::rhi::metal

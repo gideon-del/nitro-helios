@@ -182,6 +182,14 @@ namespace nitro::rhi::vulkan
             1,
             &vulkanScissor);
     };
+
+    void VulkanCommandBuffer::setStencilReference(uint32_t reference)
+    {
+        vkCmdSetStencilReference(
+            cmd,
+            VK_STENCIL_FRONT_AND_BACK,
+            reference);
+    }
     void VulkanCommandBuffer::bindVertexBuffer(RHIBuffer *buffer)
     {
         VulkanBuffer *vertexBuffer = reinterpret_cast<VulkanBuffer *>(buffer);

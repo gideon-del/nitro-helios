@@ -14,6 +14,8 @@ namespace nitro::rhi::metal
         MTL::RenderPipelineState *pipelineState;
         MTL::DepthStencilState *depthStencilState;
         MTL::PrimitiveType topology = MTL::PrimitiveTypeTriangle;
+        MTL::Winding frontFace = MTL::WindingCounterClockwise;
+        MTL::CullMode cullMode = MTL::CullModeBack;
 
     private:
         MetalDevice *m_device;

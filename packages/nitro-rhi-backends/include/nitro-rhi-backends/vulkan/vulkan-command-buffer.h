@@ -28,6 +28,7 @@ namespace nitro::rhi::vulkan
         void setPushConstant(void *data, size_t size, uint32_t binding) override;
         void setViewPort(const RHIViewport &viewport) override;
         void setScissor(const RHIScissor &scissor) override;
+        void setStencilReference(uint32_t reference) override;
         void draw(uint32_t vertexCount) override;
         void drawIndexed(uint32_t indexCount) override;
         FrameStats getFrameStats() override;

@@ -59,6 +59,7 @@ namespace nitro::rhi
         virtual void setPushConstant(void *data, size_t size, uint32_t binding) = 0;
         virtual void setViewPort(const RHIViewport &viewport) = 0;
         virtual void setScissor(const RHIScissor &scissor) = 0;
+        virtual void setStencilReference(uint32_t reference) = 0;
 
         virtual void draw(uint32_t vertexCount) = 0;
         virtual void drawIndexed(uint32_t indexCount) = 0;

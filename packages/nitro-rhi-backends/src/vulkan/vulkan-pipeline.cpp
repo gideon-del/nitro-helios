@@ -118,6 +118,70 @@ namespace nitro::rhi::vulkan
             return VK_COMPARE_OP_NEVER;
         }
     }
+
+    VkBlendOp convertBlendOp(RHIBlendDesc::BlendOp operation)
+    {
+        switch (operation)
+        {
+        case RHIBlendDesc::BlendOp::Substract:
+            return VK_BLEND_OP_SUBTRACT;
+
+        default:
+            return VK_BLEND_OP_ADD;
+        }
+    }
+
+    VkBlendFactor convertBlendFactor(RHIBlendDesc::BlendFactor factor)
+    {
+        switch (factor)
+        {
+        case RHIBlendDesc::BlendFactor::Zero:
+            return VK_BLEND_FACTOR_ZERO;
+        default:
+            return VK_BLEND_FACTOR_ONE;
+        }
+    }
+    VkCullModeFlags convertCullMode(PipelineDesc::CullMode cullMode)
+    {
+        switch (cullMode)
+        {
+        case PipelineDesc::CullMode::Back:
+            return VK_CULL_MODE_BACK_BIT;
+        case PipelineDesc::CullMode::Front:
+            return VK_CULL_MODE_FRONT_BIT;
+
+        default:
+            return VK_CULL_MODE_NONE;
+        }
+    }
+    VkFrontFace convertFrontFace(PipelineDesc::FrontFace frontFace)
+    {
+        switch (frontFace)
+        {
+        case PipelineDesc::FrontFace::ClockWise:
+            return VK_FRONT_FACE_CLOCKWISE;
+
+        default:
+            return VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        }
+    }
+
+    VkStencilOp convertStencilOp(RHIStencilDesc::StencilOp operation)
+    {
+        switch (operation)
+        {
+        case RHIStencilDesc::StencilOp::DECREMENT:
+            return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
+        case RHIStencilDesc::StencilOp::INCREMENT:
+            return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+        case RHIStencilDesc::StencilOp::KEEP:
+            return VK_STENCIL_OP_KEEP;
+        case RHIStencilDesc::StencilOp::REPLACE:
+            return VK_STENCIL_OP_REPLACE;
+        default:
+            return VK_STENCIL_OP_ZERO;
+        }
+    }
     VulkanPipeline::VulkanPipeline(VulkanDevice *device, const PipelineDesc &desc) : m_device(device)
     {
 
@@ -207,21 +271,33 @@ namespace nitro::rhi::vulkan
 
         VkPipelineColorBlendAttachmentState colorBlendState{};
 
-        colorBlendState.blendEnable = VK_FALSE;
-        colorBlendState.colorWriteMask = VK_COLOR_COMPONENT_A_BIT |
-                                         VK_COLOR_COMPONENT_B_BIT |
-                                         VK_COLOR_COMPONENT_R_BIT |
-                                         VK_COLOR_COMPONENT_G_BIT;
-
         std::vector<VkPipelineColorBlendAttachmentState> colorBlendStates;
 
         if (desc.colorAttachments.empty())
         {
+            colorBlendState.blendEnable = VK_FALSE;
+            colorBlendState.colorWriteMask = VK_COLOR_COMPONENT_A_BIT |
+                                             VK_COLOR_COMPONENT_B_BIT |
+                                             VK_COLOR_COMPONENT_R_BIT |
+                                             VK_COLOR_COMPONENT_G_BIT;
             colorBlendStates.push_back(colorBlendState);
         }
 
-        for (auto colorAttachment : desc.colorAttachments)
+        for (auto &colorAttachment : desc.colorAttachments)
         {
+            colorBlendState.blendEnable = VK_FALSE;
+            colorBlendState.colorWriteMask = VK_COLOR_COMPONENT_A_BIT |
+                                             VK_COLOR_COMPONENT_B_BIT |
+                                             VK_COLOR_COMPONENT_R_BIT |
+                                             VK_COLOR_COMPONENT_G_BIT;
+
+            if (colorAttachment.blend.enabled)
+            {
+                colorBlendState.blendEnable = VK_TRUE;
+                colorBlendState.colorBlendOp = convertBlendOp(colorAttachment.blend.operation);
+                colorBlendState.srcColorBlendFactor = convertBlendFactor(colorAttachment.blend.srcBlendFactor);
+                colorBlendState.dstColorBlendFactor = convertBlendFactor(colorAttachment.blend.dstBlendFactor);
+            }
             colorBlendStates.push_back(colorBlendState);
         }
         VkPipelineColorBlendStateCreateInfo colorBlendInfo{};
@@ -233,8 +309,8 @@ namespace nitro::rhi::vulkan
 
         VkPipelineRasterizationStateCreateInfo rasterizationInfo{};
         rasterizationInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-        rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-        rasterizationInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+        rasterizationInfo.cullMode = convertCullMode(desc.cullMode);
+        rasterizationInfo.frontFace = convertFrontFace(desc.frontFace);
         rasterizationInfo.depthClampEnable = VK_FALSE;
         rasterizationInfo.depthBiasClamp = 0.0f;
         rasterizationInfo.depthBiasEnable = VK_TRUE;
@@ -253,6 +329,31 @@ namespace nitro::rhi::vulkan
         depthInfo.depthTestEnable = VK_TRUE;
         depthInfo.depthBoundsTestEnable = VK_FALSE;
         depthInfo.depthWriteEnable = desc.depthWrite ? VK_TRUE : VK_FALSE;
+
+        if (desc.stencil.enabled)
+        {
+            depthInfo.stencilTestEnable = VK_TRUE;
+            VkStencilOpState frontOp;
+            frontOp.compareMask = desc.stencil.front.compareMask;
+            frontOp.compareOp = convertToCompareOp(desc.stencil.front.compareOp);
+            frontOp.depthFailOp = convertStencilOp(desc.stencil.front.depthFailOp);
+            frontOp.failOp = convertStencilOp(desc.stencil.front.failOp);
+            frontOp.passOp = convertStencilOp(desc.stencil.front.passOp);
+            frontOp.reference = desc.stencil.front.reference;
+            frontOp.writeMask = desc.stencil.front.writeMask;
+
+            depthInfo.front = frontOp;
+
+            VkStencilOpState backOp;
+            backOp.compareMask = desc.stencil.back.compareMask;
+            backOp.compareOp = convertToCompareOp(desc.stencil.back.compareOp);
+            backOp.depthFailOp = convertStencilOp(desc.stencil.back.depthFailOp);
+            backOp.failOp = convertStencilOp(desc.stencil.back.failOp);
+            backOp.passOp = convertStencilOp(desc.stencil.back.passOp);
+            backOp.reference = desc.stencil.back.reference;
+            backOp.writeMask = desc.stencil.back.writeMask;
+            depthInfo.back = backOp;
+        }
 
         VkPushConstantRange pushConstantRange{};
         pushConstantRange.offset = 0;
@@ -301,10 +402,10 @@ namespace nitro::rhi::vulkan
             VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
         std::vector<VkFormat> colorFormats;
         renderingInfo.colorAttachmentCount = 0;
-        for (auto &colorFormat : desc.colorAttachments)
+        for (auto &colorAttachment : desc.colorAttachments)
         {
 
-            colorFormats.push_back(convertToFormat(colorFormat));
+            colorFormats.push_back(convertToFormat(colorAttachment.format));
         }
 
         if (desc.colorAttachments.empty())

@@ -15,6 +15,7 @@ namespace nitro::renderer
         pipelineDesc.depthWrite = true;
         pipelineDesc.hasColorAttachment = false;
         pipelineDesc.layouts = {m_descriptorLayout};
+        pipelineDesc.cullMode = PipelineDesc::CullMode::Front;
         pipelineDesc.hasPushConstant = true;
         pipelineDesc.pushConstantSize = sizeof(ShadowPushConstant);
         pipelineDesc.vertexLayout = geometry::Vertex::getVertexLayout();

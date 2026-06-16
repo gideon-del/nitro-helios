@@ -32,17 +32,12 @@ namespace nitro::rhi::metal
         rpd->depthAttachment()->setClearDepth(desc.clearDepth);
 
         encoder = commandBuffer->renderCommandEncoder(rpd);
-        encoder->setCullMode(MTL::CullModeBack);
-        encoder->setFrontFacingWinding(MTL::WindingCounterClockwise);
-        // encoder->setDepthBias(2.0, 2.0, 0.0);
     }
     void MetalCommandBuffer::beginRenderPass(RHIRenderPass *renderPass)
     {
         MetalRenderPass *metalRenderPass = reinterpret_cast<MetalRenderPass *>(renderPass);
 
         encoder = commandBuffer->renderCommandEncoder(metalRenderPass->renderPassDescriptor);
-        encoder->setCullMode(MTL::CullModeBack);
-        encoder->setFrontFacingWinding(MTL::WindingCounterClockwise);
         encoder->setDepthBias(metalRenderPass->depthBiasConstant, metalRenderPass->depthBiasSlopScale, metalRenderPass->depthBiasSlopScale);
     }
     void MetalCommandBuffer::endRenderPass()
@@ -79,6 +74,8 @@ namespace nitro::rhi::metal
         encoder->setRenderPipelineState(metalPipeline->pipelineState);
         encoder->setDepthStencilState(
             metalPipeline->depthStencilState);
+        encoder->setCullMode(metalPipeline->cullMode);
+        encoder->setFrontFacingWinding(metalPipeline->frontFace);
         m_pipeline = metalPipeline;
     }
 
@@ -104,6 +101,10 @@ namespace nitro::rhi::metal
     {
         encoder->setVertexBytes(data, NS::UInteger(size), NS::UInteger(binding));
     }
+    void MetalCommandBuffer::setStencilReference(uint32_t reference)
+    {
+        encoder->setStencilReferenceValue(reference);
+    };
     void MetalCommandBuffer::draw(uint32_t vertexCount)
     {
 
