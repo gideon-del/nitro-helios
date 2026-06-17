@@ -358,7 +358,7 @@ namespace nitro::rhi::vulkan
         VkPushConstantRange pushConstantRange{};
         pushConstantRange.offset = 0;
         pushConstantRange.size = desc.pushConstantSize;
-        pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
         VkPipelineLayoutCreateInfo pipelayoutInfo{};
         pipelayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

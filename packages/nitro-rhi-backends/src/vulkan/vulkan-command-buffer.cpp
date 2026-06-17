@@ -341,7 +341,7 @@ namespace nitro::rhi::vulkan
         vkCmdPushConstants(
             cmd,
             m_pipeline->layout,
-            VK_SHADER_STAGE_VERTEX_BIT,
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
             0,
             size,
             data);

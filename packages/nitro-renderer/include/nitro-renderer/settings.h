@@ -1,7 +1,7 @@
 #pragma once
 #include <glm/glm.hpp>
 #include <nitro-geometry/camera.h>
-
+#include <nitro-renderer/mesh-renderer.h>
 namespace nitro::renderer
 {
 
@@ -20,7 +20,7 @@ namespace nitro::renderer
     {
         glm::vec4 position{5.0f, 5.0f, 5.0f, 1.0f};
         glm::vec4 color{1.0f, 0.0f, 1.0f, 1.0f};
-        float radius = 20.0f;
+        float radius = 200.0f;
         float intensity = 1.0f;
         float pad[2];
     };
@@ -35,6 +35,7 @@ namespace nitro::renderer
         glm::vec3 lightColor = glm::vec3(1.0f);
         geometry::OrbitalCamera lightCamera;
         std::vector<PointLight> pointLights;
+        std::shared_ptr<MeshRenderer> pointLightRenderer;
     };
 
     struct ShadowSettings

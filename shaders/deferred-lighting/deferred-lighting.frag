@@ -1,12 +1,7 @@
 #version 450
 
 
-struct PointLight {
- vec4 position;
- vec4 color;
- float radius;
- float intensity;
-};
+
 layout(set=0, binding=2)uniform  FrameUniformBuffer { 
     vec4 cameraPosition;
     vec4 lightPosition;
@@ -24,8 +19,7 @@ layout(set=0, binding=2)uniform  FrameUniformBuffer {
     float shadowBias;
     float shadowNormalBias;
     float showCascadeColors;  
-    float debugMode;
-    PointLight pointLights[100];  
+    float debugMode; 
 } frameUbo;
 
 
@@ -34,6 +28,7 @@ layout(set=1, binding=1) uniform sampler2D gNormal;
 layout(set=1, binding=2) uniform sampler2D gMaterial;
 layout(set=1, binding=3) uniform sampler2D gEmissive;
 layout(set=1, binding=4) uniform sampler2D gDepth;
+layout(set=1, binding=5) uniform sampler2D lightShading;
 
 layout(set=2, binding=0) uniform sampler2DShadow shadowMap0;
 layout(set=2, binding=1) uniform sampler2DShadow shadowMap1;
@@ -132,7 +127,7 @@ void main() {
   float depth   = texture(gDepth, fragUV).x;
   if(depth >= 1.0)
 {
-    outColor = vec4(0,0,0,1);
+   discard;
     return;
 }
   vec3  worldPos = reconstructPosition(fragUV, depth, frameUbo.invViewProj);
@@ -194,22 +189,9 @@ vec3 lightColor = frameUbo.lightColor.xyz;
    vec3 diffuseColor = lightColor * diffuse ;
    vec3 specularColor = lightColor * specular * frameUbo.Ks;
    vec3 finalColor; 
-  vec3 PLColor = vec3(0.0);
+  vec3 PLColor = texture(lightShading, fragUV).rgb * albedo;
 
-for(int i =0; i < 100; i++) {
-   vec3 PL = frameUbo.pointLights[i].position.xyz - worldPos;
-  float dist = length(PL);
-  if(dist <= frameUbo.pointLights[i].radius ) {
-    PL = normalize(PL);
-   float attenuation =
-    max(0.0, 1.0 - dist / frameUbo.pointLights[i].radius);
 
-    attenuation *= attenuation;
-
-    float diffuse = max(0.0, dot(N, PL));
-    PLColor +=  albedo * frameUbo.pointLights[i].color.xyz * diffuse * attenuation * frameUbo.pointLights[i].intensity;
-  }
-}
 
  vec3 directionalLighting = (ambientColor + shadow * (diffuseColor + specularColor));
 switch(int(frameUbo.debugMode)) {

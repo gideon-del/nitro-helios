@@ -15,6 +15,7 @@ namespace nitro::rhi
             ColorRGBA8,
             ColorSRGBA16,
             Depth32Float,
+            Depth32FloatStencil8
         } format;
 
         enum class Usage : uint32_t

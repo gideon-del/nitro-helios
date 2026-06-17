@@ -13,11 +13,13 @@ namespace nitro::renderer
         m_depthPrepass = std::make_shared<DepthPrepass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
         m_geometryPass = std::make_shared<GeometryPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), m_depthPrepass->getDepthTexture(), shaderDir, isMetal);
         m_csmPass = std::make_shared<CascadeShadowMapPass>(m_device, shaderDir, isMetal);
+        m_lightStencilPass = std::make_shared<LightingStencilPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), m_geometryPass->gBuffer, shaderDir, m_isMetal);
         m_deferredLightingPass = std::make_shared<DeferredLightingPass>(
             m_device,
             m_swapchain,
             m_csmPass->getCascadeTextures(),
             m_geometryPass->gBuffer,
+            m_lightStencilPass->getLightingTexture(),
             shaderDir,
             isMetal);
     }
@@ -48,7 +50,11 @@ namespace nitro::renderer
         depthCamera.proj = geometryCamera.proj;
         m_depthPrepass->execute(cmd, *ctx.scene, depthCamera);
         m_geometryPass->execute(cmd, geometryCamera, *ctx.scene);
-
+        LightStencilCamera lightStencilCamera;
+        lightStencilCamera.view = geometryCamera.view;
+        lightStencilCamera.proj = geometryCamera.proj;
+        lightStencilCamera.invViewProj = glm::inverse(geometryCamera.proj * geometryCamera.view);
+        m_lightStencilPass->execute(cmd, settings.light, lightStencilCamera);
         rhi::RHIRenderPassDesc rpDesc{};
         rpDesc.clearColor[0] = 0.3f;
         rpDesc.clearColor[1] = 0.3f;
@@ -98,6 +104,7 @@ namespace nitro::renderer
     {
         m_depthPrepass->resize(width, height);
         m_geometryPass->resize(width, height, m_depthPrepass->getDepthTexture());
-        m_deferredLightingPass->recreate(m_geometryPass->gBuffer);
+        m_lightStencilPass->resize(width, height, m_geometryPass->gBuffer);
+        m_deferredLightingPass->recreate(m_geometryPass->gBuffer, m_lightStencilPass->getLightingTexture());
     };
 } // namespace nitro::renderer

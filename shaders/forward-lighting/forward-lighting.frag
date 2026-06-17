@@ -195,11 +195,9 @@ for(int i =0; i < 100; i++) {
 
   if(dist <= frameUbo.pointLights[i].radius ) {
     PL = normalize(PL);
-   float attenuation =
-    max(0.0, 1.0 - dist / frameUbo.pointLights[i].radius);
-
-    attenuation *= attenuation;
-
+ float attenuation = pow(max(0.0, 1.0 - pow(dist/frameUbo.pointLights[i].radius, 4)), 2)
+   / (dist * dist);
+ 
     float diffuse = max(0.0, dot(N, PL));
     PLColor += color * frameUbo.pointLights[i].color.xyz * diffuse * attenuation * frameUbo.pointLights[i].intensity;
   }

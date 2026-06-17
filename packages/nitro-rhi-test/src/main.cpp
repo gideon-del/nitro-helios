@@ -44,7 +44,7 @@ std::vector<PointLight> createRandomLights(
 
         light.position = glm::vec4(
             pos(rng),
-            2.0f + std::abs(pos(rng)),
+            20.0f,
             pos(rng),
             1.0f);
 
@@ -54,8 +54,8 @@ std::vector<PointLight> createRandomLights(
             color(rng),
             1.0f);
 
-        light.radius = 20.0f;
-        light.intensity = 2.0f;
+        light.radius = 100.0f;
+        light.intensity = 10.0f;
 
         lights.push_back(light);
     }
@@ -166,8 +166,11 @@ int main()
     auto planeRenderer = std::make_shared<MeshRenderer>(plane, device);
     mainScene.objects.push_back(RenderObject(planeRenderer));
     addRandomSpheres(400, 500, mainScene, sphereRenderer);
+    Mesh pointLightSphere = MeshGenerator::createUVSphere(1, 10, 100);
+    std::shared_ptr<MeshRenderer> pointLightRenderer = std::make_shared<MeshRenderer>(pointLightSphere, device);
     OrbitalCamera camera;
     // camera.radius = 10.0f;
+
     camera.radius = 3.0f;
     OrbitalCamera light;
     light.radius = 200.0f;
@@ -187,12 +190,13 @@ int main()
 
     RHITimer *timer = device->createTimer();
     RendererSettings rendererSettings;
-    rendererSettings.light.pointLights = createRandomLights(100, 40);
+    rendererSettings.light.pointLights = createRandomLights(100, 100);
     RenderContext renderContext;
     renderContext.camera = &camera;
     renderContext.scene = &mainScene;
 
     rendererSettings.light.lightCamera = light;
+    rendererSettings.light.pointLightRenderer = pointLightRenderer;
     ForwardRenderer forwardRenderer = ForwardRenderer(device, swapchain, std::string(SHADER_DIR), isMetal);
     DeferredRenderer deferredRenderer = DeferredRenderer(device, swapchain, std::string(SHADER_DIR), isMetal);
     IRenderer *currentRenderer = &deferredRenderer;

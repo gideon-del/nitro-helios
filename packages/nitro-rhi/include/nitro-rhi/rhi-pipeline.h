@@ -95,7 +95,7 @@ namespace nitro::rhi
             StencilOp failOp = StencilOp::KEEP;
             StencilOp passOp = StencilOp::KEEP;
             StencilOp depthFailOp = StencilOp::KEEP;
-            CompareOp compareOp;
+            CompareOp compareOp = CompareOp::Always;
             uint32_t compareMask = 0xFF;
             uint32_t writeMask = 0xFF;
             uint32_t reference = 1;
