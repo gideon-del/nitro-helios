@@ -100,6 +100,7 @@ namespace nitro::rhi::metal
     void MetalCommandBuffer::setPushConstant(void *data, size_t size, uint32_t binding)
     {
         encoder->setVertexBytes(data, NS::UInteger(size), NS::UInteger(binding));
+        encoder->setFragmentBytes(data, NS::UInteger(size), NS::UInteger(binding));
     }
     void MetalCommandBuffer::setStencilReference(uint32_t reference)
     {

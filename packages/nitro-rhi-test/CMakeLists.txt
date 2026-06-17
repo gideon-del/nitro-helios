@@ -22,7 +22,7 @@ if(APPLE)
         PRIVATE nitro-renderer
         PRIVATE glfw
     )
-    # target_compile_definitions(nitro-rhi-test PRIVATE USE_METAL)
+    target_compile_definitions(nitro-rhi-test PRIVATE USE_METAL)
 else()
     target_link_libraries(nitro-rhi-test
         PRIVATE nitro-rhi-backends

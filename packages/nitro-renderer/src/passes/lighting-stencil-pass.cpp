@@ -33,7 +33,7 @@ namespace nitro::renderer
         m_descriptorLayout = m_device->createDescriptorLayout(binding);
         std::string shaderPath = shaderDir + "/lighting-stencil/lighting-stencil";
         rhi::PipelineDesc pipelineDesc;
-        pipelineDesc.cullMode = rhi::PipelineDesc::CullMode::Back;
+        pipelineDesc.cullMode = rhi::PipelineDesc::CullMode::Front;
         pipelineDesc.depthWrite = false;
         pipelineDesc.depthTest = CompareOp::Always;
         pipelineDesc.hasColorAttachment = false;

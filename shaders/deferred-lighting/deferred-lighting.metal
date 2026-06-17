@@ -2,12 +2,7 @@
 using namespace metal;
 
 
-struct PointLight {
-  float4 position;
-  float4 color;
-  float radius;
-  float intensity;
-};
+
 
 struct VertexOut {
     float4 position [[position]];
@@ -30,8 +25,7 @@ struct FrameUniformBuffer {
     float shadowBias;
     float shadowNormalBias;
     float showCascadeColors;    
-    float debugMode;
-    PointLight pointLights[100];    
+    float debugMode;    
 };
 
 vertex VertexOut vs(
@@ -130,27 +124,7 @@ return mix(shadow0,shadow1, blend);
 }
 
 
-float3 calculatePointLightColor(float3 worldPos, float3 albedo, constant FrameUniformBuffer& fub, float3 normal) {
 
-float3 PLColor = float3(0.0);
-
-for(int i =0; i <100; i++) {
-  float3 P = fub.pointLights[i].position.xyz - worldPos;
-  float dist = length(P);
-  if(dist >fub.pointLights[i].radius ) {
-    continue;
-  }
-  P = normalize(P);
-  float diffuse = max(0.0, dot(normal, P));
-  float attenuation = pow(max(0.0, 1.0 - pow(dist/fub.pointLights[i].radius, 4)), 2)
-   / (dist * dist);
-
- PLColor +=   albedo * fub.pointLights[i].color.xyz * diffuse *attenuation * fub.pointLights[i].intensity;
-  
-}
-
-return PLColor;
-};
 
 fragment float4 fs(
     VertexOut in [[stage_in]],
@@ -161,6 +135,7 @@ fragment float4 fs(
    texture2d<float> gMaterialTex [[texture(18)]], 
    texture2d<float> gEmissiveTex [[texture(19)]], 
    texture2d<float> gDepthTex [[texture(20)]], 
+   texture2d<float> lightingTex [[texture(21)]], 
     sampler gSamp [[sampler(1)]],
 
    depth2d<float> depthTex0 [[texture(32)]],
@@ -223,7 +198,7 @@ float   shadow2 = shadowPoisson(depthTex2,depthTexSamp,fub.lightViewProj[2] * fl
   }
 float3 finalColor;
  float3 directionalLightColor = (ambientColor +  shadow*(diffuseColor + specularColor)) * albedo; 
- float3 pointLightColor = calculatePointLightColor(worldPos, albedo,fub,N);
+ float3 pointLightColor = lightingTex.sample(gSamp, in.uv).rgb * albedo;
 switch(int(fub.debugMode)) {
 case 1: 
   finalColor = albedo;
