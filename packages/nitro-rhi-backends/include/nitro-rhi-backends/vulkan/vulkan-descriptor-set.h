@@ -12,7 +12,7 @@ namespace nitro::rhi::vulkan
         VulkanDescriptorSet(VulkanDevice *device, VulkanDescriptorLayout *layout, VkDescriptorSet descriptorSet);
         ~VulkanDescriptorSet() override;
         void writeBuffer(RHIBuffer *buffer, uint32_t binding) override;
-        void writeTexture(RHITexture *texture, uint32_t binding) override;
+        void writeTexture(RHITexture *texture, uint32_t binding, ImageLayout imageLayout) override;
         void commit() override;
 
         VkDescriptorSet descriptorSet;

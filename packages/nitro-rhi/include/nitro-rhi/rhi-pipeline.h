@@ -112,6 +112,7 @@ namespace nitro::rhi
         CompareOp depthTest = CompareOp::LessOrEqual;
         bool hasColorAttachment = true;
         bool hasDepth = true;
+        bool hasStencil = false;
 
         struct ColorAttachmentDesc
         {
@@ -122,6 +123,7 @@ namespace nitro::rhi
             ColorAttachmentDesc(TextureDesc::ImageFormat format, RHIBlendDesc blend) : format(format), blend(blend) {}
         };
         std::vector<ColorAttachmentDesc> colorAttachments;
+        TextureDesc::ImageFormat depthAttachmentFormat = TextureDesc::ImageFormat::Depth32Float;
         bool hasPushConstant = true;
         uint32_t pushConstantSize;
         std::vector<RHIDescriptorLayout *> layouts;

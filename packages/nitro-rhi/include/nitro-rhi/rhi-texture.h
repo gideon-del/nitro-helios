@@ -3,6 +3,20 @@
 
 namespace nitro::rhi
 {
+
+    enum class ImageLayout
+    {
+        Undefined,
+        ColorAttachment,
+        DepthStencilAttachment,
+        DepthAttachmentStencilReadOnly,
+        DepthReadOnlyStencilAttachment,
+        DepthStencilReadOnly,
+        ShaderReadOnly,
+        TransferSrc,
+        TransferDst,
+        Present
+    };
     struct TextureDesc
     {
         enum class Sampler

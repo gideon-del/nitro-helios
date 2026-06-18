@@ -78,19 +78,19 @@ namespace nitro::renderer
 
                 resource.gBufferDescriptorSet = m_device->createDescriptorSet(m_gBufferDescriptorLayout);
 
-                resource.gBufferDescriptorSet->writeTexture(gBuffer.albedo, 0);
-                resource.gBufferDescriptorSet->writeTexture(gBuffer.normal, 1);
-                resource.gBufferDescriptorSet->writeTexture(gBuffer.material, 2);
-                resource.gBufferDescriptorSet->writeTexture(gBuffer.emissive, 3);
-                resource.gBufferDescriptorSet->writeTexture(gBuffer.depth, 4);
-                resource.gBufferDescriptorSet->writeTexture(lightTexture, 5);
+                resource.gBufferDescriptorSet->writeTexture(gBuffer.albedo, 0, ImageLayout::ShaderReadOnly);
+                resource.gBufferDescriptorSet->writeTexture(gBuffer.normal, 1, ImageLayout::ShaderReadOnly);
+                resource.gBufferDescriptorSet->writeTexture(gBuffer.material, 2, ImageLayout::ShaderReadOnly);
+                resource.gBufferDescriptorSet->writeTexture(gBuffer.emissive, 3, ImageLayout::ShaderReadOnly);
+                resource.gBufferDescriptorSet->writeTexture(gBuffer.depth, 4, ImageLayout::ShaderReadOnly);
+                resource.gBufferDescriptorSet->writeTexture(lightTexture, 5, ImageLayout::ShaderReadOnly);
                 resource.gBufferDescriptorSet->commit();
 
                 resource.shadowDescriptorSet = m_device->createDescriptorSet(m_shadowDescriptorLayout);
 
                 for (uint32_t i = 0; i < cascades.size(); i++)
                 {
-                    resource.shadowDescriptorSet->writeTexture(cascades[i], i);
+                    resource.shadowDescriptorSet->writeTexture(cascades[i], i, ImageLayout::ShaderReadOnly);
                 }
 
                 resource.shadowDescriptorSet->commit();
@@ -135,12 +135,12 @@ namespace nitro::renderer
     {
         for (auto &resource : m_resources)
         {
-            resource.gBufferDescriptorSet->writeTexture(gBuffer.albedo, 0);
-            resource.gBufferDescriptorSet->writeTexture(gBuffer.normal, 1);
-            resource.gBufferDescriptorSet->writeTexture(gBuffer.material, 2);
-            resource.gBufferDescriptorSet->writeTexture(gBuffer.emissive, 3);
-            resource.gBufferDescriptorSet->writeTexture(gBuffer.depth, 4);
-            resource.gBufferDescriptorSet->writeTexture(lightTexture, 5);
+            resource.gBufferDescriptorSet->writeTexture(gBuffer.albedo, 0, ImageLayout::ShaderReadOnly);
+            resource.gBufferDescriptorSet->writeTexture(gBuffer.normal, 1, ImageLayout::ShaderReadOnly);
+            resource.gBufferDescriptorSet->writeTexture(gBuffer.material, 2, ImageLayout::ShaderReadOnly);
+            resource.gBufferDescriptorSet->writeTexture(gBuffer.emissive, 3, ImageLayout::ShaderReadOnly);
+            resource.gBufferDescriptorSet->writeTexture(gBuffer.depth, 4, ImageLayout::ShaderReadOnly);
+            resource.gBufferDescriptorSet->writeTexture(lightTexture, 5, ImageLayout::ShaderReadOnly);
             resource.gBufferDescriptorSet->commit();
         }
     };

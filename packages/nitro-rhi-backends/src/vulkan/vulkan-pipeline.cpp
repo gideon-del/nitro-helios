@@ -240,11 +240,11 @@ namespace nitro::rhi::vulkan
         inputAssemblyInfo.topology = convertToPrimitive(desc.topology);
         inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;
 
-        VkDynamicState dynamicStates[] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+        VkDynamicState dynamicStates[] = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_STENCIL_REFERENCE};
 
         VkPipelineDynamicStateCreateInfo dynamicStateInfo{};
         dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-        dynamicStateInfo.dynamicStateCount = 2;
+        dynamicStateInfo.dynamicStateCount = 3;
         dynamicStateInfo.pDynamicStates = dynamicStates;
 
         VkViewport viewport{};
@@ -422,7 +422,8 @@ namespace nitro::rhi::vulkan
         if (desc.hasDepth)
         {
             renderingInfo.depthAttachmentFormat =
-                VK_FORMAT_D32_SFLOAT;
+                convertToFormat(desc.depthAttachmentFormat);
+            renderingInfo.stencilAttachmentFormat = desc.stencil.enabled ? convertToFormat(desc.depthAttachmentFormat) : VK_FORMAT_UNDEFINED;
         }
 
         pipelineInfo.pNext = &renderingInfo;

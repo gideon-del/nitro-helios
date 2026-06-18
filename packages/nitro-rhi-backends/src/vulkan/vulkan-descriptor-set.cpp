@@ -4,6 +4,7 @@
 #include <nitro-rhi-backends/vulkan/vulkan-utils.h>
 #include <nitro-rhi-backends/vulkan/vulkan-texture.h>
 #include <nitro-rhi-backends/vulkan/vulkan-buffer.h>
+#include <nitro-rhi-backends/vulkan/vulkan-type-conversions.h>
 
 namespace nitro::rhi::vulkan
 {
@@ -35,12 +36,12 @@ namespace nitro::rhi::vulkan
         m_writes.push_back(std::move(descriptorWrite));
     }
 
-    void VulkanDescriptorSet::writeTexture(RHITexture *texture, uint32_t binding)
+    void VulkanDescriptorSet::writeTexture(RHITexture *texture, uint32_t binding, ImageLayout imageLayout)
     {
         VulkanTexture *vulkanTexture = reinterpret_cast<VulkanTexture *>(texture);
 
         VkDescriptorImageInfo imageInfo{};
-        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo.imageLayout = toVkImageLayout(imageLayout);
         imageInfo.imageView = vulkanTexture->imageView;
         imageInfo.sampler = vulkanTexture->sampler;
 

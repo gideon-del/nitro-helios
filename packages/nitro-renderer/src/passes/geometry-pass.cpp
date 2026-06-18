@@ -38,6 +38,10 @@ namespace nitro::renderer
         rhi::RenderPassDesc::Attachment depthAttachment;
         depthAttachment.load = rhi::RenderPassDesc::LoadOp::Load;
         depthAttachment.store = rhi::RenderPassDesc::StoreOp::DontCare;
+        depthAttachment.hasStencil = true;
+        depthAttachment.stencilLoad = rhi::RenderPassDesc::LoadOp::Clear;
+        depthAttachment.stencilStore = rhi::RenderPassDesc::StoreOp::Store;
+        depthAttachment.clearStencil = 0;
         depthAttachment.texture = depthTexture;
 
         renderPassDesc.depthAttachment = &depthAttachment;
@@ -71,6 +75,9 @@ namespace nitro::renderer
         pipelineDesc.vertexLayout = geometry::Vertex::getVertexLayout();
         pipelineDesc.hasPushConstant = true;
         pipelineDesc.pushConstantSize = sizeof(geometry::PushConstant);
+        pipelineDesc.depthAttachmentFormat = rhi::TextureDesc::ImageFormat::Depth32FloatStencil8;
+        pipelineDesc.hasStencil = true;
+
         m_pipeline = m_device->createPipeline(pipelineDesc);
 
         m_resources.create(
@@ -169,6 +176,10 @@ namespace nitro::renderer
         rhi::RenderPassDesc::Attachment depthAttachment;
         depthAttachment.load = rhi::RenderPassDesc::LoadOp::Load;
         depthAttachment.store = rhi::RenderPassDesc::StoreOp::DontCare;
+        depthAttachment.hasStencil = true;
+        depthAttachment.stencilLoad = rhi::RenderPassDesc::LoadOp::Clear;
+        depthAttachment.stencilStore = rhi::RenderPassDesc::StoreOp::Store;
+        depthAttachment.clearStencil = 0;
         depthAttachment.texture = gBuffer.depth;
 
         renderPassDesc.depthAttachment = &depthAttachment;

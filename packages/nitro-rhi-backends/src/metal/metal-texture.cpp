@@ -13,6 +13,8 @@ namespace nitro::rhi::metal
             return MTL::PixelFormatRGBA16Unorm;
         case TextureDesc::ImageFormat::Depth32Float:
             return MTL::PixelFormatDepth32Float;
+        case TextureDesc::ImageFormat::Depth32FloatStencil8:
+            return MTL::PixelFormatDepth32Float_Stencil8;
         }
         return MTL::PixelFormatRGBA8Unorm;
     }

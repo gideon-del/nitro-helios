@@ -31,6 +31,7 @@ namespace nitro::rhi::vulkan
             return VK_ATTACHMENT_STORE_OP_DONT_CARE;
         }
     }
+
     VulkanRenderPass::VulkanRenderPass(VulkanDevice *device, const RenderPassDesc &desc) : m_device(device), width(desc.width), height(desc.height)
     {
         renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
@@ -71,7 +72,7 @@ namespace nitro::rhi::vulkan
         if (desc.depthAttachment != nullptr)
         {
             depthTexture = reinterpret_cast<VulkanTexture *>(desc.depthAttachment->texture);
-
+            m_dsLayout = depthStencilLayout(desc.depthAttachment->depthWrite, desc.depthAttachment->stencilWrite);
             depthAttachment.sType =
                 VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
 
@@ -79,7 +80,7 @@ namespace nitro::rhi::vulkan
                 depthTexture->imageView;
 
             depthAttachment.imageLayout =
-                VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+                m_dsLayout;
 
             depthAttachment.loadOp =
                 convertToLoadOp(desc.depthAttachment->load);
@@ -88,8 +89,32 @@ namespace nitro::rhi::vulkan
                 convertToStoreOp(desc.depthAttachment->store);
 
             depthAttachment.clearValue.depthStencil =
-                {desc.depthAttachment->clearDepth, 0};
+                {desc.depthAttachment->clearDepth, desc.depthAttachment->clearStencil};
             renderingInfo.pDepthAttachment = &depthAttachment;
+
+            if (desc.depthAttachment->hasStencil)
+            {
+                stencilAttachment.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+                stencilAttachment.imageView =
+                    depthTexture->imageView;
+
+                stencilAttachment.imageLayout =
+                    m_dsLayout;
+
+                stencilAttachment.loadOp =
+                    convertToLoadOp(desc.depthAttachment->stencilLoad);
+
+                stencilAttachment.storeOp =
+                    convertToStoreOp(desc.depthAttachment->stencilStore);
+
+                stencilAttachment.clearValue.depthStencil =
+                    {desc.depthAttachment->clearDepth, desc.depthAttachment->clearStencil};
+
+                renderingInfo.pStencilAttachment = &stencilAttachment;
+            }
+            m_dstAccess = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+            if (desc.depthAttachment->depthWrite || desc.depthAttachment->stencilWrite)
+                m_dstAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
         }
         renderingInfo.layerCount = 1;
         renderingInfo.renderArea.offset = {0, 0};
@@ -103,17 +128,18 @@ namespace nitro::rhi::vulkan
     {
         if (depthTexture != nullptr)
         {
+
             m_device->transitionImageLayout(
                 cmd,
                 depthTexture->image,
                 0,
-                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+                m_dstAccess,
                 depthTexture->currentLayout,
-                VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+                m_dsLayout,
                 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                 VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-                VK_IMAGE_ASPECT_DEPTH_BIT);
-            depthTexture->currentLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+                depthTexture->imageAspect);
+            depthTexture->currentLayout = m_dsLayout;
         }
         for (auto &colorTexture : colorTextures)
         {
@@ -144,7 +170,7 @@ namespace nitro::rhi::vulkan
                 VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                VK_IMAGE_ASPECT_DEPTH_BIT);
+                depthTexture->imageAspect);
             depthTexture->currentLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         }
 

@@ -35,19 +35,21 @@ namespace nitro::renderer
         rhi::PipelineDesc pipelineDesc;
         pipelineDesc.cullMode = rhi::PipelineDesc::CullMode::Front;
         pipelineDesc.depthWrite = false;
-        pipelineDesc.depthTest = CompareOp::Always;
+        pipelineDesc.depthTest = CompareOp::LessOrEqual;
         pipelineDesc.hasColorAttachment = false;
         pipelineDesc.hasPushConstant = true;
-        pipelineDesc.hasDepth = false;
+        pipelineDesc.hasDepth = true;
         pipelineDesc.pushConstantSize = sizeof(LightStencilPushConstant);
         pipelineDesc.layouts = {m_descriptorLayout};
         pipelineDesc.vertexLayout = geometry::Vertex::getVertexLayout();
-        // RHIStencilDesc::StencilFace stencilFaceDesc;
-        // stencilFaceDesc.depthFailOp = RHIStencilDesc::StencilOp::INCREMENT;
+        RHIStencilDesc::StencilFace stencilFaceDesc;
+        stencilFaceDesc.depthFailOp = RHIStencilDesc::StencilOp::INCREMENT;
 
-        // pipelineDesc.stencil.enabled = true;
-        // pipelineDesc.stencil.front = stencilFaceDesc;
-        // pipelineDesc.stencil.back = stencilFaceDesc;
+        pipelineDesc.stencil.enabled = true;
+        pipelineDesc.stencil.front = stencilFaceDesc;
+        pipelineDesc.stencil.back = stencilFaceDesc;
+        pipelineDesc.hasStencil = true;
+        pipelineDesc.depthAttachmentFormat = rhi::TextureDesc::ImageFormat::Depth32FloatStencil8;
         if (isMetal)
         {
             pipelineDesc.shaders.push_back({"vs", shaderPath + ".metallib", rhi::ShaderStage::Vertex});
@@ -57,7 +59,7 @@ namespace nitro::renderer
             pipelineDesc.shaders.push_back({"main", shaderPath + ".vert.spv", rhi::ShaderStage::Vertex});
         }
 
-        // m_stencilPipeline = m_device->createPipeline(pipelineDesc);
+        m_stencilPipeline = m_device->createPipeline(pipelineDesc);
 
         if (isMetal)
         {
@@ -73,13 +75,15 @@ namespace nitro::renderer
 
         pipelineDesc.colorAttachments = {rhi::PipelineDesc::ColorAttachmentDesc(rhi::TextureDesc::ImageFormat::ColorSRGBA16, blendDesc)};
         pipelineDesc.hasColorAttachment = true;
-        // stencilFaceDesc.compareOp = CompareOp::NotEqual;
-        // stencilFaceDesc.depthFailOp = RHIStencilDesc::StencilOp::ZERO;
-        // stencilFaceDesc.failOp = RHIStencilDesc::StencilOp::ZERO;
-        // stencilFaceDesc.passOp = RHIStencilDesc::StencilOp::ZERO;
-        // pipelineDesc.stencil.front = stencilFaceDesc;
-        // pipelineDesc.stencil.back = stencilFaceDesc;
-        // pipelineDesc.cullMode = PipelineDesc::CullMode::Front;
+        stencilFaceDesc.compareOp = CompareOp::NotEqual;
+        stencilFaceDesc.depthFailOp = RHIStencilDesc::StencilOp::KEEP;
+        stencilFaceDesc.failOp = RHIStencilDesc::StencilOp::KEEP;
+        stencilFaceDesc.passOp = RHIStencilDesc::StencilOp::KEEP;
+        stencilFaceDesc.reference = 0;
+        pipelineDesc.stencil.front = stencilFaceDesc;
+        pipelineDesc.stencil.back = stencilFaceDesc;
+        pipelineDesc.cullMode = PipelineDesc::CullMode::Front;
+        pipelineDesc.depthTest = CompareOp::GreaterOrEqual;
 
         m_lightVolumePipeline = m_device->createPipeline(pipelineDesc);
 
@@ -87,7 +91,18 @@ namespace nitro::renderer
 
         renderPassDesc.width = m_frameWidth;
         renderPassDesc.height = m_frameHeight;
+        rhi::RenderPassDesc::Attachment depthAttachment;
+        depthAttachment.depthWrite = false;
+        depthAttachment.texture = gBuffer.depth;
+        depthAttachment.load = rhi::RenderPassDesc::LoadOp::Load;
+        depthAttachment.store = rhi::RenderPassDesc::StoreOp::DontCare;
+        depthAttachment.stencilLoad = rhi::RenderPassDesc::LoadOp::Load;
+        depthAttachment.stencilStore = rhi::RenderPassDesc::StoreOp::Store;
+        depthAttachment.hasStencil = true;
 
+        renderPassDesc.depthAttachment = &depthAttachment;
+
+        m_stencilPass = m_device->createRenderPass(renderPassDesc);
         rhi::RenderPassDesc::Attachment colorAttachment;
         colorAttachment.texture = m_lightingTexture;
         colorAttachment.depthWrite = false;
@@ -113,8 +128,8 @@ namespace nitro::renderer
                 resource.descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
 
                 resource.descriptorSet->writeBuffer(resource.uniformBuffer, 2);
-                resource.descriptorSet->writeTexture(gBuffer.depth, 3);
-                resource.descriptorSet->writeTexture(gBuffer.normal, 4);
+                resource.descriptorSet->writeTexture(gBuffer.depth, 3, ImageLayout::DepthReadOnlyStencilAttachment);
+                resource.descriptorSet->writeTexture(gBuffer.normal, 4, ImageLayout::ShaderReadOnly);
 
                 resource.descriptorSet->commit();
                 return resource;
@@ -158,6 +173,19 @@ namespace nitro::renderer
         renderPassDesc.width = m_frameWidth;
         renderPassDesc.height = m_frameHeight;
 
+        rhi::RenderPassDesc::Attachment depthAttachment;
+        depthAttachment.depthWrite = false;
+        depthAttachment.texture = gBuffer.depth;
+        depthAttachment.load = rhi::RenderPassDesc::LoadOp::Load;
+        depthAttachment.store = rhi::RenderPassDesc::StoreOp::DontCare;
+        depthAttachment.stencilLoad = rhi::RenderPassDesc::LoadOp::Load;
+        depthAttachment.stencilStore = rhi::RenderPassDesc::StoreOp::Store;
+        depthAttachment.hasStencil = true;
+
+        renderPassDesc.depthAttachment = &depthAttachment;
+
+        m_stencilPass = m_device->createRenderPass(renderPassDesc);
+
         rhi::RenderPassDesc::Attachment colorAttachment;
         colorAttachment.texture = m_lightingTexture;
         colorAttachment.depthWrite = false;
@@ -171,8 +199,8 @@ namespace nitro::renderer
         for (auto &resource : m_resources)
         {
             resource.descriptorSet->writeBuffer(resource.uniformBuffer, 2);
-            resource.descriptorSet->writeTexture(gBuffer.depth, 3);
-            resource.descriptorSet->writeTexture(gBuffer.normal, 4);
+            resource.descriptorSet->writeTexture(gBuffer.depth, 3, ImageLayout::DepthReadOnlyStencilAttachment);
+            resource.descriptorSet->writeTexture(gBuffer.normal, 4, ImageLayout::ShaderReadOnly);
 
             resource.descriptorSet->commit();
         }
@@ -181,20 +209,50 @@ namespace nitro::renderer
     void LightingStencilPass::execute(rhi::RHICommandBuffer *cmd, LightingSettings &settings, LightStencilCamera camera)
     {
         auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
-        cmd->beginRenderPass(m_lightVolumePass);
-        cmd->bindPipeline(m_lightVolumePipeline);
         resource.uniformBuffer->upload(&camera, sizeof(LightStencilCamera));
-
-        cmd->bindDescriptorSet(resource.descriptorSet, 0);
         rhi::RHIViewport viewport;
         viewport.width = m_frameWidth;
         viewport.height = m_frameHeight;
-        cmd->setViewPort(viewport);
         rhi::RHIScissor scissor;
         scissor.width = m_frameWidth;
         scissor.height = m_frameHeight;
-        cmd->setScissor(scissor);
 
+        cmd->beginRenderPass(m_stencilPass);
+        cmd->bindPipeline(m_stencilPipeline);
+        cmd->bindDescriptorSet(resource.descriptorSet, 0);
+        cmd->setViewPort(viewport);
+
+        cmd->setScissor(scissor);
+        cmd->setStencilReference(0);
+        for (auto &pointLight : settings.pointLights)
+        {
+            geometry::MeshTransformation transformation;
+            transformation.translate(glm::vec3(pointLight.position.x, pointLight.position.y, pointLight.position.z));
+            transformation.scale(glm::vec3(pointLight.radius + 1));
+
+            LightStencilPushConstant pushConstant;
+            pushConstant.intensity = pointLight.intensity;
+            pushConstant.lightColor = pointLight.color;
+            pushConstant.lightPosition = pointLight.position;
+            pushConstant.radius = pointLight.radius;
+            pushConstant.screenSize = glm::vec2(m_frameWidth, m_frameHeight);
+            pushConstant.model = transformation.getTransform().model;
+
+            cmd->setPushConstant(&pushConstant, sizeof(LightStencilPushConstant), 1);
+
+            settings.pointLightRenderer->draw(cmd);
+        }
+        cmd->endRenderPass();
+
+        cmd->beginRenderPass(m_lightVolumePass);
+        cmd->bindPipeline(m_lightVolumePipeline);
+
+        cmd->bindDescriptorSet(resource.descriptorSet, 0);
+
+        cmd->setViewPort(viewport);
+
+        cmd->setScissor(scissor);
+        cmd->setStencilReference(0);
         for (auto &pointLight : settings.pointLights)
         {
             geometry::MeshTransformation transformation;

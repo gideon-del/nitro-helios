@@ -57,7 +57,7 @@ namespace nitro::renderer
                                resource.shadowDescriptorSet = m_device->createDescriptorSet(m_shadowDescriptorLayout);
                                for (uint32_t j = 0; j < cascades.size(); j++)
                                {
-                                   resource.shadowDescriptorSet->writeTexture(cascades[j], j);
+                                   resource.shadowDescriptorSet->writeTexture(cascades[j], j, ImageLayout::ShaderReadOnly);
                                }
                                resource.shadowDescriptorSet->commit();
 

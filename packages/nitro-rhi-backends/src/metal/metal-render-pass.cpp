@@ -45,6 +45,14 @@ namespace nitro::rhi::metal
             renderPassDescriptor->depthAttachment()->setLoadAction(convertToLoadAction(desc.depthAttachment->load));
             renderPassDescriptor->depthAttachment()->setStoreAction(convertToStoreAction(desc.depthAttachment->store));
             renderPassDescriptor->depthAttachment()->setTexture(depthTexture->texture);
+
+            if (desc.depthAttachment->hasStencil)
+            {
+                renderPassDescriptor->stencilAttachment()->setClearStencil(desc.depthAttachment->clearStencil);
+                renderPassDescriptor->stencilAttachment()->setLoadAction(convertToLoadAction(desc.depthAttachment->stencilLoad));
+                renderPassDescriptor->stencilAttachment()->setStoreAction(convertToStoreAction(desc.depthAttachment->stencilStore));
+                renderPassDescriptor->stencilAttachment()->setTexture(depthTexture->texture);
+            }
         }
 
         if (!desc.colorAttachments.empty())

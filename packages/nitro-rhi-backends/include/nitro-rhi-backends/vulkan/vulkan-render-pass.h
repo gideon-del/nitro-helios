@@ -5,6 +5,16 @@
 namespace nitro::rhi::vulkan
 {
 
+    inline VkImageLayout depthStencilLayout(bool depthWrite, bool stencilWrite)
+    {
+        if (depthWrite && stencilWrite)
+            return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        if (depthWrite && !stencilWrite)
+            return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL;
+        if (!depthWrite && stencilWrite)
+            return VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
+        return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+    }
     class VulkanDevice;
     class VulkanTexture;
     class VulkanRenderPass : public RHIRenderPass
@@ -16,6 +26,7 @@ namespace nitro::rhi::vulkan
 
         std::vector<VkRenderingAttachmentInfo> colorAttachments;
         VkRenderingAttachmentInfo depthAttachment;
+        VkRenderingAttachmentInfo stencilAttachment;
 
         VkRenderingInfo renderingInfo;
         VulkanTexture *depthTexture = nullptr;
@@ -27,5 +38,7 @@ namespace nitro::rhi::vulkan
 
     private:
         VulkanDevice *m_device;
+        VkImageLayout m_dsLayout;
+        VkAccessFlags m_dstAccess;
     };
 } // namespace nitro::rhi::vulkan

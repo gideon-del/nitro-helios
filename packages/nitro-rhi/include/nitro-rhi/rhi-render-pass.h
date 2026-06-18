@@ -22,9 +22,14 @@ namespace nitro::rhi
             RHITexture *texture;
             LoadOp load = LoadOp::Clear;
             StoreOp store = StoreOp::DontCare;
+            LoadOp stencilLoad = LoadOp::Clear;
+            StoreOp stencilStore = StoreOp::DontCare;
             float clearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
             float clearDepth = 1.0f;
+            uint32_t clearStencil = 0;
             bool depthWrite = true;
+            bool stencilWrite = true;
+            bool hasStencil = false;
         };
 
         std::vector<Attachment> colorAttachments;

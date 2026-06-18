@@ -20,7 +20,7 @@ namespace nitro::rhi::vulkan
         VmaAllocation allocation = VK_NULL_HANDLE;
         VkSampler sampler = VK_NULL_HANDLE;
         VkImageLayout currentLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
+        VkImageAspectFlags imageAspect;
         VkFormat format;
         uint32_t width;
         uint32_t height;

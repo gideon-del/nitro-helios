@@ -17,7 +17,7 @@ namespace nitro::rhi::metal
 
         bufferBindings[mtBuffer] = binding;
     }
-    void MetalDescriptorSet::writeTexture(RHITexture *texture, uint32_t binding)
+    void MetalDescriptorSet::writeTexture(RHITexture *texture, uint32_t binding, ImageLayout imageLayout)
     {
 
         MetalTexture *mtTexture = reinterpret_cast<MetalTexture *>(texture);

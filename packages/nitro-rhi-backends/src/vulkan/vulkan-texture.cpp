@@ -14,6 +14,8 @@ namespace nitro::rhi::vulkan
             return VK_FORMAT_R16G16B16A16_SFLOAT;
         case TextureDesc::ImageFormat::Depth32Float:
             return VK_FORMAT_D32_SFLOAT;
+        case TextureDesc::ImageFormat::Depth32FloatStencil8:
+            return VK_FORMAT_D32_SFLOAT_S8_UINT;
         }
 
         return VK_FORMAT_R8G8B8A8_SRGB;
@@ -89,7 +91,11 @@ namespace nitro::rhi::vulkan
                           &allocation,
                           nullptr),
                       "Unable to create Image");
-
+        imageAspect = convertToAspectFlag(desc.usage);
+        if (desc.format == TextureDesc::ImageFormat::Depth32FloatStencil8)
+        {
+            imageAspect |= VK_IMAGE_ASPECT_STENCIL_BIT;
+        }
         if (desc.initialData != nullptr && hasTextureUsageFlag(desc.usage, TextureDesc::Usage::ShaderRead))
         {
             BufferDesc stagingDesc;
@@ -117,7 +123,7 @@ namespace nitro::rhi::vulkan
                 VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                 VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                 VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-                VK_IMAGE_ASPECT_DEPTH_BIT);
+                imageAspect);
             m_device->endOneTimeCommands(cmd);
             currentLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         }
@@ -126,7 +132,9 @@ namespace nitro::rhi::vulkan
         imageViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         imageViewInfo.format = format;
         imageViewInfo.image = image;
+
         imageViewInfo.subresourceRange.aspectMask = convertToAspectFlag(desc.usage);
+
         imageViewInfo.subresourceRange.baseArrayLayer = 0;
         imageViewInfo.subresourceRange.baseMipLevel = 0;
         imageViewInfo.subresourceRange.layerCount = 1;
@@ -148,7 +156,7 @@ namespace nitro::rhi::vulkan
             samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
             samplerInfo.anisotropyEnable = VK_FALSE;
             samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-            samplerInfo.compareEnable = VK_FALSE;
+            samplerInfo.compareEnable = desc.sampler == TextureDesc::Sampler::Depth ? VK_TRUE : VK_FALSE;
             samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
 
             if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::DepthStencil) && desc.sampler == TextureDesc::Sampler::Depth)

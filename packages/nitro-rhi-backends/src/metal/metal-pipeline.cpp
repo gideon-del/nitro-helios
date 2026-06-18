@@ -214,12 +214,12 @@ namespace nitro::rhi::metal
         }
         if (desc.hasDepth)
         {
-            pipeDesc->setDepthAttachmentPixelFormat(MTL::PixelFormatDepth32Float);
+            pipeDesc->setDepthAttachmentPixelFormat(convertToPixelFormat(desc.depthAttachmentFormat));
         }
 
-        if (desc.stencil.enabled)
+        if (desc.hasStencil)
         {
-            pipeDesc->setStencilAttachmentPixelFormat(MTL::PixelFormatStencil8);
+            pipeDesc->setStencilAttachmentPixelFormat(convertToPixelFormat(desc.depthAttachmentFormat));
         }
 
         if (!desc.vertexLayout.attributes.empty())

@@ -11,7 +11,7 @@ namespace nitro::renderer
     {
 
         rhi::TextureDesc textureDesc;
-        textureDesc.format = rhi::TextureDesc::ImageFormat::Depth32Float;
+        textureDesc.format = rhi::TextureDesc::ImageFormat::Depth32FloatStencil8;
         textureDesc.usage = rhi::TextureDesc::Usage::DepthStencil | rhi::TextureDesc::Usage::ShaderRead;
         textureDesc.size = {m_width, m_height};
 
@@ -29,7 +29,7 @@ namespace nitro::renderer
         pipelineDesc.pushConstantSize = sizeof(geometry::PushConstant);
         pipelineDesc.layouts = {m_descriptorLayout};
         pipelineDesc.vertexLayout = geometry::Vertex::getVertexLayout();
-
+        pipelineDesc.depthAttachmentFormat = rhi::TextureDesc::ImageFormat::Depth32FloatStencil8;
         std::string shaderPath = shaderDir + "/depth-prepass/depth-prepass";
 
         if (isMetal)
@@ -49,6 +49,10 @@ namespace nitro::renderer
         depthAttachment.texture = m_depthTexture;
         depthAttachment.load = rhi::RenderPassDesc::LoadOp::Clear;
         depthAttachment.store = rhi::RenderPassDesc::StoreOp::Store;
+        depthAttachment.hasStencil = true;
+        depthAttachment.stencilLoad = rhi::RenderPassDesc::LoadOp::Clear;
+        depthAttachment.stencilStore = rhi::RenderPassDesc::StoreOp::Store;
+        depthAttachment.clearStencil = 0;
         renderPassDesc.depthAttachment = &depthAttachment;
         renderPassDesc.width = m_width;
         renderPassDesc.height = m_height;
@@ -94,7 +98,7 @@ namespace nitro::renderer
         m_device->destroyTexture(m_depthTexture);
 
         rhi::TextureDesc textureDesc;
-        textureDesc.format = rhi::TextureDesc::ImageFormat::Depth32Float;
+        textureDesc.format = rhi::TextureDesc::ImageFormat::Depth32FloatStencil8;
         textureDesc.usage = rhi::TextureDesc::Usage::DepthStencil | rhi::TextureDesc::Usage::ShaderRead;
         textureDesc.size = {m_width, m_height};
 
@@ -106,6 +110,10 @@ namespace nitro::renderer
         depthAttachment.texture = m_depthTexture;
         depthAttachment.load = rhi::RenderPassDesc::LoadOp::Clear;
         depthAttachment.store = rhi::RenderPassDesc::StoreOp::Store;
+        depthAttachment.hasStencil = true;
+        depthAttachment.stencilLoad = rhi::RenderPassDesc::LoadOp::Clear;
+        depthAttachment.stencilStore = rhi::RenderPassDesc::StoreOp::Store;
+        depthAttachment.clearStencil = 0;
         renderPassDesc.depthAttachment = &depthAttachment;
         renderPassDesc.width = m_width;
         renderPassDesc.height = m_height;
