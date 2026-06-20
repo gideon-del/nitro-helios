@@ -9,6 +9,7 @@
 #include <nitro-rhi-backends/vulkan/vulkan-descriptor-set.h>
 #include <nitro-rhi-backends/vulkan/vulkan-render-pass.h>
 #include <nitro-rhi-backends/vulkan/vulkan-timer.h>
+#include <nitro-rhi-backends/vulkan/vulkan-compute-pipeline.h>
 #include <vk_mem_alloc.h>
 #include <imgui.h>
 #include <imgui_impl_vulkan.h>
@@ -609,6 +610,10 @@ namespace nitro::rhi::vulkan
     {
         return new VulkanDescriptorLayout(this, bindings);
     }
+    void VulkanDevice::destroyDescriptorLayout(RHIDescriptorLayout *layout)
+    {
+        delete layout;
+    }
 
     RHIPipeline *VulkanDevice::createPipeline(const PipelineDesc &desc)
     {
@@ -621,6 +626,11 @@ namespace nitro::rhi::vulkan
 
         return new VulkanDescriptorSet(this, vulkanDescriptorLayout, descriptorSet);
     }
+    void VulkanDevice::destroyDescriptorSet(RHIDescriptorSet *set)
+    {
+        delete set;
+    }
+
     RHITimer *VulkanDevice::createTimer()
     {
         return new VulkanTimer(this, 10);
@@ -665,6 +675,18 @@ namespace nitro::rhi::vulkan
     {
 
         return new VulkanRenderPass(this, desc);
+    }
+    void VulkanDevice::destroyRenderPass(RHIRenderPass *renderPass)
+    {
+        delete renderPass;
+    }
+    RHIComputePipeline *VulkanDevice::createComputePipeline(const ComputePipelineDesc &desc)
+    {
+        return new VulkanComputePipeline(this, desc);
+    }
+    void VulkanDevice::destroyComputePipeline(RHIComputePipeline *pipeline)
+    {
+        delete pipeline;
     }
     RHICommandBuffer *VulkanDevice::beginFrame()
     {

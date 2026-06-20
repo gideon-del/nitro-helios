@@ -1,6 +1,7 @@
 #pragma once
 #include "rhi-buffer.h"
 #include "rhi-texture.h"
+#include "rhi-descriptor-layout.h"
 namespace nitro::rhi
 {
 

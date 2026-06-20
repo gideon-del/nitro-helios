@@ -28,7 +28,7 @@ namespace nitro::rhi::vulkan
         VkWriteDescriptorSet descriptorWrite{};
         descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrite.descriptorCount = 1;
-        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrite.descriptorType = m_layout->getBufferType(binding);
         descriptorWrite.dstSet = descriptorSet;
         descriptorWrite.dstBinding = binding;
         descriptorWrite.dstArrayElement = 0;
@@ -63,7 +63,8 @@ namespace nitro::rhi::vulkan
         size_t imageIdx = 0;
         for (auto &write : m_writes)
         {
-            if (write.descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+            if (write.descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER ||
+                write.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
             {
                 write.pBufferInfo = &m_bufferInfos[bufferIdx++];
             }

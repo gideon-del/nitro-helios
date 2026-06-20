@@ -9,6 +9,7 @@
 #include <nitro-rhi-backends/metal/metal-render-pass.h>
 #include <nitro-rhi-backends/metal/metal-descriptor-layout.h>
 #include <nitro-rhi-backends/metal/metal-timer.h>
+#include <nitro-rhi-backends/metal/metal-compute-pipeline.h>
 #include <imgui_impl_glfw.h>
 #ifndef IMGUI_IMPL_METAL_CPP
 #define IMGUI_IMPL_METAL_CPP
@@ -58,18 +59,40 @@ namespace nitro::rhi::metal
     {
         return new MetalDescriptorLayout(this, bindings);
     }
+    void MetalDevice::destroyDescriptorLayout(RHIDescriptorLayout *layout)
+    {
+        delete layout;
+    };
     RHIDescriptorSet *MetalDevice::createDescriptorSet(RHIDescriptorLayout *layout)
     {
         MetalDescriptorLayout *metalLayout = reinterpret_cast<MetalDescriptorLayout *>(layout);
         return new MetalDescriptorSet(this, metalLayout);
     }
+    void MetalDevice::destroyDescriptorSet(RHIDescriptorSet *set)
+    {
+        delete set;
+    }
     RHIRenderPass *MetalDevice::createRenderPass(const RenderPassDesc &desc)
     {
         return new MetalRenderPass(this, desc);
     };
+    void MetalDevice::destroyRenderPass(RHIRenderPass *renderPass)
+    {
+        delete renderPass;
+    }
     RHIPipeline *MetalDevice::createPipeline(const PipelineDesc &desc)
     {
         return new MetalPipeline(this, desc);
+    }
+
+    RHIComputePipeline *MetalDevice::createComputePipeline(const ComputePipelineDesc &desc)
+    {
+        return new MetalComputePipeline(this, desc);
+    }
+
+    void MetalDevice::destroyComputePipeline(RHIComputePipeline *pipeline)
+    {
+        delete pipeline;
     }
     RHITimer *MetalDevice::createTimer()
     {

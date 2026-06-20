@@ -7,6 +7,7 @@
 #include <nitro-rhi-backends/metal/metal-descriptor-set.h>
 #include <nitro-rhi-backends/metal/metal-render-pass.h>
 #include <nitro-rhi-backends/metal/metal-descriptor-layout.h>
+#include <nitro-rhi-backends/metal/metal-compute-pipeline.h>
 
 namespace nitro::rhi::metal
 {
@@ -42,6 +43,12 @@ namespace nitro::rhi::metal
     }
     void MetalCommandBuffer::endRenderPass()
     {
+
+        if (m_computeEncoder)
+        {
+            m_computeEncoder->endEncoding();
+            m_computeEncoder->release();
+        }
         encoder->endEncoding();
     }
 
@@ -79,6 +86,17 @@ namespace nitro::rhi::metal
         m_pipeline = metalPipeline;
     }
 
+    void MetalCommandBuffer::bindComputePipeline(RHIComputePipeline *pipeline)
+    {
+        MetalComputePipeline *computePipeline = reinterpret_cast<MetalComputePipeline *>(pipeline);
+        if (m_computeEncoder == nullptr)
+        {
+            m_computeEncoder = commandBuffer->computeCommandEncoder();
+        }
+
+        m_computeEncoder->setComputePipelineState(computePipeline->pipelineState);
+        m_computePipeline = computePipeline;
+    }
     void MetalCommandBuffer::bindVertexBuffer(RHIBuffer *buffer)
     {
         MetalBuffer *metalBuffer = reinterpret_cast<MetalBuffer *>(buffer);
@@ -156,6 +174,23 @@ namespace nitro::rhi::metal
                                        m_currentIndexBuffer->buffer,
                                        NS::UInteger(0));
     }
+    void MetalCommandBuffer::dispatch(uint32_t x, uint32_t y, uint32_t z)
+    {
+
+        if (m_computePipeline == nullptr)
+        {
+            throw std::runtime_error("Metal Compute Pipeline must be bound before dispatch");
+        }
+
+        MTL::Size threadgroupsPerGrid(x, y, z);
+
+        MTL::Size threadsPerThreadgroup(
+            m_computePipeline->threadGroupSizeX,
+            m_computePipeline->threadGroupSizeY,
+            m_computePipeline->threadGroupSizeZ);
+
+        m_computeEncoder->dispatchThreadgroups(threadgroupsPerGrid, threadsPerThreadgroup);
+    };
     void MetalCommandBuffer::present()
     {
         commandBuffer->presentDrawable(swapchain->currentDrawable);
@@ -182,4 +217,5 @@ namespace nitro::rhi::metal
     {
         m_FrameStats.vertices += count;
     }
+    void MetalCommandBuffer::bufferBarrier(RHIBuffer *buffer) {}
 } // namespace nitro::rhi::metal

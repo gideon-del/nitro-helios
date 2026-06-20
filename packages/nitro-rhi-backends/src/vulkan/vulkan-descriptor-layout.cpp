@@ -12,6 +12,8 @@ namespace nitro::rhi::vulkan
             return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         case RHIDescriptorBinding::Type::UniformBuffer:
             return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        case RHIDescriptorBinding::Type::StorageBuffer:
+            return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 
         default:
             return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -25,6 +27,8 @@ namespace nitro::rhi::vulkan
             return VK_SHADER_STAGE_VERTEX_BIT;
         case RHIDescriptorBinding::ShaderStage::Fragment:
             return VK_SHADER_STAGE_FRAGMENT_BIT;
+        case RHIDescriptorBinding::ShaderStage::Compute:
+            return VK_SHADER_STAGE_COMPUTE_BIT;
         case RHIDescriptorBinding::ShaderStage::Both:
             return VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT;
         default:
@@ -53,7 +57,8 @@ namespace nitro::rhi::vulkan
     VulkanDescriptorLayout::VulkanDescriptorLayout(
         VulkanDevice *device,
         const std::vector<RHIDescriptorBinding> bindings)
-        : m_device(device)
+        : m_device(device),
+          m_bindings(bindings)
     {
         std::vector<VkDescriptorSetLayoutBinding> descriptorBindings(bindings.size());
         std::vector<VkDescriptorPoolSize> poolSizes(bindings.size());
@@ -104,6 +109,19 @@ namespace nitro::rhi::vulkan
                           &descriptorSet),
                       "Can't allocate descriptor set");
         return descriptorSet;
+    }
+
+    VkDescriptorType VulkanDescriptorLayout::getBufferType(uint32_t binding)
+    {
+        for (auto &layoutBinding : m_bindings)
+        {
+            if (layoutBinding.binding == binding && layoutBinding.type != RHIDescriptorBinding::Type::Sampler)
+            {
+                return convertToDescriptorType(layoutBinding.type);
+            }
+        }
+
+        return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     }
 
 } // namespace nitro::rhi::vulkan

@@ -7,6 +7,7 @@
 #include <nitro-rhi-backends/vulkan/vulkan-utils.h>
 #include <nitro-rhi-backends/vulkan/vulkan-render-pass.h>
 #include <nitro-rhi-backends/vulkan/vulkan-descriptor-set.h>
+#include <nitro-rhi-backends/vulkan/vulkan-compute-pipeline.h>
 
 namespace nitro::rhi::vulkan
 {
@@ -345,5 +346,48 @@ namespace nitro::rhi::vulkan
             0,
             size,
             data);
+    }
+
+    void VulkanCommandBuffer::bindComputePipeline(RHIComputePipeline *pipeline)
+    {
+        VulkanComputePipeline *computePipeline = reinterpret_cast<VulkanComputePipeline *>(pipeline);
+
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline->pipeline);
+    }
+
+    void VulkanCommandBuffer::dispatch(uint32_t x, uint32_t y, uint32_t z)
+    {
+        vkCmdDispatch(
+            cmd,
+            x,
+            y,
+            z);
+    }
+
+    void VulkanCommandBuffer::bufferBarrier(RHIBuffer *buffer)
+    {
+        VulkanBuffer *vulkanBuffer = reinterpret_cast<VulkanBuffer *>(buffer);
+
+        VkBufferMemoryBarrier barrier{};
+        barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+        barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        barrier.offset = 0;
+        barrier.size = VK_WHOLE_SIZE;
+        barrier.buffer = vulkanBuffer->buffer;
+
+        vkCmdPipelineBarrier(
+            cmd,
+            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            0,
+            0,
+            nullptr,
+            1,
+            &barrier,
+            0,
+            nullptr);
     }
 }

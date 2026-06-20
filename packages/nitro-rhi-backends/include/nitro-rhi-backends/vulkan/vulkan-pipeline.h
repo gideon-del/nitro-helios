@@ -4,6 +4,7 @@
 
 namespace nitro::rhi::vulkan
 {
+    VkShaderModule loadShaderModule(VkDevice &device, const ShaderDesc &desc);
     class VulkanDevice;
     class VulkanPipeline : public RHIPipeline
     {

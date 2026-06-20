@@ -9,6 +9,7 @@
 #include "rhi-descriptor-set.h"
 #include "rhi-render-pass.h"
 #include "rhi-timer.h"
+#include "rhi-compute-pipeline.h"
 namespace nitro::rhi
 {
 
@@ -20,11 +21,14 @@ namespace nitro::rhi
         virtual RHISwapchain *createSwapchain(RHISurface *surface) = 0;
 
         virtual RHIDescriptorLayout *createDescriptorLayout(const std::vector<RHIDescriptorBinding> bindings) = 0;
+        virtual void destroyDescriptorLayout(RHIDescriptorLayout *layout) = 0;
         virtual RHIDescriptorSet *createDescriptorSet(RHIDescriptorLayout *layout) = 0;
+        virtual void destroyDescriptorSet(RHIDescriptorSet *set) = 0;
 
         virtual RHITimer *createTimer() = 0;
 
         virtual RHIRenderPass *createRenderPass(const RenderPassDesc &desc) = 0;
+        virtual void destroyRenderPass(RHIRenderPass *renderPass) = 0;
 
         virtual RHIBuffer *createBuffer(const BufferDesc &desc) = 0;
         virtual void destroyBuffer(RHIBuffer *buffer) = 0;
@@ -34,6 +38,9 @@ namespace nitro::rhi
 
         virtual RHIPipeline *createPipeline(const PipelineDesc &desc) = 0;
         virtual void destroyPipeline(RHIPipeline *pipeline) = 0;
+
+        virtual RHIComputePipeline *createComputePipeline(const ComputePipelineDesc &desc) = 0;
+        virtual void destroyComputePipeline(RHIComputePipeline *pipeline) = 0;
 
         virtual uint32_t getCurrentFrameIndex() const = 0;
         virtual RHICommandBuffer *beginFrame() = 0;

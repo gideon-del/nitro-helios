@@ -27,6 +27,7 @@ imgui/imgui_widgets.cpp
 imgui/imgui.cpp
 imgui/imgui_impl_glfw.cpp
 imgui/imgui_impl_vulkan.cpp
+src/vulkan/vulkan-compute-pipeline.cpp
 )
 
 
@@ -52,6 +53,7 @@ if(APPLE)
         src/metal/metal-cocoa-bridge.mm
         src/metal/metal-timer.cpp
         imgui/imgui_impl_metal.mm
+        src/metal/metal-compute-pipeline.cpp
 
     )
 

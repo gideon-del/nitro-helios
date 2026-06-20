@@ -14,9 +14,14 @@ namespace nitro::rhi::metal
         RHISwapchain *createSwapchain(RHISurface *surface) override;
 
         RHIDescriptorLayout *createDescriptorLayout(const std::vector<RHIDescriptorBinding> bindings) override;
+        void destroyDescriptorLayout(RHIDescriptorLayout *layout) override;
+
         RHIDescriptorSet *createDescriptorSet(RHIDescriptorLayout *layout) override;
+        void destroyDescriptorSet(RHIDescriptorSet *set) override;
         RHITimer *createTimer() override;
+
         RHIRenderPass *createRenderPass(const RenderPassDesc &desc) override;
+        void destroyRenderPass(RHIRenderPass *renderPass) override;
 
         RHIPipeline *createPipeline(const PipelineDesc &desc) override;
         void destroyPipeline(RHIPipeline *pipeline) override;
@@ -26,6 +31,9 @@ namespace nitro::rhi::metal
 
         RHITexture *createTexture(const TextureDesc &desc) override;
         void destroyTexture(RHITexture *texture) override;
+
+        RHIComputePipeline *createComputePipeline(const ComputePipelineDesc &desc) override;
+        void destroyComputePipeline(RHIComputePipeline *pipeline) override;
 
         RHICommandBuffer *beginFrame() override;
         void endFrame(RHICommandBuffer *cmd) override;

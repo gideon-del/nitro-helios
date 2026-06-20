@@ -19,6 +19,7 @@ namespace nitro::rhi::vulkan
 
         void beginRenderPass(const RHIRenderPassDesc &desc) override;
         void beginRenderPass(RHIRenderPass *renderPass) override;
+        void bindComputePipeline(RHIComputePipeline *pipeline) override;
         void endRenderPass() override;
         void bindPipeline(RHIPipeline *pipeline) override;
         void bindVertexBuffer(RHIBuffer *buffer) override;
@@ -26,16 +27,18 @@ namespace nitro::rhi::vulkan
         void bindUniformBuffer(RHIBuffer *buffer, uint32_t binding) override;
         void bindDescriptorSet(RHIDescriptorSet *descriptorSet, uint32_t binding) override;
         void setPushConstant(void *data, size_t size, uint32_t binding) override;
+
         void setViewPort(const RHIViewport &viewport) override;
         void setScissor(const RHIScissor &scissor) override;
         void setStencilReference(uint32_t reference) override;
+        void bufferBarrier(RHIBuffer *buffer) override;
         void draw(uint32_t vertexCount) override;
         void drawIndexed(uint32_t indexCount) override;
         FrameStats getFrameStats() override;
         void resetFrameStats() override;
         void updateVertexCount(uint32_t count) override;
         void present() override;
-
+        void dispatch(uint32_t x, uint32_t y, uint32_t z) override;
         VkCommandBuffer cmd;
         VkFence inFlight;
         VkSemaphore imageAvailable;

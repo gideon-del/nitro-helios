@@ -8,6 +8,7 @@ namespace nitro::rhi::metal
     class MetalSwapchain;
     class MetalBuffer;
     class MetalPipeline;
+    class MetalComputePipeline;
     class MetalCommandBuffer : public RHICommandBuffer
     {
     public:
@@ -18,6 +19,7 @@ namespace nitro::rhi::metal
         void beginRenderPass(RHIRenderPass *renderPass) override;
         void endRenderPass() override;
         void bindPipeline(RHIPipeline *pipeline) override;
+        void bindComputePipeline(RHIComputePipeline *pipeline) override;
         void bindVertexBuffer(RHIBuffer *buffer) override;
         void bindIndexBuffer(RHIBuffer *buffer) override;
         void bindUniformBuffer(RHIBuffer *buffer, uint32_t binding) override;
@@ -26,8 +28,10 @@ namespace nitro::rhi::metal
         void setViewPort(const RHIViewport &viewport) override;
         void setScissor(const RHIScissor &scissor) override;
         void setStencilReference(uint32_t reference) override;
+        void bufferBarrier(RHIBuffer *buffer) override;
         void draw(uint32_t vertexCount) override;
         void drawIndexed(uint32_t indexCount) override;
+        void dispatch(uint32_t x, uint32_t y, uint32_t z) override;
         void present() override;
         FrameStats getFrameStats() override;
         void resetFrameStats() override;
@@ -43,5 +47,7 @@ namespace nitro::rhi::metal
         MetalBuffer *m_currentIndexBuffer = nullptr;
         MetalPipeline *m_pipeline = nullptr;
         FrameStats m_FrameStats;
+        MTL::ComputeCommandEncoder *m_computeEncoder = nullptr;
+        MetalComputePipeline *m_computePipeline = nullptr;
     };
 } // namespace nitro::rhi::metal

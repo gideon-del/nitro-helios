@@ -9,4 +9,5 @@
 #include "rhi-texture.h"
 #include "rhi-timer.h"
 #include "rhi-pipeline.h"
+#include "rhi-compute-pipeline.h"
 #include "rhi-render-pass.h"

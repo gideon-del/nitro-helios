@@ -7,13 +7,15 @@ namespace nitro::rhi
         enum class Type
         {
             UniformBuffer,
-            Sampler
+            Sampler,
+            StorageBuffer
         } type;
 
         enum class ShaderStage
         {
             Vertex,
             Fragment,
+            Compute,
             Both
         } stage;
 

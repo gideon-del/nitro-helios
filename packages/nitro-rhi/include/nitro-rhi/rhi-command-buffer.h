@@ -13,6 +13,7 @@ namespace nitro::rhi
     class RHIBuffer;
     class RHITexture;
     class RHIPipeline;
+    class RHIComputePipeline;
     class RHIDescriptorSet;
     class RHIRenderPass;
     struct RHIRenderPassDesc
@@ -52,6 +53,7 @@ namespace nitro::rhi
         virtual void endRenderPass() = 0;
 
         virtual void bindPipeline(RHIPipeline *pipeline) = 0;
+        virtual void bindComputePipeline(RHIComputePipeline *pipeline) = 0;
         virtual void bindVertexBuffer(RHIBuffer *buffer) = 0;
         virtual void bindIndexBuffer(RHIBuffer *buffer) = 0;
         virtual void bindUniformBuffer(RHIBuffer *buffer, uint32_t binding) = 0;
@@ -60,6 +62,7 @@ namespace nitro::rhi
         virtual void setViewPort(const RHIViewport &viewport) = 0;
         virtual void setScissor(const RHIScissor &scissor) = 0;
         virtual void setStencilReference(uint32_t reference) = 0;
+        virtual void bufferBarrier(RHIBuffer *buffer) = 0;
 
         virtual void draw(uint32_t vertexCount) = 0;
         virtual void drawIndexed(uint32_t indexCount) = 0;
@@ -67,6 +70,7 @@ namespace nitro::rhi
         virtual void resetFrameStats() = 0;
         virtual void updateVertexCount(uint32_t count) = 0;
         virtual void present() = 0;
+        virtual void dispatch(uint32_t x, uint32_t y, uint32_t z) = 0;
     };
 
 }
