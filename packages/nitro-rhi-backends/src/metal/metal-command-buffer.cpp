@@ -158,6 +158,25 @@ namespace nitro::rhi::metal
             encoder->setFragmentSamplerState(metalTex->samplerState, mainBinding);
         }
     }
+    void MetalCommandBuffer::bindComputeDescriptorSet(RHIDescriptorSet *set, uint32_t mainBinding)
+    {
+        MetalDescriptorSet *metalSet = reinterpret_cast<MetalDescriptorSet *>(set);
+
+        if (!m_computeEncoder)
+        {
+            throw std::runtime_error("Must have compute encoder before binding descriptor set");
+        }
+        for (auto &[buffer, binding] : metalSet->bufferBindings)
+        {
+            MetalBuffer *metalBuffer = reinterpret_cast<MetalBuffer *>(buffer);
+            m_computeEncoder->setBuffer(metalBuffer->buffer, 0, MetalDescriptorSet::s_getMetalBufferBinding(mainBinding, binding));
+        }
+        for (auto &[texture, binding] : metalSet->textureBindings)
+        {
+            MetalTexture *metalTex = reinterpret_cast<MetalTexture *>(texture);
+            m_computeEncoder->setTexture(metalTex->texture, MetalDescriptorSet::s_getMetalTextureBinding(mainBinding, binding));
+        }
+    }
     void MetalCommandBuffer::drawIndexed(uint32_t indexCount)
     {
         if (!m_pipeline)

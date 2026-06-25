@@ -24,6 +24,8 @@ namespace nitro::rhi::metal
         void bindIndexBuffer(RHIBuffer *buffer) override;
         void bindUniformBuffer(RHIBuffer *buffer, uint32_t binding) override;
         void bindDescriptorSet(RHIDescriptorSet *descriptorSet, uint32_t binding) override;
+        void bindComputeDescriptorSet(RHIDescriptorSet *descriptorSet, uint32_t binding) override;
+        ;
         void setPushConstant(void *data, size_t size, uint32_t binding) override;
         void setViewPort(const RHIViewport &viewport) override;
         void setScissor(const RHIScissor &scissor) override;

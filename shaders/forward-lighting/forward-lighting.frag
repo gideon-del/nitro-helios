@@ -38,7 +38,7 @@ layout(set=0, binding=2) uniform FrameUniformBuffer {
     float shadowNormalBias;
     float showCascadeColors;
     float debugMode;
-    PointLight pointLights[100]; 
+    PointLight pointLights[1000]; 
    
 } frameUbo;
 
@@ -189,7 +189,7 @@ float blend =0.0;
 
 
   vec3 PLColor = vec3(0.0);
-for(int i =0; i < 100; i++) {
+for(int i =0; i < 1000; i++) {
    vec3 PL = frameUbo.pointLights[i].position.xyz - fragPos;
   float dist = length(PL);
 

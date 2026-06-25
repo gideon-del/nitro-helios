@@ -54,7 +54,7 @@ std::vector<PointLight> createRandomLights(
             color(rng),
             1.0f);
 
-        light.radius = 100.0f;
+        light.radius = 50.0f;
         light.intensity = 10.0f;
 
         lights.push_back(light);
@@ -190,7 +190,7 @@ int main()
 
     RHITimer *timer = device->createTimer();
     RendererSettings rendererSettings;
-    rendererSettings.light.pointLights = createRandomLights(100, 100);
+    rendererSettings.light.pointLights = createRandomLights(1000, 500);
     RenderContext renderContext;
     renderContext.camera = &camera;
     renderContext.scene = &mainScene;
@@ -199,6 +199,7 @@ int main()
     rendererSettings.light.pointLightRenderer = pointLightRenderer;
     ForwardRenderer forwardRenderer = ForwardRenderer(device, swapchain, std::string(SHADER_DIR), isMetal);
     DeferredRenderer deferredRenderer = DeferredRenderer(device, swapchain, std::string(SHADER_DIR), isMetal);
+    TiledDeferredRenderer tileDeferredRenderer = TiledDeferredRenderer(device, swapchain, std::string(SHADER_DIR), isMetal);
     IRenderer *currentRenderer = &deferredRenderer;
     int cachedWidth, cachedHeight;
     glfwGetFramebufferSize(window, &cachedWidth, &cachedHeight);
@@ -230,6 +231,7 @@ int main()
             swapchain->resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
             forwardRenderer.resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
             deferredRenderer.resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
+            tileDeferredRenderer.resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
             cachedWidth = width;
             cachedHeight = height;
         };
@@ -238,6 +240,7 @@ int main()
         timer->beginFrame(cmd);
 
         timer->begin(cmd, "frame-time");
+
         switch (rendererSettings.renderer)
         {
         case RendererType::Forward:
@@ -246,12 +249,16 @@ int main()
                 renderContext,
                 rendererSettings);
             break;
+        case RendererType::TiledDeferred:
+            tileDeferredRenderer.execute(cmd, renderContext, rendererSettings);
+            break;
 
         case RendererType::Deferred:
             deferredRenderer.execute(
                 cmd,
                 renderContext,
                 rendererSettings);
+
             break;
         }
         auto frameStat = cmd->getFrameStats();

@@ -8,6 +8,7 @@ namespace nitro::rhi::vulkan
     class VulkanSwapchain;
     class VulkanPipeline;
     class VulkanRenderPass;
+    class VulkanComputePipeline;
     class VulkanCommandBuffer : public RHICommandBuffer
     {
     public:
@@ -26,6 +27,7 @@ namespace nitro::rhi::vulkan
         void bindIndexBuffer(RHIBuffer *buffer) override;
         void bindUniformBuffer(RHIBuffer *buffer, uint32_t binding) override;
         void bindDescriptorSet(RHIDescriptorSet *descriptorSet, uint32_t binding) override;
+        void bindComputeDescriptorSet(RHIDescriptorSet *descriptorSet, uint32_t binding) override;
         void setPushConstant(void *data, size_t size, uint32_t binding) override;
 
         void setViewPort(const RHIViewport &viewport) override;
@@ -50,6 +52,7 @@ namespace nitro::rhi::vulkan
         uint32_t m_frameIdx;
         VulkanPipeline *m_pipeline = nullptr;
         VulkanRenderPass *m_activeRenderPass = nullptr;
+        VulkanComputePipeline *m_computePipeline = nullptr;
         FrameStats m_FrameStats;
     };
 } // namespace nitro::rhi::vulkan

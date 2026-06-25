@@ -224,6 +224,24 @@ namespace nitro::rhi::vulkan
             0,
             nullptr);
     }
+    void VulkanCommandBuffer::bindComputeDescriptorSet(RHIDescriptorSet *set, uint32_t binding)
+    {
+
+        if (!m_computePipeline)
+        {
+            throw std::runtime_error("Must bind compute pipeline before descriptor set");
+        }
+        VulkanDescriptorSet *vkSet = reinterpret_cast<VulkanDescriptorSet *>(set);
+        vkCmdBindDescriptorSets(
+            cmd,
+            VK_PIPELINE_BIND_POINT_COMPUTE,
+            m_computePipeline->layout,
+            binding,
+            1,
+            &vkSet->descriptorSet,
+            0,
+            nullptr);
+    }
 
     void VulkanCommandBuffer::draw(uint32_t vertexCount)
     {
@@ -353,6 +371,7 @@ namespace nitro::rhi::vulkan
         VulkanComputePipeline *computePipeline = reinterpret_cast<VulkanComputePipeline *>(pipeline);
 
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline->pipeline);
+        m_computePipeline = computePipeline;
     }
 
     void VulkanCommandBuffer::dispatch(uint32_t x, uint32_t y, uint32_t z)

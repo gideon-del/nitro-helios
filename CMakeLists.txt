@@ -11,6 +11,7 @@ file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/bin/shaders")
 file(GLOB_RECURSE SHADER_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.vert"
     "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.frag"
+    "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.comp"
 )
 
 foreach(SOURCE ${SHADER_SOURCES})

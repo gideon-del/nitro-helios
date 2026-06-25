@@ -18,6 +18,9 @@ add_library(nitro-renderer STATIC
  src/renderers/deferred-renderer.cpp
  src/passes/depth-prepass.cpp
  src/passes/lighting-stencil-pass.cpp
+ src/passes/tile-deffered-compute-pass.cpp
+ src/passes/tiled-light-shading-pass.cpp
+ src/renderers/tiled-deferred-renderer.cpp
 )
 
 find_package(glm REQUIRED)

@@ -96,7 +96,8 @@ namespace nitro::renderer
         const char *renderers[] =
             {
                 "Forward",
-                "Deferred"};
+                "Deferred",
+                "TiledDeferred"};
         const char *debugItems[] = {
             "Lit",
             "Albedo",
@@ -105,7 +106,9 @@ namespace nitro::renderer
             "World Position",
             "Cascade Colors",
             "Point Light",
-            "Directional Light"};
+            "Directional Light",
+            "Point Light Heatmap",
+        };
         int currentRenderer =
             static_cast<int>(settings.renderer);
         int currentDebugMode =

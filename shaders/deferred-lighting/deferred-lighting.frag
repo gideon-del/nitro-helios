@@ -189,7 +189,7 @@ vec3 lightColor = frameUbo.lightColor.xyz;
    vec3 diffuseColor = lightColor * diffuse ;
    vec3 specularColor = lightColor * specular * frameUbo.Ks;
    vec3 finalColor; 
-  vec3 PLColor = texture(lightShading, fragUV).rgb * albedo;
+  vec3 PLColor = texture(lightShading, fragUV).rgb;
 
 
 
@@ -211,13 +211,16 @@ switch(int(frameUbo.debugMode)) {
     finalColor = cascadeColor;
     break;
   case 6:
-    finalColor = PLColor;
+    finalColor = PLColor*albedo;
     break;
   case 7:
     finalColor = directionalLighting * albedo;
     break;
+  case 8:
+    finalColor = PLColor;
+    break;
   default:
-    finalColor = (directionalLighting  * albedo) + PLColor;
+    finalColor = (directionalLighting  + PLColor) * albedo;
     break;
 }
 

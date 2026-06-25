@@ -7,3 +7,5 @@
 #include "deferred-lighting-pass.h"
 #include "depth-prepass.h"
 #include "lighting-stencil-pass.h"
+#include "tiled-deffered-compute-pass.h"
+#include "tiled-light-shading-pass.h"

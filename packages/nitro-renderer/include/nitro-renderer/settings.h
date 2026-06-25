@@ -14,7 +14,8 @@ namespace nitro::renderer
         WorldPosition = 4,
         CascadeColor = 5,
         PointLight = 6,
-        DirectionalLight = 7
+        DirectionalLight = 7,
+        HeatMap = 8,
     };
     struct PointLight
     {
@@ -49,7 +50,8 @@ namespace nitro::renderer
     enum class RendererType
     {
         Forward,
-        Deferred
+        Deferred,
+        TiledDeferred
     };
     struct StatSettings
     {

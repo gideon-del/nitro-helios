@@ -35,7 +35,7 @@ namespace nitro::renderer
         float showCascadeColors;
         float debugMode;
         float pad[3];
-        PointLight pointLights[100];
+        PointLight pointLights[1000];
     };
 
     struct DeferredLightingResource

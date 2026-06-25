@@ -362,8 +362,11 @@ namespace nitro::rhi::vulkan
 
         VkPipelineLayoutCreateInfo pipelayoutInfo{};
         pipelayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        pipelayoutInfo.pushConstantRangeCount = 1;
-        pipelayoutInfo.pPushConstantRanges = &pushConstantRange;
+        if (desc.hasPushConstant)
+        {
+            pipelayoutInfo.pushConstantRangeCount = 1;
+            pipelayoutInfo.pPushConstantRanges = &pushConstantRange;
+        }
         std::vector<VkDescriptorSetLayout> descriptorLayouts;
 
         for (auto &layout : desc.layouts)

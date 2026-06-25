@@ -44,7 +44,8 @@ namespace nitro::rhi
     enum class ShaderStage
     {
         Fragment,
-        Vertex
+        Vertex,
+        Compute
     };
     struct ShaderDesc
     {

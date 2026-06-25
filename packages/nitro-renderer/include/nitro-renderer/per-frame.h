@@ -17,6 +17,7 @@ namespace nitro::renderer
         };
 
         T &current(uint32_t frame) { return m_resources[frame]; }
+        const T &current(uint32_t frame) const { return m_resources[frame]; }
         auto begin() { return m_resources.begin(); }
         auto end() { return m_resources.end(); }
 
