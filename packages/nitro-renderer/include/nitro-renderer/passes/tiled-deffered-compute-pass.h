@@ -16,11 +16,20 @@ namespace nitro::renderer
         float nearPlane;
         float farPlane;
     };
-
+    struct TileDebug
+    {
+        uint lightCount;
+        float minDepth;
+        float maxDepth;
+        float tileNear;
+        float tileFar;
+        uint overflow;
+    };
     struct TileLightingComputeResource
     {
         rhi::RHIBuffer *tileLightCountBuffer;
         rhi::RHIBuffer *tileLightIndicesBuffer;
+        rhi::RHIBuffer *tileLightDebugBuffer;
         rhi::RHIBuffer *pointLightBuffer;
         rhi::RHIBuffer *cameraUniformBuffer;
         rhi::RHIDescriptorSet *descriptorSet;

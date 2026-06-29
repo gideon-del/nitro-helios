@@ -27,6 +27,9 @@ namespace nitro::renderer
             {rhi::RHIDescriptorBinding::Type::StorageBuffer,
              rhi::RHIDescriptorBinding::ShaderStage::Compute,
              6},
+            {rhi::RHIDescriptorBinding::Type::StorageBuffer,
+             rhi::RHIDescriptorBinding::ShaderStage::Compute,
+             7},
         };
 
         m_descriptorLayout = m_device->createDescriptorLayout(bindings);
@@ -72,6 +75,7 @@ namespace nitro::renderer
                                resource.descriptorSet->writeBuffer(resource.pointLightBuffer, 4);
                                resource.descriptorSet->writeBuffer(resource.tileLightCountBuffer, 5);
                                resource.descriptorSet->writeBuffer(resource.tileLightIndicesBuffer, 6);
+                               resource.descriptorSet->writeBuffer(resource.tileLightDebugBuffer, 7);
 
                                resource.descriptorSet->commit();
 
@@ -86,6 +90,7 @@ namespace nitro::renderer
             m_device->destroyBuffer(resource.pointLightBuffer);
             m_device->destroyBuffer(resource.tileLightCountBuffer);
             m_device->destroyBuffer(resource.tileLightIndicesBuffer);
+            m_device->destroyBuffer(resource.tileLightDebugBuffer);
             m_device->destroyBuffer(resource.cameraUniformBuffer);
         }
     }
@@ -131,6 +136,14 @@ namespace nitro::renderer
 
         resource.tileLightCountBuffer = m_device->createBuffer(lightCountDesc);
 
+        rhi::BufferDesc tileDebugDesc;
+
+        tileDebugDesc.storage = rhi::BufferDesc::StorageMode::Shared;
+        tileDebugDesc.usage = rhi::BufferDesc::Usage::Storage;
+        tileDebugDesc.size = sizeof(TileDebug) * totalTiles;
+
+        resource.tileLightDebugBuffer = m_device->createBuffer(tileDebugDesc);
+
         rhi::BufferDesc lightIndicesDesc;
 
         lightIndicesDesc.storage = rhi::BufferDesc::StorageMode::Shared;
@@ -159,6 +172,7 @@ namespace nitro::renderer
             resource.descriptorSet->writeBuffer(resource.pointLightBuffer, 4);
             resource.descriptorSet->writeBuffer(resource.tileLightCountBuffer, 5);
             resource.descriptorSet->writeBuffer(resource.tileLightIndicesBuffer, 6);
+            resource.descriptorSet->writeBuffer(resource.tileLightDebugBuffer, 7);
 
             resource.descriptorSet->commit();
         }
@@ -176,6 +190,7 @@ namespace nitro::renderer
         cmd->dispatch(m_tileSizeX, m_tileSizeY, 1);
         cmd->bufferBarrier(resource.tileLightCountBuffer);
         cmd->bufferBarrier(resource.tileLightIndicesBuffer);
+        cmd->bufferBarrier(resource.tileLightDebugBuffer);
     };
 
 } // namespace nitro::renderer

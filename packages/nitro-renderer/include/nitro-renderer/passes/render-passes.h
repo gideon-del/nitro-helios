@@ -9,3 +9,4 @@
 #include "lighting-stencil-pass.h"
 #include "tiled-deffered-compute-pass.h"
 #include "tiled-light-shading-pass.h"
+#include "debug-draw-pass.h"

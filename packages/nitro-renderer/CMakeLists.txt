@@ -21,6 +21,7 @@ add_library(nitro-renderer STATIC
  src/passes/tile-deffered-compute-pass.cpp
  src/passes/tiled-light-shading-pass.cpp
  src/renderers/tiled-deferred-renderer.cpp
+ src/passes/debug-draw-pass.cpp
 )
 
 find_package(glm REQUIRED)

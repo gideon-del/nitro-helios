@@ -32,6 +32,9 @@ namespace nitro::renderer
             {rhi::RHIDescriptorBinding::Type::StorageBuffer,
              rhi::RHIDescriptorBinding::ShaderStage::Fragment,
              7},
+            {rhi::RHIDescriptorBinding::Type::StorageBuffer,
+             rhi::RHIDescriptorBinding::ShaderStage::Fragment,
+             8},
         };
 
         m_descriptorLayout = m_device->createDescriptorLayout(bindings);
@@ -100,6 +103,7 @@ namespace nitro::renderer
         resource.descriptorSet->writeBuffer(tileResource.pointLightBuffer, 5);
         resource.descriptorSet->writeBuffer(tileResource.tileLightCountBuffer, 6);
         resource.descriptorSet->writeBuffer(tileResource.tileLightIndicesBuffer, 7);
+        resource.descriptorSet->writeBuffer(tileResource.tileLightDebugBuffer, 8);
         resource.descriptorSet->commit();
     }
 

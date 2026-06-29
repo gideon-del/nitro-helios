@@ -17,6 +17,7 @@ namespace nitro::renderer
     struct TiledLightPassUBO
     {
         glm::mat4 invViewProj;
+        glm::mat4 view;
         glm::vec2 screenSize;
         uint numTilesX;
         uint maxLightPerTile = 256;

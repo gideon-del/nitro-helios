@@ -21,6 +21,7 @@ namespace nitro::renderer
         std::shared_ptr<DepthPrepass> m_depthPrepass;
         std::shared_ptr<TiledLightingComputePass> m_tileComputePass;
         std::shared_ptr<TileLightShadingPass> m_tileLightPass;
+        std::shared_ptr<DebugDrawPass> m_debugDrawPass;
         bool m_isMetal;
         ShadowPanel m_shadowPanel;
         LightPanel m_lightPanel;

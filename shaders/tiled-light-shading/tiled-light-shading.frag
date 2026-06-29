@@ -8,9 +8,18 @@ struct PointLight {
  float intensity;
 };
 
-
+struct TileDebug
+{
+    uint lightCount;
+    float minDepth;
+    float maxDepth;
+    float tileNear;
+    float tileFar;
+    uint overflow;
+};
 layout(set=0, binding=2) uniform FrameUniformBuffer {
    mat4 invViewProj;
+   mat4 view;
    vec2 screenSize;
    uint numTilesX;
    uint maxLightPerTile;
@@ -27,6 +36,9 @@ layout(std430,set=0, binding=6) readonly buffer TileLightCounts {
 };
 layout(std430,set=0, binding=7) readonly buffer TileLightIndices {
     uint tileLightIndices[];
+};
+layout(std430,set=0, binding=8) buffer TileDebugBuffer {
+    TileDebug debugTiles[];
 };
 
 vec3 reconstructPosition(vec2 uv, float depth, mat4 invViewProj) {
@@ -58,11 +70,11 @@ void main() {
      float depth = texture(gDepth, uv).r;
         vec3 normal = decodeNormal(texture(gNormal,uv).xy);
     vec3 worldPos = reconstructPosition(uv, depth, frameUBO.invViewProj);
-    worldPos = vec3(0.0);
 ivec2 tileId = ivec2(gl_FragCoord.xy) / 16;
     uint tile = tileId.y * frameUBO.numTilesX + tileId.x;
     uint lightCount = tileLightCount[tile];
-   
+     TileDebug tileInfo = debugTiles[tile];
+  
      uint baseIdx = tile * frameUBO.maxLightPerTile;
 
      vec3 PLColor = vec3(0.0);
@@ -74,7 +86,10 @@ ivec2 tileId = ivec2(gl_FragCoord.xy) / 16;
         
        uint lightIdx =tileLightIndices[baseIdx+i];
        PointLight light = pointLights[lightIdx];
-           vec3 PL = light.position.xyz - worldPos;
+       float lightZ = (frameUBO.view * light.position).z;
+       float lightNear = -lightZ - light.radius;
+       float lightFar = -lightZ + light.radius;
+       vec3 PL = light.position.xyz - worldPos;
   float dist = length(PL);
 PL = normalize(PL);
     float attenuation = pow(max(0.0, 1.0 - pow(dist/light.radius, 4)), 2)
@@ -85,4 +100,6 @@ PL = normalize(PL);
     };
 
    outColor = vec4(PLColor,1.0);
+
+outColor = vec4(PLColor, 1.0);
 }

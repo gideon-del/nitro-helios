@@ -37,6 +37,7 @@ std::vector<PointLight> createRandomLights(
     std::mt19937 rng(42); // fixed seed
     std::uniform_real_distribution<float> pos(-areaSize, areaSize);
     std::uniform_real_distribution<float> color(0.2f, 1.0f);
+    // std::uniform_real_distribution<float> radius(10.0f, 50.0f);
 
     for (uint32_t i = 0; i < count; i++)
     {
@@ -191,6 +192,7 @@ int main()
     RHITimer *timer = device->createTimer();
     RendererSettings rendererSettings;
     rendererSettings.light.pointLights = createRandomLights(1000, 500);
+    // rendererSettings.light.pointLights = createRandomLights(10, 100);
     RenderContext renderContext;
     renderContext.camera = &camera;
     renderContext.scene = &mainScene;

@@ -12,6 +12,16 @@ shared vec3 sharedBottomNormal;
 shared vec3 sharedLeftNormal;
 shared vec3 sharedRightNormal;
 
+struct TileDebug
+{
+    uint lightCount;
+    float minDepth;
+    float maxDepth;
+    float tileNear;
+    float tileFar;
+    uint overflow;
+};
+
 struct PointLight {
  vec4 position;
  vec4 color;
@@ -37,6 +47,9 @@ layout(std430,set=0, binding=6) buffer TileLightIndices {
     uint tileLightIndices[];
 };
 
+layout(std430,set=0, binding=7) buffer TileDebugBuffer {
+    TileDebug debugTiles[];
+};
 
 struct TileFrustum {
     vec3 topNormal;
@@ -88,8 +101,8 @@ bottomLeft = normalize(bottomLeft - vec3(0,0,0));
 TileFrustum frustum;
 frustum.topNormal = normalize(cross(topLeft, topRight));
 frustum.rightNormal = normalize(cross(topRight, bottomRight));
-frustum.bottomNormal = normalize(cross(bottomLeft, bottomRight));
-frustum.leftNormal = normalize(cross(topLeft, bottomLeft));
+frustum.bottomNormal = normalize(cross(bottomRight,bottomLeft));
+frustum.leftNormal = normalize(cross(bottomLeft,topLeft));
 frustum.tileFar = tileFar;
 frustum.tileNear = tileNear;
 
@@ -106,7 +119,7 @@ bool isInBottom = dot(bottomNormal,lightViewPos) + light.radius >= 0.0;
 bool isInRight = dot(rightNormal, lightViewPos) + light.radius >= 0.0;
 bool isInLeft =  dot(leftNormal, lightViewPos) + light.radius >= 0.0;
 
-return isInBottom;
+return isInBottom && isInTop && isInRight && isInLeft;
 }
 void main() {
   
@@ -165,19 +178,29 @@ if(gl_GlobalInvocationID.x >= uint(camera.screenSize.x) ||
     bool passesFrustum = isLightInTileFrustum(pointLights[lightIdx], camera.view,
         sharedTopNormal, sharedBottomNormal, sharedLeftNormal, sharedRightNormal);
 
-uint slot = atomicAdd(lightCount,1u);
+if(passesFrustum && passesDepth){
+    uint slot = atomicAdd(lightCount,1u);
             if(slot < MAX_LIGHTS_PER_TILE){
                 lightIndices[slot] = lightIdx;
             }
+}
     }
 
     barrier();
 
    if(gl_LocalInvocationIndex==0) {
     uint numTilesX = uint(gl_NumWorkGroups.x);
+    uint tile = tileId.y * numTilesX + tileId.x;
      uint base = (tileId.y * numTilesX + tileId.x) * MAX_LIGHTS_PER_TILE;
        uint clampedCount = min(lightCount, MAX_LIGHTS_PER_TILE);
-        tileLightCount[tileId.y * numTilesX + tileId.x] = clampedCount;
+        tileLightCount[tile] = clampedCount;
+
+    debugTiles[tile].lightCount = lightCount;
+    debugTiles[tile].tileNear = tileNear;
+    debugTiles[tile].tileFar = tileFar;
+    debugTiles[tile].minDepth = minDepth;
+    debugTiles[tile].maxDepth = maxDepth;
+    debugTiles[tile].overflow = lightCount - clampedCount;
      for(uint i=0u; i < clampedCount;i++){
       tileLightIndices[base + i] = lightIndices[i];    
      }
