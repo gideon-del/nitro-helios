@@ -37,7 +37,12 @@ namespace nitro::rhi::metal
     void MetalCommandBuffer::beginRenderPass(RHIRenderPass *renderPass)
     {
         MetalRenderPass *metalRenderPass = reinterpret_cast<MetalRenderPass *>(renderPass);
-
+        if (m_computeEncoder)
+        {
+            m_computeEncoder->endEncoding();
+            m_computeEncoder->release();
+            m_computeEncoder = nullptr;
+        }
         encoder = commandBuffer->renderCommandEncoder(metalRenderPass->renderPassDescriptor);
         encoder->setDepthBias(metalRenderPass->depthBiasConstant, metalRenderPass->depthBiasSlopScale, metalRenderPass->depthBiasSlopScale);
     }
@@ -48,6 +53,7 @@ namespace nitro::rhi::metal
         {
             m_computeEncoder->endEncoding();
             m_computeEncoder->release();
+            m_computeEncoder = nullptr;
         }
         encoder->endEncoding();
     }
@@ -79,8 +85,11 @@ namespace nitro::rhi::metal
         MetalPipeline *metalPipeline = reinterpret_cast<MetalPipeline *>(pipeline);
 
         encoder->setRenderPipelineState(metalPipeline->pipelineState);
-        encoder->setDepthStencilState(
-            metalPipeline->depthStencilState);
+        if (metalPipeline->hasDepth)
+        {
+            encoder->setDepthStencilState(
+                metalPipeline->depthStencilState);
+        }
         encoder->setCullMode(metalPipeline->cullMode);
         encoder->setFrontFacingWinding(metalPipeline->frontFace);
         m_pipeline = metalPipeline;
@@ -142,13 +151,15 @@ namespace nitro::rhi::metal
         for (auto &[buffer, binding] : metalSet->bufferBindings)
         {
             MetalBuffer *metalBuffer = reinterpret_cast<MetalBuffer *>(buffer);
+
             if (metalSet->descriptorLayout->bufferBindings[binding] == RHIDescriptorBinding::ShaderStage::Vertex || metalSet->descriptorLayout->bufferBindings[binding] == RHIDescriptorBinding::ShaderStage::Both)
             {
                 encoder->setVertexBuffer(metalBuffer->buffer, 0, MetalDescriptorSet::s_getMetalBufferBinding(mainBinding, binding));
             }
             if (metalSet->descriptorLayout->bufferBindings[binding] == RHIDescriptorBinding::ShaderStage::Fragment || metalSet->descriptorLayout->bufferBindings[binding] == RHIDescriptorBinding::ShaderStage::Both)
             {
-                encoder->setFragmentBuffer(metalBuffer->buffer, 0, MetalDescriptorSet::s_getMetalTextureBinding(mainBinding, binding));
+
+                encoder->setFragmentBuffer(metalBuffer->buffer, 0, MetalDescriptorSet::s_getMetalBufferBinding(mainBinding, binding));
             }
         }
         for (auto &[texture, binding] : metalSet->textureBindings)

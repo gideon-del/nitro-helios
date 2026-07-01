@@ -47,7 +47,7 @@ namespace nitro::renderer
         if (isMetal)
         {
             computePipelineDesc.shader.name = "comp";
-            computePipelineDesc.shader.filePath = shaderPath + ".metal.lib";
+            computePipelineDesc.shader.filePath = shaderPath + ".metallib";
         }
         else
         {
@@ -183,6 +183,8 @@ namespace nitro::renderer
 
         auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
 
+        cameraUBO.numTilesX = m_tileSizeX;
+        cameraUBO.numTilesY = m_tileSizeY;
         resource.cameraUniformBuffer->upload(&cameraUBO, sizeof(TiledCameraUBO));
         resource.pointLightBuffer->upload(settings.pointLights.data(), sizeof(PointLight) * m_maxPointLights);
         cmd->bindComputePipeline(m_computePipeline);

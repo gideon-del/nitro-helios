@@ -34,6 +34,9 @@ layout(set=0,binding=2) uniform Camera {
     vec2 screenSize;
     float nearPlane;
     float farPlane;
+    uint numTilesX;
+    uint numTilesY;
+    uint totalLightCount;
 } camera;
 layout(set=0, binding=3) uniform sampler2D depthTexture;
 layout(std430,set=0, binding=4) buffer LightBuffer {
@@ -125,11 +128,7 @@ void main() {
   
   ivec2 tileId = ivec2(gl_WorkGroupID.xy);
 
-if(gl_GlobalInvocationID.x >= uint(camera.screenSize.x) ||
-   gl_GlobalInvocationID.y >=  uint(camera.screenSize.y))
-{
-    return;
-}
+
     if (gl_LocalInvocationIndex == 0) {
         minDepthInt = 0xFFFFFFFFu; 
         maxDepthInt = 0u;  
@@ -195,8 +194,9 @@ if(passesFrustum && passesDepth){
        uint clampedCount = min(lightCount, MAX_LIGHTS_PER_TILE);
         tileLightCount[tile] = clampedCount;
 
+float lz = (camera.view * pointLights[0].position).z;
     debugTiles[tile].lightCount = lightCount;
-    debugTiles[tile].tileNear = tileNear;
+    debugTiles[tile].tileNear = lz;
     debugTiles[tile].tileFar = tileFar;
     debugTiles[tile].minDepth = minDepth;
     debugTiles[tile].maxDepth = maxDepth;

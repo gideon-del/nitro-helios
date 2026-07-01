@@ -146,7 +146,7 @@ fragment float4 fs(
 ) {
   float depth = gDepthTex.sample(gSamp, in.uv).r;
   if(depth >= 1.0) {
-    return float4(0.0,0.0,0.0,1.0);
+discard_fragment();
   }
   float3 albedo = gAlbedoTex.sample(gSamp, in.uv).rgb;
   float3 N = decodeNormal(gNormalTex.sample(gSamp,in.uv).rg);
@@ -220,6 +220,9 @@ case 6:
    break;
 case 7:
    finalColor =directionalLightColor;
+   break;
+case 8:
+   finalColor =pointLightColor;
    break;
 default:
   finalColor = directionalLightColor + pointLightColor;

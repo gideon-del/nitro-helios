@@ -15,6 +15,10 @@ namespace nitro::renderer
         glm::vec2 screenSize;
         float nearPlane;
         float farPlane;
+        uint numTilesX;
+        uint numTilesY;
+        uint totalLightCount;
+        float _pad;
     };
     struct TileDebug
     {

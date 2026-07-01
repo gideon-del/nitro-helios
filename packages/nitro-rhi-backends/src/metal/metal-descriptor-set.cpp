@@ -15,16 +15,26 @@ namespace nitro::rhi::metal
 
         MetalBuffer *mtBuffer = reinterpret_cast<MetalBuffer *>(buffer);
 
-        bufferBindings[mtBuffer] = binding;
+        m_tempDescriptorSet.bufferBindings[mtBuffer] = binding;
     }
     void MetalDescriptorSet::writeTexture(RHITexture *texture, uint32_t binding, ImageLayout imageLayout)
     {
 
         MetalTexture *mtTexture = reinterpret_cast<MetalTexture *>(texture);
 
-        textureBindings[mtTexture] = binding;
+        m_tempDescriptorSet.textureBindings[mtTexture] = binding;
     }
 
-    void MetalDescriptorSet::commit() {};
+    void MetalDescriptorSet::commit()
+    {
+        textureBindings.clear();
+        bufferBindings.clear();
+
+        textureBindings = m_tempDescriptorSet.textureBindings;
+        bufferBindings = m_tempDescriptorSet.bufferBindings;
+
+        m_tempDescriptorSet.textureBindings.clear();
+        m_tempDescriptorSet.bufferBindings.clear();
+    };
 
 } // namespace nitro::rhi::metal

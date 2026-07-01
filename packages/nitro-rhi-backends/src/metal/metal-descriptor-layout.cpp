@@ -12,6 +12,10 @@ namespace nitro::rhi::metal
             {
                 bufferBindings[binding.binding] = binding.stage;
             }
+            if (binding.type == RHIDescriptorBinding::Type::StorageBuffer)
+            {
+                bufferBindings[binding.binding] = binding.stage;
+            }
             if (binding.type == RHIDescriptorBinding::Type::Sampler)
             {
                 textureBindings[binding.binding] = binding.stage;

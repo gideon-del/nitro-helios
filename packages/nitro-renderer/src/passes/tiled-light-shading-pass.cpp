@@ -52,14 +52,15 @@ namespace nitro::renderer
         pipelineDesc.colorAttachments = {rhi::PipelineDesc::ColorAttachmentDesc(rhi::TextureDesc::ImageFormat::ColorSRGBA16, blendDesc)};
         pipelineDesc.hasColorAttachment = true;
         std::string shaderPath = shaderDir + "/tiled-light-shading/tiled-light-shading";
+        pipelineDesc.cullMode = PipelineDesc::CullMode::None;
 
         if (isMetal)
         {
             pipelineDesc.shaders.push_back({"vs",
-                                            shaderPath + ".metalib",
+                                            shaderPath + ".metallib",
                                             ShaderStage::Vertex});
             pipelineDesc.shaders.push_back({"fs",
-                                            shaderPath + ".metalib",
+                                            shaderPath + ".metallib",
                                             ShaderStage::Fragment});
         }
         else

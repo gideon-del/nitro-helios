@@ -16,6 +16,7 @@ namespace nitro::rhi::metal
         MTL::PrimitiveType topology = MTL::PrimitiveTypeTriangle;
         MTL::Winding frontFace = MTL::WindingCounterClockwise;
         MTL::CullMode cullMode = MTL::CullModeBack;
+        bool hasDepth = true;
 
     private:
         MetalDevice *m_device;

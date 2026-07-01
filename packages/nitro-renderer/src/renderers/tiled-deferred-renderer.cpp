@@ -63,57 +63,10 @@ namespace nitro::renderer
         glm::vec3 bottomLeft = reconstructCorner(tile + glm::vec2(0, 1));
 
         glm::vec3 forward = glm::normalize(-glm::vec3(invView[2]));
-        // glm::vec3 right = glm::normalize(glm::vec3(invView[0]));
-        // glm::vec3 up = glm::normalize(glm::vec3(invView[1]));
-
-        // debugDrawPass->drawRay(
-        //     eye,
-        //     forward,
-        //     20.0f,
-        //     glm::vec3(1, 0, 0));
 
         glm::vec3 origin =
             eye +
             forward;
-
-        // debugDrawPass->drawRay(origin, forward, 50.0f, {1, 0, 0});
-        // debugDrawPass->drawRay(origin, -forward, 50.0f, {0, 1, 0});
-
-        // debugDrawPass->drawRay(origin, forward, 20.0f, {0, 0, 1});
-        // debugDrawPass->drawRay(origin, right, 1.0f, {1, 0, 0});
-        // debugDrawPass->drawRay(origin, up, 1.0f, {0, 1, 0});
-        // debugDrawPass->drawAxes(glm::translate(glm::mat4(1.0f), origin), 2.0f);
-
-        // glm::vec3 center =
-        //     reconstructCorner(tile + glm::vec2(0.5f, 0.5f));
-
-        // debugDrawPass->drawRay(
-        //     origin,
-        //     toWorldDir(center),
-        //     200.0f,
-        //     {1, 1, 1});
-        // debugDrawPass->drawRay(
-        //     origin,
-        //     toWorldDir(topLeft),
-        //     20.0f,
-        //     glm::vec3(1, 0, 0));
-        // debugDrawPass->drawRay(
-        //     origin,
-        //     toWorldDir(topRight),
-        //     20.0f,
-        //     glm::vec3(0, 1, 0));
-
-        // debugDrawPass->drawRay(
-        //     origin,
-        //     toWorldDir(bottomLeft),
-        //     20.0f,
-        //     glm::vec3(0, 0, 1));
-
-        // debugDrawPass->drawRay(
-        //     origin,
-        //     toWorldDir(bottomRight),
-        //     20.0f,
-        //     glm::vec3(1, 1, 0));
     };
 
     void visualizeTileFrustumTest(
@@ -243,6 +196,7 @@ namespace nitro::renderer
         computeUBO.screenSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
         computeUBO.invProj = glm::inverse(geometryCamera.proj);
         computeUBO.view = geometryCamera.view;
+        computeUBO.totalLightCount = static_cast<uint>(settings.light.pointLights.size());
 
         m_tileComputePass->execute(cmd, settings.light, computeUBO);
 
@@ -291,50 +245,6 @@ namespace nitro::renderer
         }
 
         m_deferredLightingPass->execute(cmd, frameData);
-        // glm::mat4 testTransform = glm::translate(glm::mat4(1.0f), glm::vec3(0, 5, 0));
-        // m_debugDrawPass->drawAxes(testTransform, 5.0f);
-        // auto invView = glm::inverse(ctx.camera->getView());
-        // glm::vec3 cameraForward = -glm::vec3(invView[2]);
-        // glm::vec3 testOrigin = glm::vec3(invView[3]) + cameraForward * 5.0f;
-        // m_debugDrawPass->drawAxes(glm::translate(invView, glm::vec3(0, 0, -1.0f)), 2.0f);
-        // m_debugDrawPass->drawPlane(glm::vec3(0, 5, 0), glm::vec3(0, 1, 0), 5.0f, glm::vec4(1, 0.5, 0, 1));
-
-        // m_debugDrawPass->drawAABB(glm::vec3(-2, 0, -2), glm::vec3(2, 4, 2), glm::vec3(0, 1, 1));
-        // m_debugDrawPass->drawRay(glm::vec3(0, 10, 0), glm::vec3(0, 1, 0), 12.0f, glm::vec3(1, 1, 0));
-        // glm::vec4 cascadeColors[4] = {
-        //     {1, 0, 0, 1}, {0, 1, 0, 1}, {0, 0, 1, 1}, {1, 1, 0, 1}};
-
-        // for (int i = 0; i < CascadeShadowMapPass::CASCADE_COUNT; i++)
-        // {
-        //     glm::mat4 invLightVP = glm::inverse(m_csmPass->lightViewProj[i]);
-        //     m_debugDrawPass->drawFrustum(invLightVP, 0.0f, 1.0f, cascadeColors[i]);
-        // }
-
-        glm::vec2 testTile(0, 0);
-        glm::vec2 testTile2(100, 0);
-        glm::vec2 testTile3(100, 75);
-        glm::vec2 testTile4(0, 75);
-        // glm::mat4 invView = glm::inverse(ctx.camera->getView());
-        // glm::vec3 cameraForward = -glm::vec3(invView[2]);
-        // glm::vec3 lightInside = ctx.camera->getEye() + cameraForward * 20.0f;
-        // glm::vec3 lightOutside = ctx.camera->getEye() - cameraForward * 20.0f;
-
-        // // visualizeTileFrustumTest(m_debugDrawPass, testTile, lightPassUBO.screenSize, computeUBO.invProj, computeUBO.view, lightOutside);
-        // // visualizeTileFrustumTest(m_debugDrawPass, testTile, lightPassUBO.screenSize, computeUBO.invProj, computeUBO.view, lightOutside);
-        // visualizeTileDepthRange(m_debugDrawPass, ctx.camera->getEye(), cameraForward, 3.0f, 15.0f, glm::vec3(0.0, 0.0, 1.0));
-
-        // for (const auto &light : settings.light.pointLights)
-        // {
-        //     glm::vec3 p = glm::vec3(light.position);
-
-        //     m_debugDrawPass->drawSphere(
-        //         p,
-        //         10.0,
-        //         glm::vec3(0.0, 0, 1.0));
-        // }
-        // m_debugDrawPass->drawTileFrustum(testTile, lightPassUBO.screenSize, computeUBO.invProj, computeUBO.view, 400, 500);
-        // auto viewProj = geometryCamera.proj * geometryCamera.view;
-        // m_debugDrawPass->execute(cmd, viewProj);
 
         m_device->beginImGuiFrame();
         m_lightPanel.draw(settings.light);

@@ -42,7 +42,7 @@ struct FrameUniformBuffer {
     float shadowNormalBias;
     float showCascadeColors;
     float debugMode;
-    PointLight pointLights[100];
+    PointLight pointLights[1000];
 };
 vertex VertexOut vs(VertexIn in [[stage_in]],
                     constant PushConstant& p [[buffer(1)]],
@@ -143,7 +143,7 @@ return mix(shadow0,shadow1, blend);
 float3 calculatePointLightColor(float3 worldPos, float3 albedo, constant FrameUniformBuffer& fub, float3 normal) {
 float3 PLColor = float3(0.0);
 
-for(int i =0; i <100; i++) {
+for(int i =0; i <1000; i++) {
   float3 P = fub.pointLights[i].position.xyz - worldPos;
   float dist = length(P);
   if(dist > fub.pointLights[i].radius ) {

@@ -24,10 +24,10 @@ namespace nitro::renderer
         if (isMetal)
         {
             pipelineDesc.shaders.push_back({"vs",
-                                            shaderPath + ".metalib",
+                                            shaderPath + ".metallib",
                                             rhi::ShaderStage::Vertex});
             pipelineDesc.shaders.push_back({"fs",
-                                            shaderPath + ".metalib",
+                                            shaderPath + ".metallib",
                                             rhi::ShaderStage::Fragment});
         }
         else

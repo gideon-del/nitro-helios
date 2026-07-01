@@ -9,6 +9,12 @@ namespace nitro::rhi::metal
     class MetalBuffer;
     class MetalTexture;
     class MetalDescriptorLayout;
+
+    struct TempDescriptorSet
+    {
+        std::unordered_map<MetalTexture *, uint32_t> textureBindings;
+        std::unordered_map<MetalBuffer *, uint32_t> bufferBindings;
+    };
     class MetalDescriptorSet : public RHIDescriptorSet
     {
     public:
@@ -37,9 +43,11 @@ namespace nitro::rhi::metal
         }
         std::unordered_map<MetalTexture *, uint32_t> textureBindings;
         std::unordered_map<MetalBuffer *, uint32_t> bufferBindings;
+
         MetalDescriptorLayout *descriptorLayout;
 
     private:
         MetalDevice *m_device;
+        TempDescriptorSet m_tempDescriptorSet;
     };
 } // namespace nitro::rhi::metal

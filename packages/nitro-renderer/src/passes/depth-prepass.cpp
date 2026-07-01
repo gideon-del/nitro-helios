@@ -30,6 +30,8 @@ namespace nitro::renderer
         pipelineDesc.layouts = {m_descriptorLayout};
         pipelineDesc.vertexLayout = geometry::Vertex::getVertexLayout();
         pipelineDesc.depthAttachmentFormat = rhi::TextureDesc::ImageFormat::Depth32FloatStencil8;
+        pipelineDesc.hasDepth = true;
+        pipelineDesc.hasStencil = true;
         std::string shaderPath = shaderDir + "/depth-prepass/depth-prepass";
 
         if (isMetal)

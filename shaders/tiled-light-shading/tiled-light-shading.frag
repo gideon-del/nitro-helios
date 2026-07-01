@@ -79,7 +79,11 @@ ivec2 tileId = ivec2(gl_FragCoord.xy) / 16;
 
      vec3 PLColor = vec3(0.0);
      if(frameUBO.showHeatMap == 1) {
-        outColor = vec4(vec3(float(lightCount)), 1.0);
+        float t = clamp(lightCount / 32.0, 0.0, 1.0);
+    vec3 color =
+    mix(vec3(0,0,1),      
+    vec3(0,1,0), t);
+         outColor = vec4(color, 1.0);
             return;
      }
     for(uint i=0; i < lightCount; i++) {
