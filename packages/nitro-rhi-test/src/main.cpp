@@ -158,21 +158,24 @@ int main()
         device->createSwapchain(nullptr));
 
     Scene mainScene;
+    Scene pbrScene;
     Mesh sphere = MeshGenerator::createUVSphere(5, 10, 100);
 
     auto sphereRenderer = std::make_shared<MeshRenderer>(sphere, device);
 
+    pbrScene.objects.push_back({sphereRenderer, MeshTransformation(glm::mat4(1.0f), glm::scale(glm::mat4(1.0f), glm::vec3{3.0, 3.0, 3.0}))});
     Mesh plane = MeshGenerator::createPlane(500, 500);
     plane.calculateNormals();
     auto planeRenderer = std::make_shared<MeshRenderer>(plane, device);
     mainScene.objects.push_back(RenderObject(planeRenderer));
+    // pbrScene.objects.push_back(RenderObject(planeRenderer));
     addRandomSpheres(400, 500, mainScene, sphereRenderer);
     Mesh pointLightSphere = MeshGenerator::createUVSphere(1, 10, 100);
     std::shared_ptr<MeshRenderer> pointLightRenderer = std::make_shared<MeshRenderer>(pointLightSphere, device);
     OrbitalCamera camera;
     // camera.radius = 10.0f;
 
-    camera.radius = 3.0f;
+    camera.radius = 20.0f;
     OrbitalCamera light;
     light.radius = 200.0f;
     light.theta = glm::radians(30.0f);
@@ -191,11 +194,12 @@ int main()
 
     RHITimer *timer = device->createTimer();
     RendererSettings rendererSettings;
-    rendererSettings.light.pointLights = createRandomLights(1000, 500);
-    // rendererSettings.light.pointLights = createRandomLights(10, 100);
+
+    // rendererSettings.light.pointLights = createRandomLights(1000, 500);
+    rendererSettings.light.pointLights = createRandomLights(10, 100);
     RenderContext renderContext;
     renderContext.camera = &camera;
-    renderContext.scene = &mainScene;
+    renderContext.scene = &pbrScene;
 
     rendererSettings.light.lightCamera = light;
     rendererSettings.light.pointLightRenderer = pointLightRenderer;

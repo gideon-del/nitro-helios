@@ -186,7 +186,7 @@ namespace nitro::renderer
         cameraUBO.numTilesX = m_tileSizeX;
         cameraUBO.numTilesY = m_tileSizeY;
         resource.cameraUniformBuffer->upload(&cameraUBO, sizeof(TiledCameraUBO));
-        resource.pointLightBuffer->upload(settings.pointLights.data(), sizeof(PointLight) * m_maxPointLights);
+        resource.pointLightBuffer->upload(settings.pointLights.data(), static_cast<uint32_t>(settings.pointLights.size()));
         cmd->bindComputePipeline(m_computePipeline);
         cmd->bindComputeDescriptorSet(resource.descriptorSet, 0);
         cmd->dispatch(m_tileSizeX, m_tileSizeY, 1);

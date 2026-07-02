@@ -16,6 +16,15 @@ namespace nitro::renderer
         PointLight = 6,
         DirectionalLight = 7,
         HeatMap = 8,
+        DistributionGGX = 9,
+        FresnelSchlick = 10,
+    };
+
+    enum class LightMode
+    {
+        BlinnPhong = 0,
+        LambertDiffuse = 1,
+        CookTorrenceStub = 0,
     };
     struct PointLight
     {
@@ -32,7 +41,7 @@ namespace nitro::renderer
         float Kd = 0.8f;
         float Ks = 0.9f;
         float shininess = 32.0f;
-
+        float roughness = 0.0f;
         glm::vec3 lightColor = glm::vec3(1.0f);
         geometry::OrbitalCamera lightCamera;
         std::vector<PointLight> pointLights;
@@ -63,13 +72,15 @@ namespace nitro::renderer
         std::string renderer;
         std::string backend;
     };
+
     struct RendererSettings
     {
         ShadowSettings shadow;
         LightingSettings light;
-        RendererType renderer = RendererType::Forward;
+        RendererType renderer = RendererType::TiledDeferred;
         StatSettings stats;
         DebugMode selectedDebugMode = DebugMode::Lit;
+        LightMode selectedLightMode = LightMode::BlinnPhong;
     };
 
 } // namespace nitro::renderer

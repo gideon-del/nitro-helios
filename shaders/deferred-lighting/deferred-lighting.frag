@@ -19,7 +19,9 @@ layout(set=0, binding=2)uniform  FrameUniformBuffer {
     float shadowBias;
     float shadowNormalBias;
     float showCascadeColors;  
-    float debugMode; 
+    float debugMode;
+    float lightMode; 
+    float roughness;
 } frameUbo;
 
 
@@ -37,6 +39,11 @@ layout(set=2, binding=3) uniform sampler2DShadow shadowMap3;
 
 layout(location = 0) out vec4 outColor;
 layout(location = 0) in vec2  fragUV;
+
+const float PI = 3.14159265358979323846;
+const float TWO_PI = 6.28318530717958647692;
+const float HALF_PI = 1.57079632679489661923;
+
 vec3 reconstructPosition(vec2 uv, float depth, mat4 invViewProj) {
  vec4 clipPos = vec4(uv * 2.0 - 1.0, depth, 1.0);
  vec4 worldPos = invViewProj * clipPos;
@@ -177,10 +184,17 @@ vec3 normal) {
     shadow = shadowPoisson(frameUbo.lightViewProj[3] * vec4(shadowPos,1.0),bias,shadowMap3);
     cascadeColor = vec3(1,1,0);
   }
-CascadeResult result;
-result.shadow = shadow;
-result.cascadeColor = cascadeColor;
-  return result;
+  CascadeResult result;
+  result.shadow = shadow;
+  result.cascadeColor = cascadeColor;
+    return result;
+}
+
+vec3 mapToHeatColor(float value, float minVal, float maxVal, uint ramp) {
+float t = clamp((value-minVal)/(maxVal-minVal),0.0, 1.0);
+if(ramp == 0) return vec3(t);
+if(ramp == 1) return mix(vec3(0.2,0.0,0.4), vec3(1.0,0.9,0.2), t);
+return mix(vec3(0,0,1), vec3(1,0,0), t);
 }
 
 vec3 blingPhongShading(
@@ -198,10 +212,34 @@ float shadow
 
    vec3 lightColor = frameUbo.lightColor.xyz;
    vec3 ambientColor = (lightColor * (frameUbo.ambient) * frameUbo.Ka);
-   vec3 diffuseColor = lightColor * diffuse ;
+   vec3 diffuseColor = lightColor * diffuse;
    vec3 specularColor = lightColor * specular * frameUbo.Ks;   
 
    return (ambientColor + shadow * (diffuseColor + specularColor));
+}
+
+vec3 lambertDiffuse(vec3 albedo, vec3 N, vec3 L) {
+float NdotL = max(0.0,dot(N, L));
+return albedo / PI * NdotL;
+}
+
+vec3 cookTorranceStub(vec3 albedo, vec3 N, vec3 L) {
+    return lambertDiffuse(albedo, N, L) + vec3(0.05);
+}
+
+float distributionGGX(vec3 N, vec3 H, float roughness) {
+float a = roughness * roughness;
+float a2 = a*a;
+float NdotH = max(dot(N,H), 0.0);
+float NdotH2 = NdotH * NdotH;
+float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+denom = PI * denom * denom;
+
+return a2/max(denom, 0.00001);
+}
+
+vec3 fresnelSchlick(vec3 Fo, float cosTheta) {
+  return Fo + (1.0 -Fo) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 void main() {
   float depth   = texture(gDepth, fragUV).x;
@@ -217,18 +255,40 @@ void main() {
 
 CascadeResult cascadeResult =  getCascadeShadow(worldPos, N);
 
-  float shadow= cascadeResult.shadow ;
+  float shadow= cascadeResult.shadow;
   vec3 cascadeColor = cascadeResult.cascadeColor;
 
 
   vec3 finalColor; 
   vec3 PLColor = texture(lightShading, fragUV).rgb;
 
- vec3 directionalLighting = blingPhongShading(
+vec3 L =  normalize(frameUbo.lightPosition.xyz - worldPos);
+vec3 V = normalize(frameUbo.cameraPosition.xyz - worldPos);
+vec3 H = normalize(L + V);
+vec3 directionalLighting;
+float D = distributionGGX(N, H, frameUbo.roughness);
+vec3 Fo_water = vec3(0.02);
+vec3 Fo_glass =vec3(0.04);
+vec3 Fo_metal = albedo;
+vec3 gold = vec3(1.0, 0.71, 0.29);
+vec3 copper =vec3(0.95, 0.64, 0.54);
+vec3 iron =vec3(0.56, 0.57, 0.58);
+vec3 F = fresnelSchlick(albedo, max(dot(N,V),0.0));
+switch(int(frameUbo.lightMode)) {
+  case 0:
+    directionalLighting = blingPhongShading(
    worldPos, 
   N, 
  shadow
 );
+    break;
+  case 1:
+    directionalLighting = lambertDiffuse(albedo, N,L);
+    break;
+  default:
+    directionalLighting = cookTorranceStub(albedo, N,L);
+    break;
+}
 switch(int(frameUbo.debugMode)) {
   case 1:
     finalColor = albedo;
@@ -253,6 +313,12 @@ switch(int(frameUbo.debugMode)) {
     break;
   case 8:
     finalColor = PLColor;
+    break;
+  case 9:
+    finalColor = mapToHeatColor(D,0.0,1.0,2);
+    break;
+  case 10:
+    finalColor = F;
     break;
   default:
     finalColor = (directionalLighting  + PLColor) * albedo;

@@ -77,6 +77,7 @@ namespace nitro::renderer
         pipelineDesc.pushConstantSize = sizeof(geometry::PushConstant);
         pipelineDesc.depthAttachmentFormat = rhi::TextureDesc::ImageFormat::Depth32FloatStencil8;
         pipelineDesc.hasStencil = true;
+        pipelineDesc.cullMode = PipelineDesc::CullMode::None;
 
         m_pipeline = m_device->createPipeline(pipelineDesc);
 

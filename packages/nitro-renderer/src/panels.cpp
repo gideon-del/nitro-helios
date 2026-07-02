@@ -30,33 +30,39 @@ namespace nitro::renderer
 
         if (ImGui::CollapsingHeader("Lighting"))
         {
-            ImGui::SliderFloat(
-                "Ambient",
-                &settings.ambient,
-                0,
-                1);
+            // ImGui::SliderFloat(
+            //     "Ambient",
+            //     &settings.ambient,
+            //     0,
+            //     1);
+
+            // ImGui::SliderFloat(
+            //     "Ka",
+            //     &settings.Ka,
+            //     0,
+            //     1);
+
+            // ImGui::SliderFloat(
+            //     "Kd",
+            //     &settings.Kd,
+            //     0,
+            //     1);
+
+            // ImGui::SliderFloat(
+            //     "Ks",
+            //     &settings.Ks,
+            //     0,
+            //     1);
+
+            // ImGui::ColorEdit3(
+            //     "Light Color",
+            //     &settings.lightColor.x);
 
             ImGui::SliderFloat(
-                "Ka",
-                &settings.Ka,
+                "Roughness",
+                &settings.roughness,
                 0,
                 1);
-
-            ImGui::SliderFloat(
-                "Kd",
-                &settings.Kd,
-                0,
-                1);
-
-            ImGui::SliderFloat(
-                "Ks",
-                &settings.Ks,
-                0,
-                1);
-
-            ImGui::ColorEdit3(
-                "Light Color",
-                &settings.lightColor.x);
         }
 
         ImGui::End();
@@ -108,11 +114,19 @@ namespace nitro::renderer
             "Point Light",
             "Directional Light",
             "Point Light Heatmap",
+            "Distribution Heatmap",
+            "Fresnel Schlick",
         };
+        const char *lightModeLabels[] = {
+            "Blinn Phong",
+            "Lambert Diffuse",
+            "Cook Torrence"};
         int currentRenderer =
             static_cast<int>(settings.renderer);
         int currentDebugMode =
             static_cast<int>(settings.selectedDebugMode);
+        int currentLightMode =
+            static_cast<int>(settings.selectedLightMode);
 
         if (ImGui::Combo(
                 "Renderer",
@@ -130,6 +144,14 @@ namespace nitro::renderer
                 IM_ARRAYSIZE(debugItems)))
         {
             settings.selectedDebugMode = static_cast<DebugMode>(currentDebugMode);
+        }
+        if (ImGui::Combo(
+                "Light Mode",
+                &currentLightMode,
+                lightModeLabels,
+                IM_ARRAYSIZE(lightModeLabels)))
+        {
+            settings.selectedLightMode = static_cast<LightMode>(currentLightMode);
         }
     }
     void StatPanel::draw(StatSettings &stats)

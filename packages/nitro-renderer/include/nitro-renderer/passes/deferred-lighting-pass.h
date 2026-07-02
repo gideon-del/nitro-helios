@@ -34,7 +34,9 @@ namespace nitro::renderer
         float shadowNormalBias;
         float showCascadeColors;
         float debugMode;
-        float pad[3];
+        float lightMode;
+        float roughness;
+        float pad;
         PointLight pointLights[1000];
     };
 
