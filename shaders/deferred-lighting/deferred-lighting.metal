@@ -91,7 +91,7 @@ float shadowPoisson(depth2d<float> shadowMap, sampler samp,float4 fragLightPos, 
   float2 texelSize = 1.0 / float2(
     shadowMap.get_width(),
     shadowMap.get_height()
-);
+  );
 
    float shadow = 0.0;
    float radius = 2.0;
@@ -108,67 +108,57 @@ float blendCascade(
   float blendWidth, 
   float viewDepth
   ) {
-float blend = smoothstep(
+  float blend = smoothstep(
   split - blendWidth,
   split+ blendWidth,
   viewDepth
 );
 
-if(viewDepth < split-blendWidth) {
-  return shadow0;
-}else if(viewDepth <= split+blendWidth) {
-return mix(shadow0,shadow1, blend);
-}else {
-  return shadow1;
-}
-}
-
-
-
-
-fragment float4 fs(
-    VertexOut in [[stage_in]],
-  constant FrameUniformBuffer& fub [[buffer(2)]],
-
-   texture2d<float> gAlbedoTex [[texture(16)]],    
-   texture2d<float> gNormalTex [[texture(17)]], 
-   texture2d<float> gMaterialTex [[texture(18)]], 
-   texture2d<float> gEmissiveTex [[texture(19)]], 
-   texture2d<float> gDepthTex [[texture(20)]], 
-   texture2d<float> lightingTex [[texture(21)]], 
-    sampler gSamp [[sampler(1)]],
-
-   depth2d<float> depthTex0 [[texture(32)]],
-  depth2d<float> depthTex1 [[texture(33)]],
-  depth2d<float> depthTex2 [[texture(34)]],
-  depth2d<float> depthTex3 [[texture(35)]],
-  sampler depthTexSamp [[sampler(2)]]
-) {
-  float depth = gDepthTex.sample(gSamp, in.uv).r;
-  if(depth >= 1.0) {
-discard_fragment();
+  if(viewDepth < split-blendWidth) {
+    return shadow0;
+  }else if(viewDepth <= split+blendWidth) {
+  return mix(shadow0,shadow1, blend);
+  }else {
+    return shadow1;
   }
-  float3 albedo = gAlbedoTex.sample(gSamp, in.uv).rgb;
-  float3 N = decodeNormal(gNormalTex.sample(gSamp,in.uv).rg);
-  float3 worldPos = reconstructPosition(in.uv, depth, fub.invViewProj);
+}
 
 
-   float3 L = normalize(fub.lightPosition.xyz - worldPos);
+float3 blinnPhongShade(float3 worldPos, float3 normal, float shadow, FrameUniformBuffer fub) {
+
+    float3 L = normalize(fub.lightPosition.xyz - worldPos);
     float3 V = normalize(fub.cameraPosition.xyz - worldPos);
     float3 H = normalize(L + V);
 
     float3 lightColor = fub.lightColor.xyz;
-    float diffuse = max(0.0, dot(N,L));
-    float specular = pow(max(0.0,dot(N,H) ), fub.shininess);
+    float diffuse = max(0.0, dot(normal,L));
+    float specular = pow(max(0.0,dot(normal,H) ), fub.shininess);
     float3 ambientColor = lightColor * fub.ambient * fub.Ka;
     float3 diffuseColor = lightColor * diffuse * fub.Kd;
     float3 specularColor = lightColor * specular * fub.Ks;
+   
+ return  (ambientColor +  shadow*(diffuseColor + specularColor));
+    
+}
+
+struct CascadeResult {
+  float shadow;
+  float3 cascadeColor;
+};
+
+CascadeResult getCascadeShadow(float3 worldPos, float3 normal, FrameUniformBuffer fub,
+depth2d<float> depthTex0,
+depth2d<float> depthTex1, 
+depth2d<float> depthTex2, 
+depth2d<float> depthTex3, 
+sampler depthTexSamp) {
+  float3 L = normalize(fub.lightPosition.xyz - worldPos);
     float bias = max(
-   fub.shadowBias * (1.0 - dot(N, L)),
+   fub.shadowBias * (1.0 - dot(normal, L)),
     0.0005
 );
-float normalBias = (1.0 - dot(N,L)) * fub.shadowNormalBias;
-float3 shadowPos =worldPos + N * normalBias;
+float normalBias = (1.0 - dot(normal,L)) * fub.shadowNormalBias;
+float3 shadowPos =worldPos + normal * normalBias;
 
 float4 viewPos = fub.view * float4(worldPos,1.0);
 float viewDepth = -viewPos.z;
@@ -196,8 +186,43 @@ float   shadow2 = shadowPoisson(depthTex2,depthTexSamp,fub.lightViewProj[2] * fl
      shadow = shadowPoisson(depthTex3,depthTexSamp,fub.lightViewProj[3] * float4(shadowPos, 1.0),bias);
        cascadeColor = float3(1,1,0);
   }
-float3 finalColor;
- float3 directionalLightColor = (ambientColor +  shadow*(diffuseColor + specularColor)) * albedo; 
+
+  CascadeResult result;
+  result.shadow = shadow;
+  result.cascadeColor =cascadeColor;
+  return result;
+};
+
+fragment float4 fs(
+    VertexOut in [[stage_in]],
+  constant FrameUniformBuffer& fub [[buffer(2)]],
+
+   texture2d<float> gAlbedoTex [[texture(16)]],    
+   texture2d<float> gNormalTex [[texture(17)]], 
+   texture2d<float> gMaterialTex [[texture(18)]], 
+   texture2d<float> gEmissiveTex [[texture(19)]], 
+   texture2d<float> gDepthTex [[texture(20)]], 
+   texture2d<float> lightingTex [[texture(21)]], 
+    sampler gSamp [[sampler(1)]],
+
+   depth2d<float> depthTex0 [[texture(32)]],
+  depth2d<float> depthTex1 [[texture(33)]],
+  depth2d<float> depthTex2 [[texture(34)]],
+  depth2d<float> depthTex3 [[texture(35)]],
+  sampler depthTexSamp [[sampler(2)]]
+) {
+  float depth = gDepthTex.sample(gSamp, in.uv).r;
+  if(depth >= 1.0) {
+discard_fragment();
+  }
+  float3 albedo = gAlbedoTex.sample(gSamp, in.uv).rgb;
+  float3 N = decodeNormal(gNormalTex.sample(gSamp,in.uv).rg);
+  float3 worldPos = reconstructPosition(in.uv, depth, fub.invViewProj);
+ float3 finalColor;
+ CascadeResult cascadeResult = getCascadeShadow(worldPos, N, fub, depthTex0, depthTex1,depthTex2, depthTex3, depthTexSamp);
+ float shadow = cascadeResult.shadow;
+ float3 cascadeColor = cascadeResult.cascadeColor;
+ float3 directionalLightColor =blinnPhongShade(worldPos, N, shadow, fub)  * albedo; 
  float3 pointLightColor = lightingTex.sample(gSamp, in.uv).rgb * albedo;
 switch(int(fub.debugMode)) {
 case 1: 

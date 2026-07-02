@@ -44,6 +44,8 @@ vec3 reconstructPosition(vec2 uv, float depth, mat4 invViewProj) {
 }
 
 
+
+
 vec3 decodeNormal(vec2 n) {
 vec2 f = n * 2.0 - 1.0;
 vec3 v = vec3(
@@ -122,44 +124,36 @@ return mix(shadow0,shadow1, blend);
   return shadow1;
 }
 }
-void main() {
-  vec3 albedo = texture(gAlbedo, fragUV).rgb;
-  float depth   = texture(gDepth, fragUV).x;
-  if(depth >= 1.0)
-{
-   discard;
-    return;
-}
-  vec3  worldPos = reconstructPosition(fragUV, depth, frameUbo.invViewProj);
-  vec3 N = decodeNormal(texture(gNormal,fragUV).rg);
-   vec3 L = normalize(frameUbo.lightPosition.xyz - worldPos);
-   vec3 V = normalize(frameUbo.cameraPosition.xyz - worldPos);
-   vec3 H = normalize(L + V);
-    float diffuse = max(0.0, dot(N,L));
-  float specular = diffuse > 0.0 
-    ? pow(max(0.0, dot(N, H)), frameUbo.shininess) 
-    : 0.0;
 
-   float bias = max(
-   frameUbo.shadowBias * (1.0 - dot(N, L)),
+struct CascadeResult {
+  float shadow;
+  vec3 cascadeColor;
+};
+CascadeResult getCascadeShadow(
+vec3 worldPos, 
+vec3 normal) {
+  vec3 L = normalize(frameUbo.lightPosition.xyz - worldPos);
+ float bias = max(
+   frameUbo.shadowBias * (1.0 - dot(normal, L)),
     0.0005
-);
+   );
+  
 
-float normalBias =
-    (1.0 - dot(N, L)) * frameUbo.shadowNormalBias;
+  float normalBias =
+      (1.0 - dot(normal, L)) * frameUbo.shadowNormalBias;
 
-vec3 shadowPos =
-    worldPos + N * normalBias;
+  vec3 shadowPos =
+      worldPos + normal * normalBias;
 
-float shadow = 0.0;   
-vec4 viewPos =
-    frameUbo.view * vec4(worldPos, 1.0);
+  float shadow = 0.0;   
+  vec4 viewPos =
+      frameUbo.view * vec4(worldPos, 1.0);
 
-float viewDepth = -viewPos.z;
-vec3 cascadeColor;
-float blendWidth0 = (frameUbo.cascadeSplit[1] - frameUbo.cascadeSplit[0] ) * 0.15;
-float blendWidth1 = (frameUbo.cascadeSplit[2] - frameUbo.cascadeSplit[1] ) * 0.15;
-float blendWidth2 = (frameUbo.cascadeSplit[3] - frameUbo.cascadeSplit[2] ) * 0.15; 
+  float viewDepth = -viewPos.z;
+  vec3 cascadeColor;
+  float blendWidth0 = (frameUbo.cascadeSplit[1] - frameUbo.cascadeSplit[0] ) * 0.15;
+  float blendWidth1 = (frameUbo.cascadeSplit[2] - frameUbo.cascadeSplit[1] ) * 0.15;
+  float blendWidth2 = (frameUbo.cascadeSplit[3] - frameUbo.cascadeSplit[2] ) * 0.15; 
 
  if( viewDepth <= frameUbo.cascadeSplit[0]+blendWidth0) {
    float shadow0 =shadowPoisson(frameUbo.lightViewProj[0] * vec4(shadowPos,1.0),bias,shadowMap0);
@@ -183,17 +177,58 @@ float blendWidth2 = (frameUbo.cascadeSplit[3] - frameUbo.cascadeSplit[2] ) * 0.1
     shadow = shadowPoisson(frameUbo.lightViewProj[3] * vec4(shadowPos,1.0),bias,shadowMap3);
     cascadeColor = vec3(1,1,0);
   }
+CascadeResult result;
+result.shadow = shadow;
+result.cascadeColor = cascadeColor;
+  return result;
+}
 
-vec3 lightColor = frameUbo.lightColor.xyz;
+vec3 blingPhongShading(
+  vec3 worldPos, 
+vec3 normal, 
+float shadow
+) {
+   vec3 L = normalize(frameUbo.lightPosition.xyz - worldPos);
+   vec3 V = normalize(frameUbo.cameraPosition.xyz - worldPos);
+   vec3 H = normalize(L + V);
+    float diffuse = max(0.0, dot(normal,L));
+  float specular = diffuse > 0.0 
+    ? pow(max(0.0, dot(normal, H)), frameUbo.shininess) 
+    : 0.0;
+
+   vec3 lightColor = frameUbo.lightColor.xyz;
    vec3 ambientColor = (lightColor * (frameUbo.ambient) * frameUbo.Ka);
    vec3 diffuseColor = lightColor * diffuse ;
-   vec3 specularColor = lightColor * specular * frameUbo.Ks;
-   vec3 finalColor; 
+   vec3 specularColor = lightColor * specular * frameUbo.Ks;   
+
+   return (ambientColor + shadow * (diffuseColor + specularColor));
+}
+void main() {
+  float depth   = texture(gDepth, fragUV).x;
+  if(depth >= 1.0)
+{
+   discard;
+    return;
+}
+  vec3 albedo = texture(gAlbedo, fragUV).rgb;
+  vec3  worldPos = reconstructPosition(fragUV, depth, frameUbo.invViewProj);
+  vec3 N = decodeNormal(texture(gNormal,fragUV).rg);
+
+
+CascadeResult cascadeResult =  getCascadeShadow(worldPos, N);
+
+  float shadow= cascadeResult.shadow ;
+  vec3 cascadeColor = cascadeResult.cascadeColor;
+
+
+  vec3 finalColor; 
   vec3 PLColor = texture(lightShading, fragUV).rgb;
 
-
-
- vec3 directionalLighting = (ambientColor + shadow * (diffuseColor + specularColor));
+ vec3 directionalLighting = blingPhongShading(
+   worldPos, 
+  N, 
+ shadow
+);
 switch(int(frameUbo.debugMode)) {
   case 1:
     finalColor = albedo;
