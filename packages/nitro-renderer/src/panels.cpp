@@ -63,6 +63,12 @@ namespace nitro::renderer
                 &settings.roughness,
                 0,
                 1);
+
+            ImGui::SliderFloat(
+                "Metallic",
+                &settings.metallic,
+                0,
+                1);
         }
 
         ImGui::End();
@@ -116,11 +122,12 @@ namespace nitro::renderer
             "Point Light Heatmap",
             "Distribution Heatmap",
             "Fresnel Schlick",
+            "Smith Geometry",
         };
         const char *lightModeLabels[] = {
             "Blinn Phong",
             "Lambert Diffuse",
-            "Cook Torrence"};
+            "Cook Torrance"};
         int currentRenderer =
             static_cast<int>(settings.renderer);
         int currentDebugMode =

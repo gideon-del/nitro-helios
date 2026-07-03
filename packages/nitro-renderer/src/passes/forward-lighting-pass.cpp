@@ -20,7 +20,7 @@ namespace nitro::renderer
         m_shadowDescriptorLayout = m_device->createDescriptorLayout(cascadeBindings);
         rhi::PipelineDesc pipelineDesc;
         pipelineDesc.hasPushConstant = true;
-        pipelineDesc.pushConstantSize = sizeof(geometry::PushConstant);
+        pipelineDesc.pushConstantSize = sizeof(RenderObjectPushConstant);
         pipelineDesc.layouts = {m_mainDescriptorLayout, m_shadowDescriptorLayout};
         pipelineDesc.vertexLayout = geometry::Vertex::getVertexLayout();
         pipelineDesc.depthWrite = true;

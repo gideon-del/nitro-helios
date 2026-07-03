@@ -241,6 +241,37 @@ return a2/max(denom, 0.00001);
 vec3 fresnelSchlick(vec3 Fo, float cosTheta) {
   return Fo + (1.0 -Fo) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
+
+float geometrySchlickGGX(float NdotV, float roughness) {
+  float r = roughness + 1.0;
+  float k = (r*r)/8.0;
+  return NdotV / (NdotV * (1.0 - k) + k);
+}
+
+float geometrySmith(vec3 N, vec3 L, vec3 V, float roughness) {
+float ggx_V =geometrySchlickGGX(max(dot(N,V), 0.0), roughness);
+float ggx_L =geometrySchlickGGX(max(dot(N,L), 0.0), roughness);
+
+return ggx_L * ggx_V;
+}
+
+vec3 cookTorranceSpecular(vec3 N, vec3 V, vec3 L, vec3 H,
+                           float roughness, vec3 F0) {
+ float D = distributionGGX(N, H, roughness);
+ vec3 F = fresnelSchlick(F0,max(dot(H,V),0.0));
+ float G = geometrySmith(N,L,V,roughness);
+ float NdotL = max(dot(N,L),0.0);
+ float NdotV = max(dot(N,V),0.0);
+ float denom = 4.0 * NdotL * NdotV + 0.00001;
+
+ return (D*F*G)/ denom;
+}
+
+vec3 metallicDiffuse(vec3 F ,float metallic) {
+  vec3 kS = F;
+  vec3 kD = vec3(1.0) - kS;
+return kD * (1.0 - metallic);
+}
 void main() {
   float depth   = texture(gDepth, fragUV).x;
   if(depth >= 1.0)
@@ -251,9 +282,8 @@ void main() {
   vec3 albedo = texture(gAlbedo, fragUV).rgb;
   vec3  worldPos = reconstructPosition(fragUV, depth, frameUbo.invViewProj);
   vec3 N = decodeNormal(texture(gNormal,fragUV).rg);
-
-
-CascadeResult cascadeResult =  getCascadeShadow(worldPos, N);
+  vec3 material = texture(gMaterial, fragUV).rgb;
+  CascadeResult cascadeResult =  getCascadeShadow(worldPos, N);
 
   float shadow= cascadeResult.shadow;
   vec3 cascadeColor = cascadeResult.cascadeColor;
@@ -266,14 +296,13 @@ vec3 L =  normalize(frameUbo.lightPosition.xyz - worldPos);
 vec3 V = normalize(frameUbo.cameraPosition.xyz - worldPos);
 vec3 H = normalize(L + V);
 vec3 directionalLighting;
-float D = distributionGGX(N, H, frameUbo.roughness);
-vec3 Fo_water = vec3(0.02);
-vec3 Fo_glass =vec3(0.04);
-vec3 Fo_metal = albedo;
-vec3 gold = vec3(1.0, 0.71, 0.29);
-vec3 copper =vec3(0.95, 0.64, 0.54);
-vec3 iron =vec3(0.56, 0.57, 0.58);
-vec3 F = fresnelSchlick(albedo, max(dot(N,V),0.0));
+float roughness = material.b;
+float metallic = material.g;
+vec3 dielectricF0 = vec3(0.04);
+vec3 F0 = mix(dielectricF0, albedo, metallic);
+float D = distributionGGX(N, H,roughness);
+vec3 F = fresnelSchlick(F0, max(dot(N,V),0.0));
+float G = geometrySmith(N, L, V,roughness);
 switch(int(frameUbo.lightMode)) {
   case 0:
     directionalLighting = blingPhongShading(
@@ -286,7 +315,8 @@ switch(int(frameUbo.lightMode)) {
     directionalLighting = lambertDiffuse(albedo, N,L);
     break;
   default:
-    directionalLighting = cookTorranceStub(albedo, N,L);
+   vec3 diffuse = metallicDiffuse(F, metallic) * lambertDiffuse(albedo,N,L);
+    directionalLighting =(cookTorranceSpecular(N,L,V,H,material.b,F0) + diffuse);
     break;
 }
 switch(int(frameUbo.debugMode)) {
@@ -319,6 +349,9 @@ switch(int(frameUbo.debugMode)) {
     break;
   case 10:
     finalColor = F;
+    break;
+  case 11:
+    finalColor = mapToHeatColor(G, 0.0,1.0,0);
     break;
   default:
     finalColor = (directionalLighting  + PLColor) * albedo;

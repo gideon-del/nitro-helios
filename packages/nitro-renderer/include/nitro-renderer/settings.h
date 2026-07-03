@@ -18,6 +18,7 @@ namespace nitro::renderer
         HeatMap = 8,
         DistributionGGX = 9,
         FresnelSchlick = 10,
+        GeometrySmith = 11,
     };
 
     enum class LightMode
@@ -42,6 +43,7 @@ namespace nitro::renderer
         float Ks = 0.9f;
         float shininess = 32.0f;
         float roughness = 0.0f;
+        float metallic = 0.5f;
         glm::vec3 lightColor = glm::vec3(1.0f);
         geometry::OrbitalCamera lightCamera;
         std::vector<PointLight> pointLights;

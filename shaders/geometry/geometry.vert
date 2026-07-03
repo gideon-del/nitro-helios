@@ -19,6 +19,8 @@ layout(set=0, binding=2) uniform GeometryUBO {
 layout(push_constant)uniform PushConstant {
     mat4 model;
     mat4 normal;
+    float metallic;
+    float roughness;
 } pc;
 
 

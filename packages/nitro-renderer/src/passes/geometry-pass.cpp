@@ -74,7 +74,7 @@ namespace nitro::renderer
         pipelineDesc.layouts = {m_descriptorLayout};
         pipelineDesc.vertexLayout = geometry::Vertex::getVertexLayout();
         pipelineDesc.hasPushConstant = true;
-        pipelineDesc.pushConstantSize = sizeof(geometry::PushConstant);
+        pipelineDesc.pushConstantSize = sizeof(RenderObjectPushConstant);
         pipelineDesc.depthAttachmentFormat = rhi::TextureDesc::ImageFormat::Depth32FloatStencil8;
         pipelineDesc.hasStencil = true;
         pipelineDesc.cullMode = PipelineDesc::CullMode::None;
@@ -98,7 +98,7 @@ namespace nitro::renderer
             });
     }
 
-    void GeometryPass::execute(rhi::RHICommandBuffer *cmd, GeometryCameraBuffer geometryCamera, Scene &scene)
+    void GeometryPass::execute(rhi::RHICommandBuffer *cmd, GeometryCameraBuffer geometryCamera, Scene &scene, LightingSettings &settings)
     {
         uint32_t frameIdx = m_device->getCurrentFrameIndex();
         auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
@@ -115,7 +115,12 @@ namespace nitro::renderer
         resource.uniformBuffer->upload(&geometryCamera, sizeof(GeometryCameraBuffer));
         cmd->bindDescriptorSet(resource.descriptorSet, 0);
 
-        scene.draw(cmd);
+        for (auto &obj : scene.objects)
+        {
+            obj.material.roughness = settings.roughness;
+            obj.material.metallic = settings.metallic;
+            obj.draw(cmd);
+        }
 
         cmd->endRenderPass();
     };

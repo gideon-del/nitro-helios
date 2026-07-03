@@ -2,6 +2,7 @@
 #include <nitro-rhi/rhi.h>
 #include <nitro-renderer/scene.h>
 #include <nitro-renderer/per-frame.h>
+#include <nitro-renderer/settings.h>
 #include <glm/glm.hpp>
 namespace nitro::renderer
 {
@@ -33,7 +34,7 @@ namespace nitro::renderer
         GeometryPass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, rhi::RHITexture *depthTexture, std::string shaderDir, bool isMetal = false);
 
         ~GeometryPass();
-        void execute(rhi::RHICommandBuffer *cmd, GeometryCameraBuffer geometryCamera, Scene &scene);
+        void execute(rhi::RHICommandBuffer *cmd, GeometryCameraBuffer geometryCamera, Scene &scene, LightingSettings &settings);
         void resize(uint32_t width, uint32_t height, rhi::RHITexture *depthTexture);
         GBuffer gBuffer;
 

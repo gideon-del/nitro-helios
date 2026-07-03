@@ -2,7 +2,8 @@
 
 namespace nitro::renderer
 {
-    RenderObject::RenderObject(std::shared_ptr<MeshRenderer> meshRender, geometry::MeshTransformation transformation) : m_renderer(meshRender), transformation(transformation) {}
+
+    RenderObject::RenderObject(std::shared_ptr<MeshRenderer> meshRender, geometry::MeshTransformation transformation, MaterialParameter material) : m_renderer(meshRender), transformation(transformation), material(material) {}
 
     void RenderObject::draw(rhi::RHICommandBuffer *cmd, void *pushConstantOverride, size_t size)
     {
@@ -13,7 +14,12 @@ namespace nitro::renderer
         else
         {
             auto model = transformation.getTransform();
-            cmd->setPushConstant(&model, sizeof(geometry::PushConstant), 1);
+            RenderObjectPushConstant pc;
+            pc.model = model.model;
+            pc.normalMatrix = model.normalMatrix;
+            pc.metallic = material.metallic;
+            pc.roughness = material.roughness;
+            cmd->setPushConstant(&pc, sizeof(RenderObjectPushConstant), 1);
         }
         m_renderer->draw(cmd);
     }

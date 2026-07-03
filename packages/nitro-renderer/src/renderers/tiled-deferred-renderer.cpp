@@ -188,7 +188,7 @@ namespace nitro::renderer
         depthCamera.view = geometryCamera.view;
         depthCamera.proj = geometryCamera.proj;
         m_depthPrepass->execute(cmd, *ctx.scene, depthCamera);
-        m_geometryPass->execute(cmd, geometryCamera, *ctx.scene);
+        m_geometryPass->execute(cmd, geometryCamera, *ctx.scene, settings.light);
 
         TiledCameraUBO computeUBO;
         computeUBO.farPlane = ctx.CAMERA_FAR;
