@@ -28,6 +28,7 @@ namespace nitro::renderer
         float tileNear;
         float tileFar;
         uint overflow;
+        uint totalLight;
     };
     struct TileLightingComputeResource
     {

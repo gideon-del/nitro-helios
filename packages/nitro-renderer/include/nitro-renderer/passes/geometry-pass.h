@@ -28,6 +28,14 @@ namespace nitro::renderer
         glm::mat4 proj;
     };
 
+    struct DefaultTextures
+    {
+        rhi::RHITexture *baseColor;
+        rhi::RHITexture *normal;
+        rhi::RHITexture *metallicRoughness;
+        rhi::RHITexture *ao;
+        rhi::RHITexture *emissive;
+    };
     class GeometryPass
     {
     public:
@@ -36,6 +44,7 @@ namespace nitro::renderer
         ~GeometryPass();
         void execute(rhi::RHICommandBuffer *cmd, GeometryCameraBuffer geometryCamera, Scene &scene, LightingSettings &settings);
         void resize(uint32_t width, uint32_t height, rhi::RHITexture *depthTexture);
+        DefaultTextures &getDefaultTextures() { return m_defaultTextures; }
         GBuffer gBuffer;
 
     private:
@@ -45,6 +54,9 @@ namespace nitro::renderer
         rhi::RHIRenderPass *m_renderPass;
         rhi::RHIPipeline *m_pipeline;
         rhi::RHIDescriptorLayout *m_descriptorLayout;
+        rhi::RHIDescriptorLayout *m_materialDescriptorLayout;
+        rhi::RHIDescriptorSet *m_defaultMaterialDescriptorSet;
         PerFrame<GeometryPassResource> m_resources;
+        DefaultTextures m_defaultTextures;
     };
 }

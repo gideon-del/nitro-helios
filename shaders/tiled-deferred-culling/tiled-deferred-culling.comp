@@ -20,6 +20,7 @@ struct TileDebug
     float tileNear;
     float tileFar;
     uint overflow;
+    uint totalLight;
 };
 
 struct PointLight {
@@ -163,7 +164,6 @@ void main() {
        sharedBottomNormal = tileFrustum.bottomNormal;
        sharedLeftNormal = tileFrustum.leftNormal;
        sharedRightNormal = tileFrustum.rightNormal;
-
      }
     barrier();
     
@@ -177,7 +177,7 @@ void main() {
     bool passesFrustum = isLightInTileFrustum(pointLights[lightIdx], camera.view,
         sharedTopNormal, sharedBottomNormal, sharedLeftNormal, sharedRightNormal);
 
-if(passesFrustum && passesDepth){
+if(passesDepth &&  passesFrustum){
     uint slot = atomicAdd(lightCount,1u);
             if(slot < MAX_LIGHTS_PER_TILE){
                 lightIndices[slot] = lightIdx;
@@ -192,15 +192,14 @@ if(passesFrustum && passesDepth){
     uint tile = tileId.y * numTilesX + tileId.x;
      uint base = (tileId.y * numTilesX + tileId.x) * MAX_LIGHTS_PER_TILE;
        uint clampedCount = min(lightCount, MAX_LIGHTS_PER_TILE);
-        tileLightCount[tile] = clampedCount;
-
-float lz = (camera.view * pointLights[0].position).z;
+    tileLightCount[tile] = clampedCount;
     debugTiles[tile].lightCount = lightCount;
-    debugTiles[tile].tileNear = lz;
+    debugTiles[tile].tileNear = tileNear;
     debugTiles[tile].tileFar = tileFar;
     debugTiles[tile].minDepth = minDepth;
     debugTiles[tile].maxDepth = maxDepth;
     debugTiles[tile].overflow = lightCount - clampedCount;
+    debugTiles[tile].totalLight =totalLightCount;
      for(uint i=0u; i < clampedCount;i++){
       tileLightIndices[base + i] = lightIndices[i];    
      }

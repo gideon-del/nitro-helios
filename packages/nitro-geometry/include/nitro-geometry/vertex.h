@@ -12,6 +12,7 @@ namespace nitro::geometry
         glm::vec3 color = glm::vec3(0.0f);
         glm::vec3 normal = glm::vec3(0.0f);
         glm::vec2 uv;
+        glm::vec4 tangent = {1.0f, 0.0f, 0.0f, 1.0f};
 
         Vertex(glm::vec3 pos, glm::vec3 color, glm::vec3 normal, glm::vec2 uv) : pos(pos), color(color), normal(normal), uv(uv)
         {
@@ -21,6 +22,7 @@ namespace nitro::geometry
         {
             normal = glm::normalize(pos);
         }
+        Vertex() {};
 
         static RHIVertexLayout getVertexLayout()
         {
@@ -29,7 +31,7 @@ namespace nitro::geometry
             vertexLayout.binding = 0;
             vertexLayout.stride = sizeof(Vertex);
 
-            vertexLayout.attributes.resize(4);
+            vertexLayout.attributes.resize(5);
 
             vertexLayout.attributes[0].format = RHIVertexLayout::Attributes::Format::Float3;
             vertexLayout.attributes[0].location = 0;
@@ -46,6 +48,10 @@ namespace nitro::geometry
             vertexLayout.attributes[3].format = RHIVertexLayout::Attributes::Format::Float2;
             vertexLayout.attributes[3].location = 3;
             vertexLayout.attributes[3].offset = offsetof(Vertex, uv);
+
+            vertexLayout.attributes[4].format = RHIVertexLayout::Attributes::Format::Float4;
+            vertexLayout.attributes[4].location = 4;
+            vertexLayout.attributes[4].offset = offsetof(Vertex, tangent);
 
             return vertexLayout;
         }

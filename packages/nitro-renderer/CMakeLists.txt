@@ -22,12 +22,16 @@ add_library(nitro-renderer STATIC
  src/passes/tiled-light-shading-pass.cpp
  src/renderers/tiled-deferred-renderer.cpp
  src/passes/debug-draw-pass.cpp
+ vendor/tinygltf_impl.cpp
+ src/scene.cpp
+ vendor/stb_impl.cpp
 )
 
 find_package(glm REQUIRED)
 
 target_include_directories(nitro-renderer
 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/vendor
 )
 
 target_link_libraries(nitro-renderer 

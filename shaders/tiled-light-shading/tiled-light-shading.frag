@@ -16,6 +16,7 @@ struct TileDebug
     float tileNear;
     float tileFar;
     uint overflow;
+    uint totalLight;
 };
 layout(set=0, binding=2) uniform FrameUniformBuffer {
    mat4 invViewProj;
@@ -90,12 +91,9 @@ ivec2 tileId = ivec2(gl_FragCoord.xy) / 16;
         
        uint lightIdx =tileLightIndices[baseIdx+i];
        PointLight light = pointLights[lightIdx];
-       float lightZ = (frameUBO.view * light.position).z;
-       float lightNear = -lightZ - light.radius;
-       float lightFar = -lightZ + light.radius;
        vec3 PL = light.position.xyz - worldPos;
   float dist = length(PL);
-PL = normalize(PL);
+   PL = normalize(PL);
     float attenuation = pow(max(0.0, 1.0 - pow(dist/light.radius, 4)), 2)
    / (dist * dist);
    float diffuse = max(0.0, dot(normal,PL));
@@ -104,6 +102,4 @@ PL = normalize(PL);
     };
 
    outColor = vec4(PLColor,1.0);
-
-outColor = vec4(PLColor, 1.0);
 }

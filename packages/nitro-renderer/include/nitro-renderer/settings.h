@@ -25,7 +25,14 @@ namespace nitro::renderer
     {
         BlinnPhong = 0,
         LambertDiffuse = 1,
-        CookTorrenceStub = 0,
+        CookTorrenceStub = 2,
+    };
+
+    enum class RendererScenes
+    {
+        Main = 0,
+        PBRGrid = 1,
+        DamageHelmet = 2,
     };
     struct PointLight
     {
@@ -83,6 +90,7 @@ namespace nitro::renderer
         StatSettings stats;
         DebugMode selectedDebugMode = DebugMode::Lit;
         LightMode selectedLightMode = LightMode::BlinnPhong;
+        RendererScenes selectedScene = RendererScenes::DamageHelmet;
     };
 
 } // namespace nitro::renderer

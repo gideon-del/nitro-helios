@@ -14,5 +14,7 @@ namespace nitro::renderer
                 obj.draw(cmd);
             }
         };
+
+        static std::vector<RenderObject> loadGltfScene(std::string filePath, std::shared_ptr<rhi::RHIDevice> device);
     };
 } // namespace nitro::renderer

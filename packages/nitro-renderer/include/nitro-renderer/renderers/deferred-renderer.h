@@ -13,6 +13,7 @@ namespace nitro::renderer
         DeferredRenderer(std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<rhi::RHISwapchain> swapchain, std::string shaderDir, bool isMetal);
         void execute(rhi::RHICommandBuffer *cmd, const RenderContext &ctx, RendererSettings &settings) override;
         void resize(uint32_t width, uint32_t height) override;
+        DefaultTextures &getDefaultTexture() { return m_geometryPass->getDefaultTextures(); }
 
     private:
         std::shared_ptr<rhi::RHIDevice> m_device;

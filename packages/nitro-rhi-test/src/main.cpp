@@ -143,6 +143,35 @@ void handleMouse(
         state.mousePressed = false;
     }
 }
+void addPBRSphereGrid(Scene &pbrScene, std::shared_ptr<MeshRenderer> sphereRenderer)
+{
+
+    int areaWidth = 200;
+    int areaHeight = 200;
+    int spacing = 15;
+    for (int row = 0; row < 5; row++)
+    {
+        float metallic = 1.0f - float(row) / 4.0f;
+        float yPos = -row * spacing;
+
+        for (int col = 0; col < 5; col++)
+        {
+
+            float roughness = float(col) / 4.0f;
+            float xPos = col * spacing;
+
+            auto material = std::make_shared<Material>();
+
+            material->metallicFactor = metallic;
+            material->roughnessFactor = roughness;
+            material->baseColorFactor = glm::vec4(0.4f, 0.9f, 1.0f, 1.0f);
+            MeshTransformation transformation;
+            transformation.translate(glm::vec3(xPos, yPos, 0.0f));
+
+            pbrScene.objects.push_back({sphereRenderer, transformation, material});
+        }
+    }
+};
 int main()
 {
     glfwInit();
@@ -159,11 +188,14 @@ int main()
 
     Scene mainScene;
     Scene pbrScene;
+    Scene helmetScene;
+
+    helmetScene.objects = Scene::loadGltfScene("./assets/DamagedHelmet/DamagedHelmet.gltf", device);
     Mesh sphere = MeshGenerator::createUVSphere(5, 10, 100);
 
     auto sphereRenderer = std::make_shared<MeshRenderer>(sphere, device);
 
-    pbrScene.objects.push_back({sphereRenderer, MeshTransformation(glm::mat4(1.0f), glm::scale(glm::mat4(1.0f), glm::vec3{3.0, 3.0, 3.0}))});
+    addPBRSphereGrid(pbrScene, sphereRenderer);
     Mesh plane = MeshGenerator::createPlane(500, 500);
     plane.calculateNormals();
     auto planeRenderer = std::make_shared<MeshRenderer>(plane, device);
@@ -195,11 +227,11 @@ int main()
     RHITimer *timer = device->createTimer();
     RendererSettings rendererSettings;
 
-    // rendererSettings.light.pointLights = createRandomLights(1000, 500);
-    rendererSettings.light.pointLights = createRandomLights(10, 100);
+    rendererSettings.light.pointLights = createRandomLights(1000, 500);
+    // rendererSettings.light.pointLights = createRandomLights(10, 100);
     RenderContext renderContext;
     renderContext.camera = &camera;
-    renderContext.scene = &pbrScene;
+    renderContext.scene = &helmetScene;
 
     rendererSettings.light.lightCamera = light;
     rendererSettings.light.pointLightRenderer = pointLightRenderer;
@@ -246,7 +278,19 @@ int main()
         timer->beginFrame(cmd);
 
         timer->begin(cmd, "frame-time");
+        switch (rendererSettings.selectedScene)
+        {
+        case RendererScenes::PBRGrid:
+            renderContext.scene = &pbrScene;
+            break;
+        case RendererScenes::Main:
+            renderContext.scene = &mainScene;
+            break;
 
+        default:
+            renderContext.scene = &helmetScene;
+            break;
+        }
         switch (rendererSettings.renderer)
         {
         case RendererType::Forward:

@@ -5,6 +5,7 @@ layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec3 aColor;
 layout(location = 2) in vec3 aNormal;
 layout(location = 3) in vec2 aUV;
+layout(location = 4) in vec4 aTangent;
 
 layout(location = 0) out vec2 fragUV;
 layout(location = 1) out vec3 fragNormal;
@@ -19,10 +20,13 @@ layout(set=0, binding=2) uniform GeometryUBO {
 layout(push_constant)uniform PushConstant {
     mat4 model;
     mat4 normal;
+    vec4 baseColor;
     float metallic;
     float roughness;
+    uint useTextures;
 } pc;
 
+invariant gl_Position;
 
 void main() {
     gl_Position = gUbo.proj * gUbo.view * pc.model * vec4(aPos, 1.0);

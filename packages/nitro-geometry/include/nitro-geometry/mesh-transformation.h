@@ -2,7 +2,7 @@
 #include "push-constant.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-
+#include <glm/gtc/quaternion.hpp>
 namespace nitro::geometry
 {
     class MeshTransformation
@@ -20,6 +20,10 @@ namespace nitro::geometry
         void rotate(float angle, glm::vec3 axis)
         {
             m_rotate *= glm::rotate(glm::mat4(1.0f), angle, axis);
+        };
+        void rotate(glm::highp_dquat &qua)
+        {
+            m_rotate = glm::mat4_cast(qua);
         };
         PushConstant getTransform()
         {

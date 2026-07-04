@@ -50,8 +50,15 @@ namespace nitro::renderer
 
         std::vector<rhi::RHIDescriptorBinding> bindings = {
             {RHIDescriptorBinding::Type::UniformBuffer, RHIDescriptorBinding::ShaderStage::Vertex, 2}};
+        std::vector<rhi::RHIDescriptorBinding> materialBindings = {
+            {RHIDescriptorBinding::Type::Sampler, RHIDescriptorBinding::ShaderStage::Fragment, 0},
+            {RHIDescriptorBinding::Type::Sampler, RHIDescriptorBinding::ShaderStage::Fragment, 1},
+            {RHIDescriptorBinding::Type::Sampler, RHIDescriptorBinding::ShaderStage::Fragment, 2},
+            {RHIDescriptorBinding::Type::Sampler, RHIDescriptorBinding::ShaderStage::Fragment, 3},
+            {RHIDescriptorBinding::Type::Sampler, RHIDescriptorBinding::ShaderStage::Fragment, 4},
+        };
         m_descriptorLayout = m_device->createDescriptorLayout(bindings);
-
+        m_materialDescriptorLayout = m_device->createDescriptorLayout(materialBindings);
         rhi::PipelineDesc pipelineDesc;
         pipelineDesc.hasColorAttachment = true;
         pipelineDesc.colorAttachments = {rhi::TextureDesc::ImageFormat::ColorRGBA8, rhi::TextureDesc::ImageFormat::ColorSRGBA16, rhi::TextureDesc::ImageFormat::ColorRGBA8,
@@ -71,7 +78,7 @@ namespace nitro::renderer
             pipelineDesc.shaders.push_back({"main", shaderPath + ".frag.spv", rhi::ShaderStage::Fragment});
         }
 
-        pipelineDesc.layouts = {m_descriptorLayout};
+        pipelineDesc.layouts = {m_descriptorLayout, m_materialDescriptorLayout};
         pipelineDesc.vertexLayout = geometry::Vertex::getVertexLayout();
         pipelineDesc.hasPushConstant = true;
         pipelineDesc.pushConstantSize = sizeof(RenderObjectPushConstant);
@@ -96,6 +103,37 @@ namespace nitro::renderer
                 resource.descriptorSet->commit();
                 return resource;
             });
+        auto createSolidTexture = [&](glm::vec4 color)
+        {
+            rhi::TextureDesc textureDesc;
+            textureDesc.usage = rhi::TextureDesc::Usage::ShaderRead;
+            textureDesc.size = {1, 1};
+            textureDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA8;
+            uint8_t bytes[4] = {
+                uint8_t(color.r * 255.0f),
+                uint8_t(color.g * 255.0f),
+                uint8_t(color.b * 255.0f),
+                uint8_t(color.a * 255.0f)};
+            textureDesc.initialData = bytes;
+            textureDesc.sampler = rhi::TextureDesc::Sampler::Sampler2D;
+
+            return m_device->createTexture(textureDesc);
+        };
+
+        m_defaultTextures.baseColor = createSolidTexture({1.0f, 1.0f, 1.0f, 1.0f});
+        m_defaultTextures.normal = createSolidTexture({0.5f, 0.5f, 1.0f, 1.0f});
+        m_defaultTextures.metallicRoughness = createSolidTexture({0.0f, 0.5f, 0.0f, 1.0f});
+        m_defaultTextures.ao = createSolidTexture({1.0f, 1.0f, 1.0f, 1.0f});
+        m_defaultTextures.emissive = createSolidTexture({0.0f, 0.0f, 0.0f, 1.0f});
+
+        m_defaultMaterialDescriptorSet = m_device->createDescriptorSet(m_materialDescriptorLayout);
+
+        m_defaultMaterialDescriptorSet->writeTexture(m_defaultTextures.baseColor, 0, ImageLayout::ShaderReadOnly);
+        m_defaultMaterialDescriptorSet->writeTexture(m_defaultTextures.normal, 1, ImageLayout::ShaderReadOnly);
+        m_defaultMaterialDescriptorSet->writeTexture(m_defaultTextures.metallicRoughness, 2, ImageLayout::ShaderReadOnly);
+        m_defaultMaterialDescriptorSet->writeTexture(m_defaultTextures.ao, 3, ImageLayout::ShaderReadOnly);
+        m_defaultMaterialDescriptorSet->writeTexture(m_defaultTextures.emissive, 4, ImageLayout::ShaderReadOnly);
+        m_defaultMaterialDescriptorSet->commit();
     }
 
     void GeometryPass::execute(rhi::RHICommandBuffer *cmd, GeometryCameraBuffer geometryCamera, Scene &scene, LightingSettings &settings)
@@ -117,9 +155,7 @@ namespace nitro::renderer
 
         for (auto &obj : scene.objects)
         {
-            obj.material.roughness = settings.roughness;
-            obj.material.metallic = settings.metallic;
-            obj.draw(cmd);
+            obj.draw(cmd, nullptr, 0, m_defaultMaterialDescriptorSet);
         }
 
         cmd->endRenderPass();
@@ -130,6 +166,7 @@ namespace nitro::renderer
         for (auto &frameResource : m_resources)
         {
             m_device->destroyBuffer(frameResource.uniformBuffer);
+            m_device->destroyDescriptorSet(frameResource.descriptorSet);
         }
 
         m_device->destroyPipeline(m_pipeline);
@@ -137,6 +174,9 @@ namespace nitro::renderer
         m_device->destroyTexture(gBuffer.normal);
         m_device->destroyTexture(gBuffer.material);
         m_device->destroyTexture(gBuffer.emissive);
+        m_device->destroyDescriptorSet(m_defaultMaterialDescriptorSet);
+        m_device->destroyDescriptorLayout(m_materialDescriptorLayout);
+        m_device->destroyDescriptorLayout(m_descriptorLayout);
     }
 
     void GeometryPass::resize(uint32_t width, uint32_t height, rhi::RHITexture *depthTexture)

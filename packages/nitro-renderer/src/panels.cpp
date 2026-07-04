@@ -128,12 +128,18 @@ namespace nitro::renderer
             "Blinn Phong",
             "Lambert Diffuse",
             "Cook Torrance"};
+        const char *scenes[] = {
+            "Main",
+            "PBR Grid",
+            "Damaged Helmet"};
         int currentRenderer =
             static_cast<int>(settings.renderer);
         int currentDebugMode =
             static_cast<int>(settings.selectedDebugMode);
         int currentLightMode =
             static_cast<int>(settings.selectedLightMode);
+        int currentScene =
+            static_cast<int>(settings.selectedScene);
 
         if (ImGui::Combo(
                 "Renderer",
@@ -159,6 +165,14 @@ namespace nitro::renderer
                 IM_ARRAYSIZE(lightModeLabels)))
         {
             settings.selectedLightMode = static_cast<LightMode>(currentLightMode);
+        }
+        if (ImGui::Combo(
+                "Scene",
+                &currentScene,
+                scenes,
+                IM_ARRAYSIZE(scenes)))
+        {
+            settings.selectedScene = static_cast<RendererScenes>(currentScene);
         }
     }
     void StatPanel::draw(StatSettings &stats)

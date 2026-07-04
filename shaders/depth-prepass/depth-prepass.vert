@@ -16,6 +16,7 @@ layout(push_constant) uniform PushConstant {
     mat4 normal;
 } pc;
 
+invariant gl_Position;
 
 void main() {   
     gl_Position = camera.proj * camera.view * pc.model * vec4(aPos, 1.0);
