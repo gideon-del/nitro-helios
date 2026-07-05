@@ -2,30 +2,11 @@
 #include "mesh-renderer.h"
 #include <nitro-geometry/mesh-transformation.h>
 #include <nitro-rhi/rhi-command-buffer.h>
-
+#include <nitro-renderer/material-system.h>
 namespace nitro::renderer
 {
 
-    struct Material
-    {
-        rhi::RHITexture *baseColor = nullptr;
-        rhi::RHITexture *normal = nullptr;
-        rhi::RHITexture *metallicRoughness = nullptr;
-        rhi::RHITexture *ao = nullptr;
-        rhi::RHITexture *emissive = nullptr;
-
-        float metallicFactor = 0.0;
-        float roughnessFactor = 0.5;
-        glm::vec4 baseColorFactor{1.0f};
-
-        rhi::RHIDescriptorSet *descriptorSet;
-        bool hasTextures() const
-        {
-            return baseColor != nullptr;
-        }
-    };
-
-    struct RenderObjectPushConstant
+      struct RenderObjectPushConstant
     {
         glm::mat4 model = glm::mat4{1.0f};
         glm::mat4 normalMatrix = glm::mat4{1.0f};

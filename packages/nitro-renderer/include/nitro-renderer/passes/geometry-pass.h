@@ -3,6 +3,7 @@
 #include <nitro-renderer/scene.h>
 #include <nitro-renderer/per-frame.h>
 #include <nitro-renderer/settings.h>
+#include <nitro-renderer/material-system.h>
 #include <glm/glm.hpp>
 namespace nitro::renderer
 {
@@ -39,12 +40,11 @@ namespace nitro::renderer
     class GeometryPass
     {
     public:
-        GeometryPass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, rhi::RHITexture *depthTexture, std::string shaderDir, bool isMetal = false);
+        GeometryPass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, rhi::RHITexture *depthTexture, std::string shaderDir, bool isMetal, std::shared_ptr<MaterialSystem> materialSystem);
 
         ~GeometryPass();
         void execute(rhi::RHICommandBuffer *cmd, GeometryCameraBuffer geometryCamera, Scene &scene, LightingSettings &settings);
         void resize(uint32_t width, uint32_t height, rhi::RHITexture *depthTexture);
-        DefaultTextures &getDefaultTextures() { return m_defaultTextures; }
         GBuffer gBuffer;
 
     private:
@@ -54,9 +54,8 @@ namespace nitro::renderer
         rhi::RHIRenderPass *m_renderPass;
         rhi::RHIPipeline *m_pipeline;
         rhi::RHIDescriptorLayout *m_descriptorLayout;
-        rhi::RHIDescriptorLayout *m_materialDescriptorLayout;
-        rhi::RHIDescriptorSet *m_defaultMaterialDescriptorSet;
         PerFrame<GeometryPassResource> m_resources;
-        DefaultTextures m_defaultTextures;
+
+        std::shared_ptr<MaterialSystem> m_materialSystem;
     };
 }

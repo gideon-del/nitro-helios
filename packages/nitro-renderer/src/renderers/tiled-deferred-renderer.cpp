@@ -134,13 +134,15 @@ namespace nitro::renderer
         std::shared_ptr<rhi::RHIDevice> device,
         std::shared_ptr<rhi::RHISwapchain> swapchain,
         std::string shaderDir,
-        bool isMetal)
+        bool isMetal,
+        std::shared_ptr<MaterialSystem> materialSystem)
         : m_device(device),
           m_swapchain(swapchain),
-          m_isMetal(isMetal)
+          m_isMetal(isMetal),
+          m_materialSystem(materialSystem)
     {
         m_depthPrepass = std::make_shared<DepthPrepass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
-        m_geometryPass = std::make_shared<GeometryPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), m_depthPrepass->getDepthTexture(), shaderDir, isMetal);
+        m_geometryPass = std::make_shared<GeometryPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), m_depthPrepass->getDepthTexture(), shaderDir, isMetal, m_materialSystem);
         m_csmPass = std::make_shared<CascadeShadowMapPass>(m_device, shaderDir, isMetal);
         m_tileComputePass = std::make_shared<TiledLightingComputePass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), 1000, m_geometryPass->gBuffer, shaderDir, m_isMetal);
         m_tileLightPass = std::make_shared<TileLightShadingPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), m_geometryPass->gBuffer, m_tileComputePass->getFrameResources(), shaderDir, isMetal);

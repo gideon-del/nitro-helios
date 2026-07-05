@@ -185,12 +185,15 @@ int main()
     std::shared_ptr<DeviceType> device = std::make_shared<DeviceType>(window);
     std::shared_ptr<RHISwapchain> swapchain(
         device->createSwapchain(nullptr));
-
+    std::cout << "Before Material" << std::endl;
+    std::shared_ptr<MaterialSystem> materialSystem = std::make_shared<MaterialSystem>(device);
+    std::cout << "After Material" << std::endl;
     Scene mainScene;
     Scene pbrScene;
     Scene helmetScene;
 
     helmetScene.objects = Scene::loadGltfScene("./assets/DamagedHelmet/DamagedHelmet.gltf", device);
+
     Mesh sphere = MeshGenerator::createUVSphere(5, 10, 100);
 
     auto sphereRenderer = std::make_shared<MeshRenderer>(sphere, device);
@@ -236,8 +239,8 @@ int main()
     rendererSettings.light.lightCamera = light;
     rendererSettings.light.pointLightRenderer = pointLightRenderer;
     ForwardRenderer forwardRenderer = ForwardRenderer(device, swapchain, std::string(SHADER_DIR), isMetal);
-    DeferredRenderer deferredRenderer = DeferredRenderer(device, swapchain, std::string(SHADER_DIR), isMetal);
-    TiledDeferredRenderer tileDeferredRenderer = TiledDeferredRenderer(device, swapchain, std::string(SHADER_DIR), isMetal);
+    DeferredRenderer deferredRenderer = DeferredRenderer(device, swapchain, std::string(SHADER_DIR), isMetal, materialSystem);
+    TiledDeferredRenderer tileDeferredRenderer = TiledDeferredRenderer(device, swapchain, std::string(SHADER_DIR), isMetal, materialSystem);
     IRenderer *currentRenderer = &deferredRenderer;
     int cachedWidth, cachedHeight;
     glfwGetFramebufferSize(window, &cachedWidth, &cachedHeight);

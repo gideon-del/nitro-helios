@@ -13,7 +13,7 @@
 namespace nitro::rhi
 {
 
-    class RHIDevice
+       class RHIDevice
     {
     public:
         virtual ~RHIDevice() = default;

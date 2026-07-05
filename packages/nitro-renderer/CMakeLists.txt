@@ -25,6 +25,7 @@ add_library(nitro-renderer STATIC
  vendor/tinygltf_impl.cpp
  src/scene.cpp
  vendor/stb_impl.cpp
+ src/material-system.cpp
 )
 
 find_package(glm REQUIRED)

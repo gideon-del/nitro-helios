@@ -3,6 +3,7 @@
 #include <nitro-renderer/passes/render-passes.h>
 #include <nitro-renderer/interface/renderer.h>
 #include <nitro-renderer/panels.h>
+#include <nitro-renderer/material-system.h>
 
 namespace nitro::renderer
 {
@@ -10,10 +11,9 @@ namespace nitro::renderer
     class DeferredRenderer : public IRenderer
     {
     public:
-        DeferredRenderer(std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<rhi::RHISwapchain> swapchain, std::string shaderDir, bool isMetal);
+        DeferredRenderer(std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<rhi::RHISwapchain> swapchain, std::string shaderDir, bool isMetal, std::shared_ptr<MaterialSystem> materialSystem);
         void execute(rhi::RHICommandBuffer *cmd, const RenderContext &ctx, RendererSettings &settings) override;
         void resize(uint32_t width, uint32_t height) override;
-        DefaultTextures &getDefaultTexture() { return m_geometryPass->getDefaultTextures(); }
 
     private:
         std::shared_ptr<rhi::RHIDevice> m_device;
@@ -28,5 +28,7 @@ namespace nitro::renderer
         LightPanel m_lightPanel;
         RendererPanel m_rendererPanel;
         StatPanel m_statsPanel;
+
+        std::shared_ptr<MaterialSystem> m_materialSystem;
     };
 } // namespace nitro::renderer
