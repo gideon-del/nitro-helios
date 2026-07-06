@@ -35,15 +35,15 @@ vec2 encodeNormal(vec3 n) {
 }
 
 void main() {
-
-    if(pc.useTextures == 1) {
-    vec3 metallicRoughness = texture(metallicRoughnessTexture, fragUV).rgb;
-    vec4 color = texture(baseColorTexture, fragUV);
-    vec3 N = normalize(fragNormal);
+ vec3 N = normalize(fragNormal);
     vec3 T = normalize(fragTangent.xyz);
     T = normalize(T - dot(T, N) * N);
     vec3 B = cross(N,T) * fragTangent.w;
     mat3 TBN = mat3(T,B,N);
+    if(pc.useTextures == 1) {
+    vec3 metallicRoughness = texture(metallicRoughnessTexture, fragUV).rgb;
+    vec4 color = texture(baseColorTexture, fragUV);
+   
 
     vec3 tangentNormal = texture(normalTexture, fragUV).rgb * 2.0 - 1.0;
     tangentNormal = normalize(tangentNormal);
