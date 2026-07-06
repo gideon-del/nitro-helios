@@ -50,7 +50,32 @@ namespace nitro::renderer
 
         return res;
     }
-    std::vector<RenderObject> Scene::loadGltfScene(std::string filePath, std::shared_ptr<rhi::RHIDevice> device)
+
+    rhi::RHITexture *loadGltfTexture(std::shared_ptr<rhi::RHIDevice> device, tinygltf::Model &model, const tinygltf::TextureInfo &textureInfo, rhi::TextureDesc::ImageFormat format)
+    {
+        const tinygltf::Texture &texture = model.textures[textureInfo.index];
+        const tinygltf::Image &image = model.images[texture.source];
+        rhi::TextureDesc textureDesc;
+        textureDesc.size = {static_cast<uint32_t>(image.width), static_cast<uint32_t>(image.height)};
+        textureDesc.format = format;
+        textureDesc.initialData = image.image.data();
+        textureDesc.usage = rhi::TextureDesc::Usage::ShaderRead;
+
+        return device->createTexture(textureDesc);
+    };
+    rhi::RHITexture *loadGltfTexture(std::shared_ptr<rhi::RHIDevice> device, tinygltf::Model &model, const tinygltf::Texture &texture, rhi::TextureDesc::ImageFormat format)
+    {
+
+        const auto &image = model.images[texture.source];
+        rhi::TextureDesc textureDesc;
+        textureDesc.size = {static_cast<uint32_t>(image.width), static_cast<uint32_t>(image.height)};
+        textureDesc.format = format;
+        textureDesc.initialData = image.image.data();
+        textureDesc.usage = rhi::TextureDesc::Usage::ShaderRead;
+
+        return device->createTexture(textureDesc);
+    };
+    std::vector<RenderObject> Scene::loadGltfScene(std::string filePath, std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<MaterialSystem> materialSystem)
     {
         tinygltf::TinyGLTF loader;
         tinygltf::Model model;
@@ -76,7 +101,37 @@ namespace nitro::renderer
             throw std::runtime_error("Failed to load tiny gltf file at " + filePath);
         }
         tinygltf::Scene defaultScene = model.scenes[model.defaultScene];
+        std::vector<std::shared_ptr<Material>> materials;
         std::vector<RenderObject> renderObjects;
+
+        for (auto gltfMaterial : model.materials)
+        {
+            MaterialDesc materialDesc;
+            materialDesc.baseColor = loadGltfTexture(device, model, gltfMaterial.pbrMetallicRoughness.baseColorTexture, rhi::TextureDesc::ImageFormat::ColorSRGB8);
+            std::cout << "Created Color Texture" << std::endl;
+            materialDesc.metallicRoughness = loadGltfTexture(device, model, gltfMaterial.pbrMetallicRoughness.metallicRoughnessTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+            std::cout << "Created Roughness Texture" << std::endl;
+            if (gltfMaterial.normalTexture.index > -1)
+            {
+                auto normalTexture = model.textures[gltfMaterial.normalTexture.index];
+                materialDesc.normal = loadGltfTexture(device, model, normalTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+                std::cout << "Created Normal Texture" << std::endl;
+            }
+            if (gltfMaterial.occlusionTexture.index > -1)
+            {
+                auto occlusionTexture = model.textures[gltfMaterial.occlusionTexture.index];
+                materialDesc.ao = loadGltfTexture(device, model, occlusionTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+                std::cout << "Created ocllusion Texture" << std::endl;
+            }
+            if (gltfMaterial.emissiveTexture.index > -1)
+            {
+                auto emissiveTexture = model.textures[gltfMaterial.emissiveTexture.index];
+                materialDesc.emissive = loadGltfTexture(device, model, emissiveTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+                std::cout << "Created emissive Texture" << std::endl;
+            }
+
+            materials.push_back(materialSystem->createMaterial(materialDesc));
+        }
         for (auto nodeIdx : defaultScene.nodes)
         {
             tinygltf::Node node = model.nodes[nodeIdx];
@@ -154,10 +209,17 @@ namespace nitro::renderer
                 mesh.indices = indices;
 
                 std::shared_ptr<MeshRenderer> renderer = std::make_shared<MeshRenderer>(mesh, device);
-                auto material = std::make_shared<Material>();
-                material->roughnessFactor = 1.0;
-                material->metallicFactor = 1.0;
-                material->baseColorFactor = {1.0, 1.0, 1.0, 1.0};
+                auto material = materials[primitive.material];
+                // if (primitive.material > -1)
+                // {
+                //     material = materials[primitive.material];
+                // }
+                // else
+                // {
+                // material->roughnessFactor = 1.0;
+                // material->metallicFactor = 1.0;
+                // material->baseColorFactor = {1.0, 1.0, 1.0, 1.0};
+                // }
                 renderObjects.push_back(RenderObject(renderer, transformation, material));
 
                 std::cout << "Done with Loading Primitive " << std::endl;

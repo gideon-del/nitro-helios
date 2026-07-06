@@ -7,7 +7,8 @@ namespace nitro::renderer
                                uint32_t width,
                                uint32_t height,
                                std::string shaderDir,
-                               bool isMetal) : m_device(device), m_width(width), m_height(height)
+                               bool isMetal,
+                               std::shared_ptr<MaterialSystem> materialSystem) : m_device(device), m_width(width), m_height(height), m_materialSystem(materialSystem)
     {
 
         rhi::TextureDesc textureDesc;
@@ -26,8 +27,8 @@ namespace nitro::renderer
         pipelineDesc.depthTest = rhi::CompareOp::Less;
         pipelineDesc.depthWrite = true;
         pipelineDesc.hasColorAttachment = false;
-        pipelineDesc.pushConstantSize = sizeof(geometry::PushConstant);
-        pipelineDesc.layouts = {m_descriptorLayout};
+        pipelineDesc.pushConstantSize = sizeof(RenderObjectPushConstant);
+        pipelineDesc.layouts = {m_descriptorLayout, m_materialSystem->getMaterialLayout()};
         pipelineDesc.vertexLayout = geometry::Vertex::getVertexLayout();
         pipelineDesc.depthAttachmentFormat = rhi::TextureDesc::ImageFormat::Depth32FloatStencil8;
         pipelineDesc.hasDepth = true;

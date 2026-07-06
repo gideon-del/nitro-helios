@@ -13,7 +13,7 @@ namespace nitro::renderer
           m_isMetal(isMetal),
           m_materialSystem(materialSystem)
     {
-        m_depthPrepass = std::make_shared<DepthPrepass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
+        m_depthPrepass = std::make_shared<DepthPrepass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal, m_materialSystem);
         m_geometryPass = std::make_shared<GeometryPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), m_depthPrepass->getDepthTexture(), shaderDir, isMetal, m_materialSystem);
         m_csmPass = std::make_shared<CascadeShadowMapPass>(m_device, shaderDir, isMetal);
         m_lightStencilPass = std::make_shared<LightingStencilPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), m_geometryPass->gBuffer, shaderDir, m_isMetal);

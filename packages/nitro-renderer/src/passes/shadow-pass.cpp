@@ -43,7 +43,7 @@ namespace nitro::renderer
             ShadowPushConstant shadowPc;
             shadowPc.model = obj.transformation.getTransform().model;
             shadowPc.cascadeIndex = cascadeIndex;
-            obj.draw(cmd, &shadowPc, sizeof(ShadowPushConstant));
+            obj.drawVertexOnly(cmd, &shadowPc, sizeof(ShadowPushConstant));
         }
         cmd->endRenderPass();
     };

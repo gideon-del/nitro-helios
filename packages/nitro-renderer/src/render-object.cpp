@@ -38,4 +38,27 @@ namespace nitro::renderer
         m_renderer->draw(cmd);
     }
 
+    void RenderObject::drawVertexOnly(rhi::RHICommandBuffer *cmd, void *pushConstantOverride, size_t size)
+    {
+        if (pushConstantOverride != nullptr)
+        {
+            cmd->setPushConstant(pushConstantOverride, size, 1);
+        }
+        else
+        {
+            auto model = transformation.getTransform();
+            RenderObjectPushConstant pc;
+            pc.model = model.model;
+            pc.normalMatrix = model.normalMatrix;
+            if (material != nullptr)
+            {
+                pc.metallic = material->metallicFactor;
+                pc.roughness = material->roughnessFactor;
+                pc.useTextures = material->hasTextures() ? 1 : 0;
+                pc.baseColor = material->baseColorFactor;
+            }
+            cmd->setPushConstant(&pc, sizeof(RenderObjectPushConstant), 1);
+        }
+        m_renderer->draw(cmd);
+    }
 } // namespace nitro::renderer

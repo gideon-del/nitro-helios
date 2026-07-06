@@ -15,11 +15,11 @@ namespace nitro::renderer
                                     rhi::TextureDesc::Usage::ShaderRead;
         colorAttachmentDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA8;
         gBuffer.albedo = m_device->createTexture(colorAttachmentDesc);
-        colorAttachmentDesc.format = rhi::TextureDesc::ImageFormat::ColorSRGBA16;
+        colorAttachmentDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA16;
         gBuffer.normal = m_device->createTexture(colorAttachmentDesc);
         colorAttachmentDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA8;
         gBuffer.material = m_device->createTexture(colorAttachmentDesc);
-        colorAttachmentDesc.format = rhi::TextureDesc::ImageFormat::ColorSRGBA16;
+        colorAttachmentDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA16;
         gBuffer.emissive = m_device->createTexture(colorAttachmentDesc);
 
         gBuffer.depth = depthTexture;
@@ -58,8 +58,8 @@ namespace nitro::renderer
 
         rhi::PipelineDesc pipelineDesc;
         pipelineDesc.hasColorAttachment = true;
-        pipelineDesc.colorAttachments = {rhi::TextureDesc::ImageFormat::ColorRGBA8, rhi::TextureDesc::ImageFormat::ColorSRGBA16, rhi::TextureDesc::ImageFormat::ColorRGBA8,
-                                         rhi::TextureDesc::ImageFormat::ColorSRGBA16};
+        pipelineDesc.colorAttachments = {rhi::TextureDesc::ImageFormat::ColorRGBA8, rhi::TextureDesc::ImageFormat::ColorRGBA16, rhi::TextureDesc::ImageFormat::ColorRGBA8,
+                                         rhi::TextureDesc::ImageFormat::ColorRGBA16};
         pipelineDesc.depthWrite = false;
         pipelineDesc.depthTest = rhi::CompareOp::Equal;
         std::string shaderPath = shaderDir + "/geometry/geometry";
@@ -105,6 +105,7 @@ namespace nitro::renderer
 
     void GeometryPass::execute(rhi::RHICommandBuffer *cmd, GeometryCameraBuffer geometryCamera, Scene &scene, LightingSettings &settings)
     {
+
         uint32_t frameIdx = m_device->getCurrentFrameIndex();
         auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
         cmd->beginRenderPass(m_renderPass);
@@ -160,11 +161,11 @@ namespace nitro::renderer
                                     rhi::TextureDesc::Usage::ShaderRead;
         colorAttachmentDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA8;
         gBuffer.albedo = m_device->createTexture(colorAttachmentDesc);
-        colorAttachmentDesc.format = rhi::TextureDesc::ImageFormat::ColorSRGBA16;
+        colorAttachmentDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA16;
         gBuffer.normal = m_device->createTexture(colorAttachmentDesc);
         colorAttachmentDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA8;
         gBuffer.material = m_device->createTexture(colorAttachmentDesc);
-        colorAttachmentDesc.format = rhi::TextureDesc::ImageFormat::ColorSRGBA16;
+        colorAttachmentDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA16;
         gBuffer.emissive = m_device->createTexture(colorAttachmentDesc);
 
         gBuffer.depth = depthTexture;

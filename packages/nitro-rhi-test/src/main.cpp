@@ -192,7 +192,7 @@ int main()
     Scene pbrScene;
     Scene helmetScene;
 
-    helmetScene.objects = Scene::loadGltfScene("./assets/DamagedHelmet/DamagedHelmet.gltf", device);
+    helmetScene.objects = Scene::loadGltfScene("./assets/DamagedHelmet/DamagedHelmet.gltf", device, materialSystem);
 
     Mesh sphere = MeshGenerator::createUVSphere(5, 10, 100);
 
@@ -294,26 +294,27 @@ int main()
             renderContext.scene = &helmetScene;
             break;
         }
-        switch (rendererSettings.renderer)
-        {
-        case RendererType::Forward:
-            forwardRenderer.execute(
-                cmd,
-                renderContext,
-                rendererSettings);
-            break;
-        case RendererType::TiledDeferred:
-            tileDeferredRenderer.execute(cmd, renderContext, rendererSettings);
-            break;
+        tileDeferredRenderer.execute(cmd, renderContext, rendererSettings);
+        // switch (rendererSettings.renderer)
+        // {
+        // case RendererType::Forward:
+        //     forwardRenderer.execute(
+        //         cmd,
+        //         renderContext,
+        //         rendererSettings);
+        //     break;
+        // case RendererType::TiledDeferred:
+        //     tileDeferredRenderer.execute(cmd, renderContext, rendererSettings);
+        //     break;
 
-        case RendererType::Deferred:
-            deferredRenderer.execute(
-                cmd,
-                renderContext,
-                rendererSettings);
+        // case RendererType::Deferred:
+        //     deferredRenderer.execute(
+        //         cmd,
+        //         renderContext,
+        //         rendererSettings);
 
-            break;
-        }
+        //     break;
+        // }
         auto frameStat = cmd->getFrameStats();
         timer->end(cmd, "frame-time");
         cmd->present();

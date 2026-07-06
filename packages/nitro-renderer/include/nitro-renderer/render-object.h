@@ -6,7 +6,7 @@
 namespace nitro::renderer
 {
 
-      struct RenderObjectPushConstant
+    struct RenderObjectPushConstant
     {
         glm::mat4 model = glm::mat4{1.0f};
         glm::mat4 normalMatrix = glm::mat4{1.0f};
@@ -20,6 +20,7 @@ namespace nitro::renderer
     public:
         RenderObject(std::shared_ptr<MeshRenderer> meshRender, geometry::MeshTransformation transformation = geometry::MeshTransformation(glm::mat4(1.0f)), std::shared_ptr<Material> material = nullptr);
         void draw(rhi::RHICommandBuffer *cmd, void *pushConstantOverride = nullptr, size_t size = 0, rhi::RHIDescriptorSet *defaultMaterialDescriptorSet = nullptr);
+        void drawVertexOnly(rhi::RHICommandBuffer *cmd, void *pushConstantOverride = nullptr, size_t size = 0);
 
         geometry::MeshTransformation transformation;
         std::shared_ptr<Material> material;

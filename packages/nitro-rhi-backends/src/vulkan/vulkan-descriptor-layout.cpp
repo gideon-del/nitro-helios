@@ -49,7 +49,7 @@ namespace nitro::rhi::vulkan
     VkDescriptorPoolSize convertToPoolSize(const RHIDescriptorBinding &rhiBinding)
     {
         VkDescriptorPoolSize poolSize{};
-        poolSize.descriptorCount = 10 * VulkanDevice::MAX_FRAMES_IN_FLIGHT;
+        poolSize.descriptorCount = 1000 * VulkanDevice::MAX_FRAMES_IN_FLIGHT;
         poolSize.type = convertToDescriptorType(rhiBinding.type);
 
         return poolSize;
@@ -78,7 +78,7 @@ namespace nitro::rhi::vulkan
         VkDescriptorPoolCreateInfo descriptorPoolInfo{};
         descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         descriptorPoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-        descriptorPoolInfo.maxSets = 10 * VulkanDevice::MAX_FRAMES_IN_FLIGHT;
+        descriptorPoolInfo.maxSets = 1000 * VulkanDevice::MAX_FRAMES_IN_FLIGHT;
         descriptorPoolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
         descriptorPoolInfo.pPoolSizes = poolSizes.data();
 
@@ -102,12 +102,19 @@ namespace nitro::rhi::vulkan
         allocateInfo.descriptorSetCount = 1;
         allocateInfo.pSetLayouts = &descriptorSetLayout;
 
-        VkDescriptorSet descriptorSet;
-        checkVkResult(vkAllocateDescriptorSets(
-                          m_device->device,
-                          &allocateInfo,
-                          &descriptorSet),
+        VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
+        VkResult result = vkAllocateDescriptorSets(
+            m_device->device,
+            &allocateInfo,
+            &descriptorSet);
+        checkVkResult(result,
                       "Can't allocate descriptor set");
+
+        if (result != VK_SUCCESS || descriptorSet == VK_NULL_HANDLE)
+        {
+            std::cerr << "vkAllocateDescriptorSets failed with " << result << std::endl;
+            throw std::runtime_error("Failed to allocate descriptor sets");
+        }
         return descriptorSet;
     }
 

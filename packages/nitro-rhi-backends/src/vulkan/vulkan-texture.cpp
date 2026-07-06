@@ -9,8 +9,10 @@ namespace nitro::rhi::vulkan
         switch (format)
         {
         case TextureDesc::ImageFormat::ColorRGBA8:
+            return VK_FORMAT_R8G8B8A8_UNORM;
+        case TextureDesc::ImageFormat::ColorSRGB8:
             return VK_FORMAT_R8G8B8A8_SRGB;
-        case TextureDesc::ImageFormat::ColorSRGBA16:
+        case TextureDesc::ImageFormat::ColorRGBA16:
             return VK_FORMAT_R16G16B16A16_SFLOAT;
         case TextureDesc::ImageFormat::Depth32Float:
             return VK_FORMAT_D32_SFLOAT;
@@ -151,9 +153,9 @@ namespace nitro::rhi::vulkan
         {
             VkSamplerCreateInfo samplerInfo{};
             samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-            samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-            samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-            samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+            samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
             samplerInfo.anisotropyEnable = VK_FALSE;
             samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
             samplerInfo.compareEnable = desc.sampler == TextureDesc::Sampler::Depth ? VK_TRUE : VK_FALSE;

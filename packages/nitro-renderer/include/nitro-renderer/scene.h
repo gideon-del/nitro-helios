@@ -15,6 +15,6 @@ namespace nitro::renderer
             }
         };
 
-        static std::vector<RenderObject> loadGltfScene(std::string filePath, std::shared_ptr<rhi::RHIDevice> device);
+        static std::vector<RenderObject> loadGltfScene(std::string filePath, std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<MaterialSystem> materialSystem);
     };
 } // namespace nitro::renderer

@@ -9,6 +9,7 @@ layout(location = 4) in vec4 aTangent;
 
 layout(location = 0) out vec2 fragUV;
 layout(location = 1) out vec3 fragNormal;
+layout(location = 2) out vec4 fragTangent;
 
 
 
@@ -39,4 +40,5 @@ void main() {
     };
 
     fragNormal = normalMatrix * aNormal;
+    fragTangent = vec4(normalMatrix * aTangent.xyz, aTangent.w);
 }

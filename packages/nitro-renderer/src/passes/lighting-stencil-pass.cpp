@@ -12,7 +12,7 @@ namespace nitro::renderer
     {
 
         rhi::TextureDesc textureDesc;
-        textureDesc.format = rhi::TextureDesc::ImageFormat::ColorSRGBA16;
+        textureDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA16;
         textureDesc.size = {m_frameWidth, m_frameHeight};
         textureDesc.usage = rhi::TextureDesc::Usage::RenderTarget | rhi::TextureDesc::Usage::ShaderRead;
 
@@ -73,7 +73,7 @@ namespace nitro::renderer
         rhi::RHIBlendDesc blendDesc;
         blendDesc.enabled = true;
 
-        pipelineDesc.colorAttachments = {rhi::PipelineDesc::ColorAttachmentDesc(rhi::TextureDesc::ImageFormat::ColorSRGBA16, blendDesc)};
+        pipelineDesc.colorAttachments = {rhi::PipelineDesc::ColorAttachmentDesc(rhi::TextureDesc::ImageFormat::ColorRGBA16, blendDesc)};
         pipelineDesc.hasColorAttachment = true;
         stencilFaceDesc.compareOp = CompareOp::NotEqual;
         stencilFaceDesc.depthFailOp = RHIStencilDesc::StencilOp::KEEP;
@@ -162,7 +162,7 @@ namespace nitro::renderer
 
         m_device->destroyTexture(m_lightingTexture);
         rhi::TextureDesc textureDesc;
-        textureDesc.format = rhi::TextureDesc::ImageFormat::ColorSRGBA16;
+        textureDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA16;
         textureDesc.size = {m_frameWidth, m_frameHeight};
         textureDesc.usage = rhi::TextureDesc::Usage::RenderTarget | rhi::TextureDesc::Usage::ShaderRead;
 

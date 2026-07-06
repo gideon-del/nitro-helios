@@ -3,6 +3,7 @@
 
 layout(location = 0) in vec2 fragUV;
 layout(location = 1) in vec3 fragNormal;
+layout(location = 2) in vec4 fragTangent;
 
 
 layout(set=1, binding=0) uniform sampler2D baseColorTexture;
@@ -37,8 +38,18 @@ void main() {
 
     if(pc.useTextures == 1) {
     vec3 metallicRoughness = texture(metallicRoughnessTexture, fragUV).rgb;
-    gAlbedo = texture(baseColorTexture, fragUV);
-    gNormal = vec4(encodeNormal(fragNormal), 0.0,1.0);
+    vec4 color = texture(baseColorTexture, fragUV);
+    vec3 N = normalize(fragNormal);
+    vec3 T = normalize(fragTangent.xyz);
+    T = normalize(T - dot(T, N) * N);
+    vec3 B = cross(N,T) * fragTangent.w;
+    mat3 TBN = mat3(T,B,N);
+
+    vec3 tangentNormal = texture(normalTexture, fragUV).rgb * 2.0 - 1.0;
+    tangentNormal = normalize(tangentNormal);
+    vec3 worldNormal = normalize(TBN * tangentNormal);
+    gAlbedo =color;
+    gNormal = vec4(encodeNormal(worldNormal), 0.0,1.0);
     gMaterial = vec4(0.0,metallicRoughness.b,metallicRoughness.g,1.0);
     gEmissive = vec4(1.0,1.0,1.0,1.0);
     }else {

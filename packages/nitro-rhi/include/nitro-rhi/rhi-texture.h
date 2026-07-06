@@ -27,7 +27,8 @@ namespace nitro::rhi
         enum class ImageFormat
         {
             ColorRGBA8,
-            ColorSRGBA16,
+            ColorRGBA16,
+            ColorSRGB8,
             Depth32Float,
             Depth32FloatStencil8
         } format;

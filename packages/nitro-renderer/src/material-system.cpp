@@ -86,18 +86,20 @@ namespace nitro::renderer
         material->metallicFactor = desc.metallicFactor;
         material->roughnessFactor = desc.roughnessFactor;
 
-        if (material->baseColor != nullptr)
-        {
-            material->descriptorSet = m_device->createDescriptorSet(m_materialLayout);
+        material->descriptorSet = m_device->createDescriptorSet(m_materialLayout);
 
-            material->descriptorSet->writeTexture(material->baseColor, 0, rhi::ImageLayout::ShaderReadOnly);
-            material->descriptorSet->writeTexture(material->normal != nullptr ? material->normal : m_defaults.normal, 1, rhi::ImageLayout::ShaderReadOnly);
-            material->descriptorSet->writeTexture(material->metallicRoughness != nullptr ? material->metallicRoughness : m_defaults.metallicRoughness, 2, rhi::ImageLayout::ShaderReadOnly);
-            material->descriptorSet->writeTexture(material->ao != nullptr ? material->ao : m_defaults.ao, 3, rhi::ImageLayout::ShaderReadOnly);
-            material->descriptorSet->writeTexture(material->emissive != nullptr ? material->emissive : m_defaults.emissive, 4, rhi::ImageLayout::ShaderReadOnly);
+        // material->descriptorSet->writeTexture(material->baseColor != nullptr ? material->baseColor : m_defaults.baseColor, 0, rhi::ImageLayout::ShaderReadOnly);
+        // material->descriptorSet->writeTexture(material->normal != nullptr ? material->normal : m_defaults.normal, 1, rhi::ImageLayout::ShaderReadOnly);
+        // material->descriptorSet->writeTexture(material->metallicRoughness != nullptr ? material->metallicRoughness : m_defaults.metallicRoughness, 2, rhi::ImageLayout::ShaderReadOnly);
+        // material->descriptorSet->writeTexture(material->ao != nullptr ? material->ao : m_defaults.ao, 3, rhi::ImageLayout::ShaderReadOnly);
+        // material->descriptorSet->writeTexture(material->emissive != nullptr ? material->emissive : m_defaults.emissive, 4, rhi::ImageLayout::ShaderReadOnly);
+        material->descriptorSet->writeTexture(material->baseColor, 0, rhi::ImageLayout::ShaderReadOnly);
+        material->descriptorSet->writeTexture(material->normal, 1, rhi::ImageLayout::ShaderReadOnly);
+        material->descriptorSet->writeTexture(material->metallicRoughness, 2, rhi::ImageLayout::ShaderReadOnly);
+        material->descriptorSet->writeTexture(material->ao, 3, rhi::ImageLayout::ShaderReadOnly);
+        material->descriptorSet->writeTexture(material->emissive, 4, rhi::ImageLayout::ShaderReadOnly);
 
-            material->descriptorSet->commit();
-        }
+        material->descriptorSet->commit();
 
         return material;
     };
