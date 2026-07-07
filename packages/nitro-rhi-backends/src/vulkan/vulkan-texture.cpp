@@ -14,6 +14,8 @@ namespace nitro::rhi::vulkan
             return VK_FORMAT_R8G8B8A8_SRGB;
         case TextureDesc::ImageFormat::ColorRGBA16:
             return VK_FORMAT_R16G16B16A16_SFLOAT;
+        case TextureDesc::ImageFormat::ColorRGBA32:
+            return VK_FORMAT_R32G32B32A32_SFLOAT;
         case TextureDesc::ImageFormat::Depth32Float:
             return VK_FORMAT_D32_SFLOAT;
         case TextureDesc::ImageFormat::Depth32FloatStencil8:
@@ -100,9 +102,18 @@ namespace nitro::rhi::vulkan
         }
         if (desc.initialData != nullptr && hasTextureUsageFlag(desc.usage, TextureDesc::Usage::ShaderRead))
         {
+            size_t bytePerPixel = 4;
+            if (desc.format == TextureDesc::ImageFormat::ColorRGBA16)
+            {
+                bytePerPixel = 8;
+            }
+            if (desc.format == TextureDesc::ImageFormat::ColorRGBA32)
+            {
+                bytePerPixel = 16;
+            }
             BufferDesc stagingDesc;
             stagingDesc.initialData = nullptr;
-            stagingDesc.size = width * height * 4;
+            stagingDesc.size = width * height * bytePerPixel;
             stagingDesc.storage = BufferDesc::StorageMode::Shared;
             stagingDesc.usage = BufferDesc::Usage::Staging;
             VulkanBuffer stagingBuffer(m_device, stagingDesc);

@@ -1,4 +1,5 @@
 #include <nitro-renderer/renderers/tiled-deferred-renderer.h>
+#include <nitro-renderer/utils.h>
 
 namespace nitro::renderer
 {
@@ -156,7 +157,9 @@ namespace nitro::renderer
             shaderDir,
             isMetal);
         m_debugDrawPass = std::make_shared<DebugDrawPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, m_isMetal);
-        m_toneMapPass = std::make_shared<ToneMapPass>(m_device, m_deferredLightingPass->getLightTexture(), m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
+        // m_toneMapPass = std::make_shared<ToneMapPass>(m_device, m_deferredLightingPass->getLightTexture(), m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
+        hdrTexture = loadHDRImage(m_device, "./assets/autumn_fiel.hdr");
+        m_toneMapPass = std::make_shared<ToneMapPass>(m_device, hdrTexture, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
         m_mainScenePass = std::make_shared<MainScenePass>(m_device, m_swapchain, m_toneMapPass->getToneMappedTexture(), shaderDir, isMetal);
     }
     void TiledDeferredRenderer::resize(uint32_t width, uint32_t height)
@@ -166,7 +169,8 @@ namespace nitro::renderer
         m_tileComputePass->resize(width, height, m_geometryPass->gBuffer);
         m_tileLightPass->resize(width, height, m_geometryPass->gBuffer, m_tileComputePass->getFrameResources());
         m_deferredLightingPass->recreate(width, height, m_geometryPass->gBuffer, m_tileLightPass->getLightTexture());
-        m_toneMapPass->resize(m_deferredLightingPass->getLightTexture(), width, height);
+        // m_toneMapPass->resize(m_deferredLightingPass->getLightTexture(), width, height);
+        m_toneMapPass->resize(hdrTexture, width, height);
         m_mainScenePass->resize(m_toneMapPass->getToneMappedTexture());
     };
 

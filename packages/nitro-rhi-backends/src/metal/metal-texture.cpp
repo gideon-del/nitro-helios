@@ -11,6 +11,8 @@ namespace nitro::rhi::metal
             return MTL::PixelFormatRGBA8Unorm;
         case TextureDesc::ImageFormat::ColorRGBA16:
             return MTL::PixelFormatRGBA16Float;
+        case TextureDesc::ImageFormat::ColorRGBA32:
+            return MTL::PixelFormatRGBA32Float;
         case TextureDesc::ImageFormat::ColorSRGB8:
             return MTL::PixelFormatRGBA8Unorm_sRGB;
         case TextureDesc::ImageFormat::Depth32Float:
@@ -66,7 +68,16 @@ namespace nitro::rhi::metal
                                                      NS::UInteger(0),
                                                      NS::UInteger(width),
                                                      NS::UInteger(height));
-            texture->replaceRegion(region, NS::UInteger(0), desc.initialData, NS::UInteger(width * 4));
+            size_t bytePerPixel = 4;
+            if (desc.format == TextureDesc::ImageFormat::ColorRGBA16)
+            {
+                bytePerPixel = 8;
+            }
+            if (desc.format == TextureDesc::ImageFormat::ColorRGBA32)
+            {
+                bytePerPixel = 16;
+            }
+            texture->replaceRegion(region, NS::UInteger(0), desc.initialData, NS::UInteger(width * bytePerPixel));
         }
 
         if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::ShaderRead))

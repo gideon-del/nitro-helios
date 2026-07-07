@@ -28,6 +28,7 @@ add_library(nitro-renderer STATIC
  src/material-system.cpp
  src/passes/tone-map-pass.cpp
  src/passes/main-scene-pass.cpp
+ src/utils.cpp
 )
 
 find_package(glm REQUIRED)

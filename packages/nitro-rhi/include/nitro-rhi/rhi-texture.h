@@ -28,6 +28,7 @@ namespace nitro::rhi
         {
             ColorRGBA8,
             ColorRGBA16,
+            ColorRGBA32,
             ColorSRGB8,
             Depth32Float,
             Depth32FloatStencil8

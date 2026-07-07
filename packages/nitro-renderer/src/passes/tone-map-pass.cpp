@@ -30,7 +30,7 @@ namespace nitro::renderer
         pipelineDesc.pushConstantSize = sizeof(ToneMapPassUBO);
 
         pipelineDesc.layouts = {m_descriptorLayout};
-        pipelineDesc.colorAttachments = {rhi::TextureDesc::ImageFormat::ColorRGBA8};
+        pipelineDesc.colorAttachments = {rhi::TextureDesc::ImageFormat::ColorSRGB8};
         if (isMetal)
         {
             pipelineDesc.shaders.push_back({"vs", shaderPath + ".metallib", rhi::ShaderStage::Vertex});
@@ -48,7 +48,7 @@ namespace nitro::renderer
 
         textureDesc.size = {m_width, m_height};
         textureDesc.usage = rhi::TextureDesc::Usage::RenderTarget | rhi::TextureDesc::Usage::ShaderRead;
-        textureDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA8;
+        textureDesc.format = rhi::TextureDesc::ImageFormat::ColorSRGB8;
 
         m_toneMappedTexture = m_device->createTexture(textureDesc);
 
@@ -92,7 +92,7 @@ namespace nitro::renderer
 
         textureDesc.size = {m_width, m_height};
         textureDesc.usage = rhi::TextureDesc::Usage::RenderTarget | rhi::TextureDesc::Usage::ShaderRead;
-        textureDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA8;
+        textureDesc.format = rhi::TextureDesc::ImageFormat::ColorSRGB8;
 
         m_toneMappedTexture = m_device->createTexture(textureDesc);
 
