@@ -190,4 +190,32 @@ namespace nitro::renderer
         }
         ImGui::End();
     }
+
+    void ToneMapPanel::draw(ToneMapSettings &settings)
+    {
+
+        const char *toneMapModes[] =
+            {
+                "Linear",
+                "Reinhard",
+                "ACES"};
+        int currentMode =
+            static_cast<int>(settings.mode);
+        ImGui::Begin("Tonemap");
+
+        ImGui::SliderFloat(
+            "Exposure",
+            &settings.exposure,
+            0.0f,
+            1.0f);
+        if (ImGui::Combo(
+                "Mode",
+                &currentMode,
+                toneMapModes,
+                IM_ARRAYSIZE(toneMapModes)))
+        {
+            settings.mode = static_cast<ToneMapMode>(currentMode);
+        }
+        ImGui::End();
+    }
 } // namespace nitro::renderer

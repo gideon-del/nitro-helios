@@ -51,19 +51,21 @@ namespace nitro::renderer
     class DeferredLightingPass
     {
     public:
-        DeferredLightingPass(std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<rhi::RHISwapchain> swapchain, std::vector<rhi::RHITexture *> &cascades, GBuffer &gBuffer, rhi::RHITexture *lightTexture, std::string shaderDir, bool isMetal);
+        DeferredLightingPass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, std::vector<rhi::RHITexture *> &cascades, GBuffer &gBuffer, rhi::RHITexture *lightTexture, std::string shaderDir, bool isMetal);
         ~DeferredLightingPass();
         void execute(rhi::RHICommandBuffer *cmd, DeferredLightingFrameData frameData);
-        void recreate(GBuffer &gBuffer, rhi::RHITexture *lightTexture);
+        void recreate(uint32_t width, uint32_t height, GBuffer &gBuffer, rhi::RHITexture *lightTexture);
+        rhi::RHITexture *getLightTexture() { return m_lightTexture; }
 
     private:
         std::shared_ptr<rhi::RHIDevice> m_device;
-        std::shared_ptr<rhi::RHISwapchain> m_swapchain;
+        uint32_t m_width, m_height;
         rhi::RHIPipeline *m_pipeline;
         rhi::RHIDescriptorLayout *m_uniformBufferDescriptorLayout;
         rhi::RHIDescriptorLayout *m_gBufferDescriptorLayout;
         rhi::RHIDescriptorLayout *m_shadowDescriptorLayout;
         PerFrame<DeferredLightingResource> m_resources;
-        bool m_isMetal;
+        rhi::RHITexture *m_lightTexture;
+        rhi::RHIRenderPass *m_renderPass;
     };
 } // namespace nitro::renderer

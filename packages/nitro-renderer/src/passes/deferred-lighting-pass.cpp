@@ -2,7 +2,7 @@
 
 namespace nitro::renderer
 {
-    DeferredLightingPass::DeferredLightingPass(std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<rhi::RHISwapchain> swapchain, std::vector<rhi::RHITexture *> &cascades, GBuffer &gBuffer, rhi::RHITexture *lightTexture, std::string shaderDir, bool isMetal) : m_device(device), m_swapchain(swapchain), m_isMetal(isMetal)
+    DeferredLightingPass::DeferredLightingPass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, std::vector<rhi::RHITexture *> &cascades, GBuffer &gBuffer, rhi::RHITexture *lightTexture, std::string shaderDir, bool isMetal) : m_device(device), m_width(width), m_height(height)
     {
         std::vector<rhi::RHIDescriptorBinding> mainBindings = {
             {rhi::RHIDescriptorBinding::Type::UniformBuffer,
@@ -45,6 +45,8 @@ namespace nitro::renderer
         rhi::PipelineDesc pipelineDesc;
         pipelineDesc.hasPushConstant = false;
         pipelineDesc.layouts = {m_uniformBufferDescriptorLayout, m_gBufferDescriptorLayout, m_shadowDescriptorLayout};
+        pipelineDesc.hasDepth = false;
+        pipelineDesc.colorAttachments = {rhi::TextureDesc::ImageFormat::ColorRGBA16};
 
         std::string shaderPath = shaderDir + "/deferred-lighting/deferred-lighting";
 
@@ -60,6 +62,24 @@ namespace nitro::renderer
         }
 
         m_pipeline = m_device->createPipeline(pipelineDesc);
+
+        rhi::TextureDesc textureDesc;
+        textureDesc.size = {m_width, m_height};
+        textureDesc.usage = rhi::TextureDesc::Usage::RenderTarget | rhi::TextureDesc::Usage::ShaderRead;
+        textureDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA16;
+
+        m_lightTexture = m_device->createTexture(textureDesc);
+
+        rhi::RenderPassDesc renderPassDesc;
+        rhi::RenderPassDesc::Attachment colorAttachment;
+        colorAttachment.texture = m_lightTexture;
+        colorAttachment.load = rhi::RenderPassDesc::LoadOp::Clear;
+        colorAttachment.store = rhi::RenderPassDesc::StoreOp::Store;
+
+        renderPassDesc.colorAttachments = {colorAttachment};
+        renderPassDesc.height = m_height;
+        renderPassDesc.width = m_width;
+        m_renderPass = m_device->createRenderPass(renderPassDesc);
 
         m_resources.create(
             g_MAX_FRAMES_IN_FLIGHT,
@@ -112,27 +132,51 @@ namespace nitro::renderer
     void DeferredLightingPass::execute(rhi::RHICommandBuffer *cmd, DeferredLightingFrameData frameData)
     {
         auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
+        cmd->beginRenderPass(m_renderPass);
         cmd->bindPipeline(m_pipeline);
         resource.uniformBuffer->upload(&frameData, sizeof(DeferredLightingFrameData));
-        RHIViewScale swapchainViewScale = m_swapchain->getViewScale();
+
         rhi::RHIViewport viewport;
-        viewport.width = m_swapchain->getWidth() * swapchainViewScale.x;
-        viewport.height = m_swapchain->getHeight() * swapchainViewScale.y;
+        viewport.width = m_width;
+        viewport.height = m_height;
 
         cmd->setViewPort(viewport);
 
         rhi::RHIScissor scissor;
-        scissor.width = m_swapchain->getWidth() * swapchainViewScale.x;
-        scissor.height = m_swapchain->getHeight() * swapchainViewScale.y;
+        scissor.width = m_width;
+        scissor.height = m_height;
         cmd->setScissor(scissor);
         cmd->bindDescriptorSet(resource.mainDescriptorSet, 0);
         cmd->bindDescriptorSet(resource.gBufferDescriptorSet, 1);
         cmd->bindDescriptorSet(resource.shadowDescriptorSet, 2);
         cmd->draw(3);
+        cmd->endRenderPass();
     }
 
-    void DeferredLightingPass::recreate(GBuffer &gBuffer, rhi::RHITexture *lightTexture)
+    void DeferredLightingPass::recreate(uint32_t width, uint32_t height, GBuffer &gBuffer, rhi::RHITexture *lightTexture)
     {
+        m_width = width;
+        m_height = height;
+        m_device->destroyTexture(m_lightTexture);
+        m_device->destroyRenderPass(m_renderPass);
+
+        rhi::TextureDesc textureDesc;
+        textureDesc.size = {m_width, m_height};
+        textureDesc.usage = rhi::TextureDesc::Usage::RenderTarget | rhi::TextureDesc::Usage::ShaderRead;
+        textureDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA16;
+
+        m_lightTexture = m_device->createTexture(textureDesc);
+
+        rhi::RenderPassDesc renderPassDesc;
+        rhi::RenderPassDesc::Attachment colorAttachment;
+        colorAttachment.texture = m_lightTexture;
+        colorAttachment.load = rhi::RenderPassDesc::LoadOp::Clear;
+        colorAttachment.store = rhi::RenderPassDesc::StoreOp::Store;
+
+        renderPassDesc.colorAttachments = {colorAttachment};
+        renderPassDesc.height = m_height;
+        renderPassDesc.width = m_width;
+        m_renderPass = m_device->createRenderPass(renderPassDesc);
         for (auto &resource : m_resources)
         {
             resource.gBufferDescriptorSet->writeTexture(gBuffer.albedo, 0, ImageLayout::ShaderReadOnly);

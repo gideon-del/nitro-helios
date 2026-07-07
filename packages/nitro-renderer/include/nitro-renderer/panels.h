@@ -20,4 +20,8 @@ namespace nitro::renderer
     {
         void draw(StatSettings &settings);
     };
+    struct ToneMapPanel
+    {
+        void draw(ToneMapSettings &settings);
+    };
 } // namespace nitro::renderer

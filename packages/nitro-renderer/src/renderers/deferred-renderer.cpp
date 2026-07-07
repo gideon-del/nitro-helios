@@ -19,12 +19,15 @@ namespace nitro::renderer
         m_lightStencilPass = std::make_shared<LightingStencilPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), m_geometryPass->gBuffer, shaderDir, m_isMetal);
         m_deferredLightingPass = std::make_shared<DeferredLightingPass>(
             m_device,
-            m_swapchain,
+            m_swapchain->getWidth(),
+            m_swapchain->getHeight(),
             m_csmPass->getCascadeTextures(),
             m_geometryPass->gBuffer,
             m_lightStencilPass->getLightingTexture(),
             shaderDir,
             isMetal);
+        m_toneMapPass = std::make_shared<ToneMapPass>(m_device, m_deferredLightingPass->getLightTexture(), m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
+        m_mainScenePass = std::make_shared<MainScenePass>(m_device, m_swapchain, m_toneMapPass->getToneMappedTexture(), shaderDir, isMetal);
     }
 
     void DeferredRenderer::execute(rhi::RHICommandBuffer *cmd, const RenderContext &ctx, RendererSettings &settings)
@@ -58,14 +61,7 @@ namespace nitro::renderer
         lightStencilCamera.proj = geometryCamera.proj;
         lightStencilCamera.invViewProj = glm::inverse(geometryCamera.proj * geometryCamera.view);
         m_lightStencilPass->execute(cmd, settings.light, lightStencilCamera);
-        rhi::RHIRenderPassDesc rpDesc{};
-        rpDesc.clearColor[0] = 0.3f;
-        rpDesc.clearColor[1] = 0.3f;
-        rpDesc.clearColor[2] = 0.3f;
-        rpDesc.clearColor[3] = 1.0f;
-        rpDesc.clearDepth = 1.0f;
-        rpDesc.hasDepth = true;
-        cmd->beginRenderPass(rpDesc);
+
         DeferredLightingFrameData frameData;
         frameData.ambient = settings.light.ambient;
         frameData.Ka = settings.light.Ka;
@@ -96,20 +92,26 @@ namespace nitro::renderer
 
         m_deferredLightingPass->execute(cmd, frameData);
 
-        m_device->beginImGuiFrame();
-        m_lightPanel.draw(settings.light);
-        m_shadowPanel.draw(settings.shadow);
-        m_rendererPanel.draw(settings);
-        m_statsPanel.draw(settings.stats);
-        m_device->endImGuiFrame();
-        m_device->drawImGui(cmd);
-        cmd->endRenderPass();
+        ToneMapPassUBO toneMapUBO;
+        toneMapUBO.exposure = settings.tonemap.exposure;
+        toneMapUBO.mode = static_cast<uint>(settings.tonemap.mode);
+        m_toneMapPass->execute(cmd, toneMapUBO);
+        rhi::RHIRenderPassDesc rpDesc{};
+        rpDesc.clearColor[0] = 0.3f;
+        rpDesc.clearColor[1] = 0.3f;
+        rpDesc.clearColor[2] = 0.3f;
+        rpDesc.clearColor[3] = 1.0f;
+        rpDesc.clearDepth = 1.0f;
+        rpDesc.hasDepth = true;
+        m_mainScenePass->execute(cmd, rpDesc, settings);
     }
     void DeferredRenderer::resize(uint32_t width, uint32_t height)
     {
         m_depthPrepass->resize(width, height);
         m_geometryPass->resize(width, height, m_depthPrepass->getDepthTexture());
         m_lightStencilPass->resize(width, height, m_geometryPass->gBuffer);
-        m_deferredLightingPass->recreate(m_geometryPass->gBuffer, m_lightStencilPass->getLightingTexture());
+        m_deferredLightingPass->recreate(width, height, m_geometryPass->gBuffer, m_lightStencilPass->getLightingTexture());
+        m_toneMapPass->resize(m_deferredLightingPass->getLightTexture(), width, height);
+        m_mainScenePass->resize(m_toneMapPass->getToneMappedTexture());
     };
 } // namespace nitro::renderer

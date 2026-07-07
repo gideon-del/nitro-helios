@@ -1,0 +1,32 @@
+#pragma once
+#include <nitro-rhi/rhi.h>
+#include <nitro-renderer/panels.h>
+#include <nitro-renderer/settings.h>
+
+namespace nitro::renderer
+{
+    class MainScenePass
+    {
+    public:
+        MainScenePass(std::shared_ptr<rhi::RHIDevice> device,
+                      std::shared_ptr<rhi::RHISwapchain> swapchain,
+                      rhi::RHITexture *finalTexture,
+                      std::string shaderDir,
+                      bool isMetal);
+        ~MainScenePass();
+        void resize(rhi::RHITexture *finalTexture);
+        void execute(rhi::RHICommandBuffer *cmd, rhi::RHIRenderPassDesc &desc, RendererSettings &settings);
+
+    private:
+        ShadowPanel m_shadowPanel;
+        LightPanel m_lightPanel;
+        RendererPanel m_rendererPanel;
+        StatPanel m_statsPanel;
+        ToneMapPanel m_tonemapPanel;
+        std::shared_ptr<rhi::RHIDevice> m_device;
+        std::shared_ptr<rhi::RHISwapchain> m_swapchain;
+        rhi::RHIPipeline *m_pipeline;
+        rhi::RHIDescriptorLayout *m_descriptorLayout;
+        rhi::RHIDescriptorSet *m_descriptorSet;
+    };
+} // namespace nitro::renderer

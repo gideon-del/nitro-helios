@@ -1,6 +1,6 @@
 #pragma once
 #include "shadow-pass.h"
-#include "main-pass.h"
+#include "main-scene-pass.h"
 #include "geometry-pass.h"
 #include "cascade-shadow-map-pass.h"
 #include "forward-lighting-pass.h"
@@ -10,3 +10,4 @@
 #include "tiled-deffered-compute-pass.h"
 #include "tiled-light-shading-pass.h"
 #include "debug-draw-pass.h"
+#include "tone-map-pass.h"

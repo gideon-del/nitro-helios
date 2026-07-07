@@ -71,6 +71,7 @@ namespace nitro::renderer
         Deferred,
         TiledDeferred
     };
+
     struct StatSettings
     {
         float fps;
@@ -82,12 +83,24 @@ namespace nitro::renderer
         std::string backend;
     };
 
+    enum class ToneMapMode
+    {
+        Linear = 0,
+        Reinhard = 1,
+        ACES = 2,
+    };
+    struct ToneMapSettings
+    {
+        float exposure;
+        ToneMapMode mode;
+    };
     struct RendererSettings
     {
         ShadowSettings shadow;
         LightingSettings light;
         RendererType renderer = RendererType::TiledDeferred;
         StatSettings stats;
+        ToneMapSettings tonemap;
         DebugMode selectedDebugMode = DebugMode::Lit;
         LightMode selectedLightMode = LightMode::BlinnPhong;
         RendererScenes selectedScene = RendererScenes::DamageHelmet;

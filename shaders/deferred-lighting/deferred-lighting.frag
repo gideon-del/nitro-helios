@@ -336,10 +336,10 @@ switch(int(frameUbo.debugMode)) {
     finalColor = cascadeColor;
     break;
   case 6:
-    finalColor = PLColor*albedo;
+    finalColor = PLColor;
     break;
   case 7:
-    finalColor = directionalLighting * albedo;
+    finalColor = directionalLighting;
     break;
   case 8:
     finalColor = PLColor;
@@ -354,7 +354,7 @@ switch(int(frameUbo.debugMode)) {
     finalColor = mapToHeatColor(G, 0.0,1.0,0);
     break;
   default:
-    finalColor = (directionalLighting  + PLColor) * albedo;
+    finalColor = directionalLighting  + (PLColor * albedo);
     break;
 }
 
