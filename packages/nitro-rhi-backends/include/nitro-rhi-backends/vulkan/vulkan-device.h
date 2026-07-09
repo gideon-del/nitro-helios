@@ -23,6 +23,7 @@ namespace nitro::rhi::vulkan
     };
 
     class VulkanCommandBuffer;
+    class VulkanSwapchain;
     class VulkanDevice : public RHIDevice
     {
 
@@ -73,10 +74,11 @@ namespace nitro::rhi::vulkan
 
         VkCommandBuffer beginOneTimeCommands();
         void endOneTimeCommands(VkCommandBuffer &cmd);
-
+        RHICommandBuffer *createCommandBuffer() override;
         RHICommandBuffer *beginFrame() override;
         void endFrame(RHICommandBuffer *cmd) override;
-        void waitIdle();
+        void endCommandBuffer(RHICommandBuffer *cmd) override;
+        void waitIdle() override;
         VkFormat getSurfaceFormat() const;
         VkDevice device;
         VmaAllocator allocator;
@@ -99,5 +101,6 @@ namespace nitro::rhi::vulkan
         VkFormat m_surfaceFormat;
         std::vector<VulkanCommandBuffer *> m_frames;
         uint32_t m_currentFrame = 0;
+        VulkanSwapchain *m_swapchain;
     };
 }

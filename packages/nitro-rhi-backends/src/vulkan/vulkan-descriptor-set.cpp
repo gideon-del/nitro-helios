@@ -56,6 +56,26 @@ namespace nitro::rhi::vulkan
 
         m_writes.push_back(std::move(descriptorWriteTexture));
     }
+    void VulkanDescriptorSet::writeStorageImage(RHITexture *texture, uint32_t binding, ImageLayout imageLayout, uint32_t face)
+    {
+        VulkanTexture *vulkanTexture = reinterpret_cast<VulkanTexture *>(texture);
+
+        VkDescriptorImageInfo imageInfo{};
+        imageInfo.imageLayout = toVkImageLayout(imageLayout);
+        imageInfo.imageView = vulkanTexture->getFace(face);
+        imageInfo.sampler = vulkanTexture->sampler;
+
+        m_imageInfos.push_back(std::move(imageInfo));
+        VkWriteDescriptorSet descriptorWriteTexture{};
+        descriptorWriteTexture.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWriteTexture.descriptorCount = 1;
+        descriptorWriteTexture.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        descriptorWriteTexture.dstSet = descriptorSet;
+        descriptorWriteTexture.dstBinding = binding;
+        descriptorWriteTexture.dstArrayElement = 0;
+
+        m_writes.push_back(std::move(descriptorWriteTexture));
+    }
 
     void VulkanDescriptorSet::commit()
     {
@@ -68,7 +88,7 @@ namespace nitro::rhi::vulkan
             {
                 write.pBufferInfo = &m_bufferInfos[bufferIdx++];
             }
-            else if (write.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+            else if (write.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER || write.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
             {
                 write.pImageInfo = &m_imageInfos[imageIdx++];
             }

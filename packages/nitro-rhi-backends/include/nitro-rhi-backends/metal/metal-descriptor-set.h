@@ -23,6 +23,7 @@ namespace nitro::rhi::metal
 
         void writeBuffer(RHIBuffer *buffer, uint32_t binding) override;
         void writeTexture(RHITexture *texture, uint32_t binding, ImageLayout imageLayout) override;
+        void writeStorageImage(RHITexture *texture, uint32_t binding, ImageLayout imageLayout, uint32_t face = 0) override;
         void commit() override;
 
         static constexpr uint32_t c_TEXTURES_PER_SET = 16;

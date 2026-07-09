@@ -142,6 +142,10 @@ namespace nitro::renderer
           m_isMetal(isMetal),
           m_materialSystem(materialSystem)
     {
+        rhi::RHITexture *hdrTexture = loadHDRImage(m_device, "./assets/modern_evening_street.hdr");
+        m_cubemapTexture = createCubeMap(m_device, hdrTexture, 512, shaderDir, isMetal);
+        m_skyboxPass = std::make_shared<SkyboxPass>(m_device, m_cubemapTexture, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
+
         m_depthPrepass = std::make_shared<DepthPrepass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal, m_materialSystem);
         m_geometryPass = std::make_shared<GeometryPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), m_depthPrepass->getDepthTexture(), shaderDir, isMetal, m_materialSystem);
         m_csmPass = std::make_shared<CascadeShadowMapPass>(m_device, shaderDir, isMetal);
@@ -153,13 +157,14 @@ namespace nitro::renderer
             m_swapchain->getHeight(),
             m_csmPass->getCascadeTextures(),
             m_geometryPass->gBuffer,
+            m_cubemapTexture,
             m_tileLightPass->getLightTexture(),
             shaderDir,
             isMetal);
         m_debugDrawPass = std::make_shared<DebugDrawPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, m_isMetal);
-        // m_toneMapPass = std::make_shared<ToneMapPass>(m_device, m_deferredLightingPass->getLightTexture(), m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
-        hdrTexture = loadHDRImage(m_device, "./assets/autumn_fiel.hdr");
-        m_toneMapPass = std::make_shared<ToneMapPass>(m_device, hdrTexture, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
+        m_toneMapPass = std::make_shared<ToneMapPass>(m_device, m_deferredLightingPass->getLightTexture(), m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
+
+        // m_toneMapPass = std::make_shared<ToneMapPass>(m_device, m_skyboxPass->getSkyboxTexture(), m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
         m_mainScenePass = std::make_shared<MainScenePass>(m_device, m_swapchain, m_toneMapPass->getToneMappedTexture(), shaderDir, isMetal);
     }
     void TiledDeferredRenderer::resize(uint32_t width, uint32_t height)
@@ -168,9 +173,10 @@ namespace nitro::renderer
         m_geometryPass->resize(width, height, m_depthPrepass->getDepthTexture());
         m_tileComputePass->resize(width, height, m_geometryPass->gBuffer);
         m_tileLightPass->resize(width, height, m_geometryPass->gBuffer, m_tileComputePass->getFrameResources());
-        m_deferredLightingPass->recreate(width, height, m_geometryPass->gBuffer, m_tileLightPass->getLightTexture());
-        // m_toneMapPass->resize(m_deferredLightingPass->getLightTexture(), width, height);
-        m_toneMapPass->resize(hdrTexture, width, height);
+        m_deferredLightingPass->recreate(width, height, m_geometryPass->gBuffer, m_cubemapTexture, m_tileLightPass->getLightTexture());
+        m_toneMapPass->resize(m_deferredLightingPass->getLightTexture(), width, height);
+        // m_toneMapPass->resize(m_skyboxPass->getSkyboxTexture(), width, height);
+        // m_toneMapPass->resize(hdrTexture, width, height);
         m_mainScenePass->resize(m_toneMapPass->getToneMappedTexture());
     };
 
@@ -198,6 +204,11 @@ namespace nitro::renderer
         DepthPrePassCamera depthCamera;
         depthCamera.view = geometryCamera.view;
         depthCamera.proj = geometryCamera.proj;
+        SkyboxPassUBO skyboxUbo;
+        glm::mat4 viewNoTranslation = glm::mat4(glm::mat3(geometryCamera.view));
+        skyboxUbo.viewProj = glm::inverse(geometryCamera.proj * viewNoTranslation);
+        skyboxUbo.screenSize = {float(m_swapchain->getWidth()), float(m_swapchain->getHeight())};
+        m_skyboxPass->execute(cmd, skyboxUbo);
         m_depthPrepass->execute(cmd, *ctx.scene, depthCamera);
         m_geometryPass->execute(cmd, geometryCamera, *ctx.scene, settings.light);
 

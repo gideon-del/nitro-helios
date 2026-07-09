@@ -30,6 +30,7 @@ namespace nitro::renderer
         LightPanel m_lightPanel;
         RendererPanel m_rendererPanel;
         StatPanel m_statsPanel;
+        rhi::RHITexture *m_cubemapTexture;
 
         std::shared_ptr<MaterialSystem> m_materialSystem;
     };

@@ -61,28 +61,68 @@ namespace nitro::rhi::vulkan
         {
             flags |= VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         }
+        if (hasTextureUsageFlag(usage, TextureDesc::Usage::Storage))
+        {
+            flags |= VK_IMAGE_USAGE_STORAGE_BIT;
+        }
 
         return flags;
     }
 
+    VkImageType convertVkImageType(rhi::TextureDesc::Type type)
+    {
+        switch (type)
+        {
+        case rhi::TextureDesc::Type::Cube:
+            return VK_IMAGE_TYPE_2D;
+            break;
+        case rhi::TextureDesc::Type::Flat:
+            return VK_IMAGE_TYPE_2D;
+            break;
+
+        default:
+            return VK_IMAGE_TYPE_2D;
+            break;
+        }
+    };
+    VkImageViewType convertVkImageViewType(rhi::TextureDesc::Type type)
+    {
+        switch (type)
+        {
+        case rhi::TextureDesc::Type::Cube:
+            return VK_IMAGE_VIEW_TYPE_CUBE;
+            break;
+        case rhi::TextureDesc::Type::Flat:
+            return VK_IMAGE_VIEW_TYPE_2D;
+            break;
+
+        default:
+            return VK_IMAGE_VIEW_TYPE_2D;
+            break;
+        }
+    };
     VulkanTexture::VulkanTexture(VulkanDevice *device, const TextureDesc &desc) : m_device(device)
     {
         format = convertToFormat(desc.format);
         width = desc.size.width;
         height = desc.size.height;
-
+        m_isCubeMap = desc.type == rhi::TextureDesc::Type::Cube;
         VkImageCreateInfo imageInfo{};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        imageInfo.arrayLayers = 1;
+        imageInfo.arrayLayers = (desc.type == TextureDesc::Type::Cube) ? 6 : 1;
         imageInfo.extent = {desc.size.width, desc.size.height, 1};
         imageInfo.format = format;
-        imageInfo.imageType = VK_IMAGE_TYPE_2D;
+        imageInfo.imageType = convertVkImageType(desc.type);
         imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         imageInfo.mipLevels = 1;
         imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
         imageInfo.usage = convertToImageUsage(desc.usage);
+        if (desc.type == TextureDesc::Type::Cube)
+        {
+            imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+        }
 
         VmaAllocationCreateInfo allocationInfo{};
         allocationInfo.usage = VMA_MEMORY_USAGE_AUTO;
@@ -150,9 +190,10 @@ namespace nitro::rhi::vulkan
 
         imageViewInfo.subresourceRange.baseArrayLayer = 0;
         imageViewInfo.subresourceRange.baseMipLevel = 0;
-        imageViewInfo.subresourceRange.layerCount = 1;
+        imageViewInfo.subresourceRange.layerCount = (desc.type == TextureDesc::Type::Cube) ? 6 : 1;
+
         imageViewInfo.subresourceRange.levelCount = 1;
-        imageViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+        imageViewInfo.viewType = convertVkImageViewType(desc.type);
 
         checkVkResult(vkCreateImageView(
                           m_device->device,
@@ -160,6 +201,25 @@ namespace nitro::rhi::vulkan
                           nullptr,
                           &imageView),
                       "Unable to create a image view");
+
+        if (desc.type == rhi::TextureDesc::Type::Cube)
+        {
+            for (int face = 0; face < 6; face++)
+            {
+                VkImageViewCreateInfo faceViewInfo{};
+                faceViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+                faceViewInfo.image = image;
+                faceViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+                faceViewInfo.format = format;
+                faceViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                faceViewInfo.subresourceRange.baseMipLevel = 0;
+                faceViewInfo.subresourceRange.levelCount = 1;
+                faceViewInfo.subresourceRange.baseArrayLayer = face;
+                faceViewInfo.subresourceRange.layerCount = 1;
+
+                checkVkResult(vkCreateImageView(m_device->device, &faceViewInfo, nullptr, &m_faceViews[face]), "Failed to create cube face");
+            }
+        }
         if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::ShaderRead))
         {
             VkSamplerCreateInfo samplerInfo{};
@@ -211,6 +271,13 @@ namespace nitro::rhi::vulkan
     }
     VulkanTexture::~VulkanTexture()
     {
+        for (auto &faceView : m_faceViews)
+        {
+            if (faceView != VK_NULL_HANDLE)
+            {
+                vkDestroyImageView(m_device->device, faceView, nullptr);
+            }
+        }
         if (imageView != VK_NULL_HANDLE)
         {
             vkDestroyImageView(m_device->device, imageView, nullptr);

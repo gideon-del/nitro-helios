@@ -2,6 +2,7 @@
 #include <nitro-rhi/rhi-texture.h>
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
+#include <vector>
 
 namespace nitro::rhi::vulkan
 {
@@ -14,6 +15,17 @@ namespace nitro::rhi::vulkan
         VulkanTexture(VulkanDevice *device, const TextureDesc &desc);
         VulkanTexture(VulkanDevice *device, VkImage image, uint32_t width, uint32_t height, VkFormat format);
         ~VulkanTexture() override;
+        VkImageView getFace(int face)
+        {
+            if (m_isCubeMap)
+            {
+                return m_faceViews[face];
+            }
+            else
+            {
+                return imageView;
+            }
+        }
 
         VkImage image = VK_NULL_HANDLE;
         VkImageView imageView = VK_NULL_HANDLE;
@@ -27,6 +39,8 @@ namespace nitro::rhi::vulkan
 
     private:
         VulkanDevice *m_device;
+        std::vector<VkImageView> m_faceViews{6, VK_NULL_HANDLE};
+        bool m_isCubeMap;
     };
 
 }

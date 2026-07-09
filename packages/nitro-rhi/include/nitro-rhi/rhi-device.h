@@ -13,7 +13,7 @@
 namespace nitro::rhi
 {
 
-       class RHIDevice
+    class RHIDevice
     {
     public:
         virtual ~RHIDevice() = default;
@@ -41,10 +41,12 @@ namespace nitro::rhi
 
         virtual RHIComputePipeline *createComputePipeline(const ComputePipelineDesc &desc) = 0;
         virtual void destroyComputePipeline(RHIComputePipeline *pipeline) = 0;
-
+        virtual void waitIdle() = 0;
         virtual uint32_t getCurrentFrameIndex() const = 0;
         virtual RHICommandBuffer *beginFrame() = 0;
+        virtual RHICommandBuffer *createCommandBuffer() = 0;
         virtual void endFrame(RHICommandBuffer *cmd) = 0;
+        virtual void endCommandBuffer(RHICommandBuffer *cmd) = 0;
         virtual void beginImGuiFrame() = 0;
         virtual void endImGuiFrame() = 0;
         virtual void drawImGui(RHICommandBuffer *cmd) = 0;

@@ -11,3 +11,4 @@
 #include "tiled-light-shading-pass.h"
 #include "debug-draw-pass.h"
 #include "tone-map-pass.h"
+#include "skybox-pass.h"

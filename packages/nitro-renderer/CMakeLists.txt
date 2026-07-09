@@ -29,6 +29,7 @@ add_library(nitro-renderer STATIC
  src/passes/tone-map-pass.cpp
  src/passes/main-scene-pass.cpp
  src/utils.cpp
+ src/passes/skybox-pass.cpp
 )
 
 find_package(glm REQUIRED)

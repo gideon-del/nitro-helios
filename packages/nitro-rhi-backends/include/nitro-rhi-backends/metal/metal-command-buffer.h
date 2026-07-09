@@ -26,7 +26,7 @@ namespace nitro::rhi::metal
         void bindDescriptorSet(RHIDescriptorSet *descriptorSet, uint32_t binding) override;
         void bindComputeDescriptorSet(RHIDescriptorSet *descriptorSet, uint32_t binding) override;
         ;
-        void setPushConstant(void *data, size_t size, uint32_t binding) override;
+        void setPushConstant(void *data, size_t size, uint32_t binding, bool isCompute = false) override;
         void setViewPort(const RHIViewport &viewport) override;
         void setScissor(const RHIScissor &scissor) override;
         void setStencilReference(uint32_t reference) override;
@@ -34,6 +34,7 @@ namespace nitro::rhi::metal
         void draw(uint32_t vertexCount) override;
         void drawIndexed(uint32_t indexCount) override;
         void dispatch(uint32_t x, uint32_t y, uint32_t z) override;
+        void submit() override;
         void present() override;
         FrameStats getFrameStats() override;
         void resetFrameStats() override;

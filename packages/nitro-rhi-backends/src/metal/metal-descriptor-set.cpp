@@ -24,6 +24,13 @@ namespace nitro::rhi::metal
 
         m_tempDescriptorSet.textureBindings[mtTexture] = binding;
     }
+    void MetalDescriptorSet::writeStorageImage(RHITexture *texture, uint32_t binding, ImageLayout imageLayout, uint32_t face)
+    {
+
+        MetalTexture *mtTexture = reinterpret_cast<MetalTexture *>(texture);
+
+        m_tempDescriptorSet.textureBindings[mtTexture] = binding;
+    }
 
     void MetalDescriptorSet::commit()
     {

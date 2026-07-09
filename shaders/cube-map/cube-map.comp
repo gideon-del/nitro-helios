@@ -1,0 +1,64 @@
+#version 450
+layout(local_size_x=16, local_size_y=16, local_size_z=1) in;
+
+layout(set=0, binding=2) uniform sampler2D equirectangularSource;
+layout(set=0, binding=3, rgba16f) uniform writeonly image2D cubeFace;
+
+layout(push_constant) uniform PushConstant {
+    uint faceIndex;
+    uint faceSize;
+} pc;
+
+const float PI = 3.14159265358979323846;
+
+vec2 sampleEquirectangular(vec3 dir) {
+    float elevation = asin(dir.y);
+    float azimuth = atan(dir.x, dir.z);
+
+    float u = (azimuth + PI) / (2.0 * PI);
+    float v = (elevation + PI * 0.5) / PI;
+
+   return vec2(u,v);
+}
+
+
+vec3 faceDirection(uint face, vec2 uv) {
+ vec2 local = uv * 2.0 - 1.0;
+ vec3 dir;
+
+switch(face) {
+    case 0:
+     dir= vec3(1.0, -local.y, -local.x);
+     break;
+    case 1:
+     dir= vec3(-1.0, -local.y, local.x);
+      break;
+    case 2:
+     dir= vec3(local.x, 1.0, local.y);
+      break;
+    case 3:
+     dir= vec3(local.x, -1.0, -local.y);
+      break;
+    case 4:
+     dir= vec3(local.x, -local.y, 1.0);
+      break;
+    default:
+     dir= vec3(-local.x, -local.y, -1.0);
+      break;
+}
+
+return normalize(dir);
+}
+
+
+void main()  {
+ ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
+  if (pixelCoord.x >= int(pc.faceSize) || pixelCoord.y >= int(pc.faceSize)) return;
+   vec2 uv = (vec2(pixelCoord) + 0.5) / float(pc.faceSize);
+    vec3 dir = faceDirection(pc.faceIndex, uv);
+
+    vec2 sampleUV = sampleEquirectangular(dir);
+    vec3 color = texture(equirectangularSource, sampleUV).rgb;
+
+    imageStore(cubeFace, pixelCoord, vec4(color, 1.0));
+}

@@ -28,7 +28,7 @@ namespace nitro::rhi::vulkan
         void bindUniformBuffer(RHIBuffer *buffer, uint32_t binding) override;
         void bindDescriptorSet(RHIDescriptorSet *descriptorSet, uint32_t binding) override;
         void bindComputeDescriptorSet(RHIDescriptorSet *descriptorSet, uint32_t binding) override;
-        void setPushConstant(void *data, size_t size, uint32_t binding) override;
+        void setPushConstant(void *data, size_t size, uint32_t binding, bool isCompute = false) override;
 
         void setViewPort(const RHIViewport &viewport) override;
         void setScissor(const RHIScissor &scissor) override;
@@ -41,6 +41,7 @@ namespace nitro::rhi::vulkan
         void updateVertexCount(uint32_t count) override;
         void present() override;
         void dispatch(uint32_t x, uint32_t y, uint32_t z) override;
+        void submit() override;
         VkCommandBuffer cmd;
         VkFence inFlight;
         VkSemaphore imageAvailable;

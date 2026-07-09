@@ -31,6 +31,7 @@ layout(set=1, binding=2) uniform sampler2D gMaterial;
 layout(set=1, binding=3) uniform sampler2D gEmissive;
 layout(set=1, binding=4) uniform sampler2D gDepth;
 layout(set=1, binding=5) uniform sampler2D lightShading;
+layout(set=1, binding=6) uniform samplerCube environment;
 
 layout(set=2, binding=0) uniform sampler2DShadow shadowMap0;
 layout(set=2, binding=1) uniform sampler2DShadow shadowMap1;
@@ -69,6 +70,8 @@ if (v.z < 0.0)
 
 return normalize(v);
 }
+
+
 vec2 poissonDisk[16] = vec2[](
    vec2(-0.94201624, -0.39906216),
    vec2( 0.94558609, -0.76890725),
@@ -272,6 +275,12 @@ vec3 metallicDiffuse(vec3 F ,float metallic) {
   vec3 kD = vec3(1.0) - kS;
 return kD * (1.0 - metallic);
 }
+
+vec3 sampleEnvironment(vec3 N, vec3 V, samplerCube envTexture) {
+  vec3 R = reflect(-V,N);
+ 
+ return texture(envTexture,R).rgb;
+}
 void main() {
   float depth   = texture(gDepth, fragUV).x;
   if(depth >= 1.0)
@@ -358,7 +367,7 @@ switch(int(frameUbo.debugMode)) {
     break;
 }
 
-
+finalColor = sampleEnvironment(N, V, environment);
   outColor = vec4(
 finalColor,
     1.0);

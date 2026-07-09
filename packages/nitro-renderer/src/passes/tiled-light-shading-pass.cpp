@@ -167,7 +167,7 @@ namespace nitro::renderer
 
         resource.uniformBuffer->upload(&ubo, sizeof(TiledLightPassUBO));
 
-        cmd->beginRenderPass(m_renderPass);
+                cmd->beginRenderPass(m_renderPass);
         cmd->bindPipeline(m_pipeline);
         rhi::RHIViewport viewport;
         viewport.width = m_width;

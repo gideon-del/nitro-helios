@@ -41,8 +41,9 @@ namespace nitro::rhi::metal
         void beginImGuiFrame() override;
         void endImGuiFrame() override;
         void drawImGui(RHICommandBuffer *cmd) override;
-
-        void waitIdle();
+        RHICommandBuffer *createCommandBuffer() override;
+        void endCommandBuffer(RHICommandBuffer *cmd) override;
+        void waitIdle() override;
         MTL::Device *device;
         MTL::CommandQueue *commandQueue;
 

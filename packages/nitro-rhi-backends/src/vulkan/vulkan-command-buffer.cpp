@@ -231,6 +231,7 @@ namespace nitro::rhi::vulkan
         {
             throw std::runtime_error("Must bind compute pipeline before descriptor set");
         }
+
         VulkanDescriptorSet *vkSet = reinterpret_cast<VulkanDescriptorSet *>(set);
         vkCmdBindDescriptorSets(
             cmd,
@@ -266,6 +267,19 @@ namespace nitro::rhi::vulkan
             0,
             0);
     }
+
+    void VulkanCommandBuffer::submit()
+    {
+        vkEndCommandBuffer(cmd);
+
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &cmd;
+        checkVkResult(vkQueueSubmit(m_device->graphicsQueue, 1, &submitInfo,
+                                    VK_NULL_HANDLE),
+                      "Queue submit failed");
+    };
     void VulkanCommandBuffer::present()
     {
 
@@ -350,8 +364,25 @@ namespace nitro::rhi::vulkan
     {
         m_FrameStats.vertices += count;
     }
-    void VulkanCommandBuffer::setPushConstant(void *data, size_t size, uint32_t binding)
+    void VulkanCommandBuffer::setPushConstant(void *data, size_t size, uint32_t binding, bool isCompute)
     {
+
+        if (isCompute)
+        {
+            if (!m_computePipeline)
+            {
+                throw std::runtime_error("Vulkan compute pipeline not found");
+            }
+
+            vkCmdPushConstants(
+                cmd,
+                m_computePipeline->layout,
+                VK_SHADER_STAGE_COMPUTE_BIT,
+                0,
+                size,
+                data);
+            return;
+        }
         if (!m_pipeline)
         {
             throw std::runtime_error("Vulkan pipeline not found");

@@ -667,7 +667,7 @@ namespace nitro::rhi::vulkan
         {
             m_frames.push_back(new VulkanCommandBuffer(this, swapchain, cmdBuffers[i], i));
         }
-
+        m_swapchain = swapchain;
         return swapchain;
     }
 
@@ -687,6 +687,29 @@ namespace nitro::rhi::vulkan
     void VulkanDevice::destroyComputePipeline(RHIComputePipeline *pipeline)
     {
         delete pipeline;
+    }
+    RHICommandBuffer *VulkanDevice::createCommandBuffer()
+    {
+
+        VkCommandBufferAllocateInfo commanBufferAllocateInfo{};
+        commanBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        commanBufferAllocateInfo.commandBufferCount = 1;
+        commanBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        commanBufferAllocateInfo.commandPool = commandPool;
+
+        VkCommandBuffer commandBuffer;
+
+        checkVkResult(vkAllocateCommandBuffers(device, &commanBufferAllocateInfo, &commandBuffer),
+                      "Can't create one-time command buffer");
+        VkCommandBufferBeginInfo beginInfo{};
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+        vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+        VulkanCommandBuffer *vulkanCommandBuffer = new VulkanCommandBuffer(this, m_swapchain, commandBuffer, 0);
+
+        return vulkanCommandBuffer;
     }
     RHICommandBuffer *VulkanDevice::beginFrame()
     {
@@ -738,6 +761,22 @@ namespace nitro::rhi::vulkan
     void VulkanDevice::endFrame(RHICommandBuffer *cmd)
     {
         m_currentFrame = (m_currentFrame + 1) % VulkanDevice::MAX_FRAMES_IN_FLIGHT;
+    }
+    void VulkanDevice::endCommandBuffer(RHICommandBuffer *cmd)
+    {
+        VulkanCommandBuffer *vulkanCmd = reinterpret_cast<VulkanCommandBuffer *>(cmd);
+
+        vkEndCommandBuffer(vulkanCmd->cmd);
+
+        VkSubmitInfo submitInfo{};
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &vulkanCmd->cmd;
+
+        checkVkResult(vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE),
+                      "Failed to submit one-time command");
+        vkQueueWaitIdle(graphicsQueue);
+        delete vulkanCmd;
     }
 
     uint32_t VulkanDevice::getCurrentFrameIndex() const

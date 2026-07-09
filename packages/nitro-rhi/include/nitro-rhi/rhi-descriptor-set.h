@@ -11,6 +11,7 @@ namespace nitro::rhi
         virtual ~RHIDescriptorSet() = default;
         virtual void writeBuffer(RHIBuffer *buffer, uint32_t binding) = 0;
         virtual void writeTexture(RHITexture *texture, uint32_t binding, ImageLayout imageLayout) = 0;
+        virtual void writeStorageImage(RHITexture *texture, uint32_t binding, ImageLayout imageLayout, uint32_t face = 0) = 0;
         virtual void commit() = 0;
     };
 } // namespace nitro::rhi

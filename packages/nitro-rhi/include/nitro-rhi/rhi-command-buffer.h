@@ -59,7 +59,7 @@ namespace nitro::rhi
         virtual void bindUniformBuffer(RHIBuffer *buffer, uint32_t binding) = 0;
         virtual void bindDescriptorSet(RHIDescriptorSet *descriptorSet, uint32_t binding) = 0;
         virtual void bindComputeDescriptorSet(RHIDescriptorSet *descriptorSet, uint32_t binding) = 0;
-        virtual void setPushConstant(void *data, size_t size, uint32_t binding) = 0;
+        virtual void setPushConstant(void *data, size_t size, uint32_t binding, bool isCompute = false) = 0;
         virtual void setViewPort(const RHIViewport &viewport) = 0;
         virtual void setScissor(const RHIScissor &scissor) = 0;
         virtual void setStencilReference(uint32_t reference) = 0;
@@ -70,6 +70,7 @@ namespace nitro::rhi
         virtual FrameStats getFrameStats() = 0;
         virtual void resetFrameStats() = 0;
         virtual void updateVertexCount(uint32_t count) = 0;
+        virtual void submit() = 0;
         virtual void present() = 0;
         virtual void dispatch(uint32_t x, uint32_t y, uint32_t z) = 0;
     };

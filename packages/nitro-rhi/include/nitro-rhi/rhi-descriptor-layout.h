@@ -8,7 +8,8 @@ namespace nitro::rhi
         {
             UniformBuffer,
             Sampler,
-            StorageBuffer
+            StorageBuffer,
+            StorageImage
         } type;
 
         enum class ShaderStage

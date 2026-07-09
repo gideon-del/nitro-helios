@@ -192,8 +192,6 @@ int main()
     Scene pbrScene;
     Scene helmetScene;
 
-    helmetScene.objects = Scene::loadGltfScene("./assets/DamagedHelmet/DamagedHelmet.gltf", device, materialSystem);
-
     Mesh sphere = MeshGenerator::createUVSphere(5, 10, 100);
 
     auto sphereRenderer = std::make_shared<MeshRenderer>(sphere, device);
@@ -234,13 +232,14 @@ int main()
     // rendererSettings.light.pointLights = createRandomLights(10, 100);
     RenderContext renderContext;
     renderContext.camera = &camera;
-    renderContext.scene = &helmetScene;
 
     rendererSettings.light.lightCamera = light;
     rendererSettings.light.pointLightRenderer = pointLightRenderer;
     ForwardRenderer forwardRenderer = ForwardRenderer(device, swapchain, std::string(SHADER_DIR), isMetal);
     DeferredRenderer deferredRenderer = DeferredRenderer(device, swapchain, std::string(SHADER_DIR), isMetal, materialSystem);
     TiledDeferredRenderer tileDeferredRenderer = TiledDeferredRenderer(device, swapchain, std::string(SHADER_DIR), isMetal, materialSystem);
+    helmetScene.objects = Scene::loadGltfScene("./assets/DamagedHelmet/DamagedHelmet.gltf", device, materialSystem);
+    renderContext.scene = &helmetScene;
     IRenderer *currentRenderer = &deferredRenderer;
     int cachedWidth, cachedHeight;
     glfwGetFramebufferSize(window, &cachedWidth, &cachedHeight);

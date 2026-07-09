@@ -124,10 +124,17 @@ namespace nitro::rhi::metal
         encoder->setVertexBuffer(metalBuffer->buffer, NS::UInteger(0), NS::UInteger(binding));
     }
 
-    void MetalCommandBuffer::setPushConstant(void *data, size_t size, uint32_t binding)
+    void MetalCommandBuffer::setPushConstant(void *data, size_t size, uint32_t binding, bool isCompute)
     {
-        encoder->setVertexBytes(data, NS::UInteger(size), NS::UInteger(binding));
-        encoder->setFragmentBytes(data, NS::UInteger(size), NS::UInteger(binding));
+        if (isCompute && m_computeEncoder)
+        {
+            m_computeEncoder->setBytes(data, NS::UInteger(size), NS::UInteger(binding));
+        }
+        else
+        {
+            encoder->setVertexBytes(data, NS::UInteger(size), NS::UInteger(binding));
+            encoder->setFragmentBytes(data, NS::UInteger(size), NS::UInteger(binding));
+        }
     }
     void MetalCommandBuffer::setStencilReference(uint32_t reference)
     {
@@ -221,6 +228,9 @@ namespace nitro::rhi::metal
 
         m_computeEncoder->dispatchThreadgroups(threadgroupsPerGrid, threadsPerThreadgroup);
     };
+    void MetalCommandBuffer::submit()
+    {
+    }
     void MetalCommandBuffer::present()
     {
         commandBuffer->presentDrawable(swapchain->currentDrawable);

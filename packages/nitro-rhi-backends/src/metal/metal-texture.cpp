@@ -22,9 +22,22 @@ namespace nitro::rhi::metal
         }
         return MTL::PixelFormatRGBA8Unorm;
     }
+
+    MTL::TextureType convertTextureType(rhi::TextureDesc::Type type)
+    {
+        switch (type)
+        {
+        case rhi::TextureDesc::Type::Cube:
+            return MTL::TextureTypeCube;
+
+        default:
+            return MTL::TextureType2D;
+        }
+    }
     MetalTexture::MetalTexture(MetalDevice *device, const TextureDesc &desc) : m_device(device), width(desc.size.width), height(desc.size.height)
     {
 
+        m_isCubeMap = desc.type == rhi::TextureDesc::Type::Cube;
         MTL::TextureDescriptor *textureDesc = MTL::TextureDescriptor::texture2DDescriptor(
             convertToPixelFormat(desc.format),
             NS::UInteger(width),
@@ -36,6 +49,10 @@ namespace nitro::rhi::metal
             hasTextureUsageFlag(desc.usage, TextureDesc::Usage::DepthStencil))
         {
             usage |= MTL::TextureUsageRenderTarget;
+        }
+        if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::Storage))
+        {
+            usage |= MTL::TextureUsageShaderWrite;
         }
 
         if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::ShaderRead))
@@ -59,6 +76,7 @@ namespace nitro::rhi::metal
             textureDesc->setStorageMode(MTL::StorageModeShared);
         }
 
+        textureDesc->setTextureType(convertTextureType(desc.type));
         texture = m_device->device->newTexture(textureDesc);
 
         if (!hasTextureUsageFlag(desc.usage, TextureDesc::Usage::DepthStencil) && desc.initialData != nullptr)
@@ -79,7 +97,21 @@ namespace nitro::rhi::metal
             }
             texture->replaceRegion(region, NS::UInteger(0), desc.initialData, NS::UInteger(width * bytePerPixel));
         }
-
+        if (m_isCubeMap)
+        {
+            for (int face = 0; face < 6; face++)
+            {
+                MTL::TextureViewDescriptor *textureViewDescriptor = MTL::TextureViewDescriptor::alloc()->init();
+                textureViewDescriptor->setPixelFormat(convertToPixelFormat(desc.format));
+                textureViewDescriptor->setTextureType(MTL::TextureType2D);
+                NS::Range levelRange = NS::Range::Make(0, 1);
+                NS::Range sliceRange = NS::Range::Make(face, 1);
+                textureViewDescriptor->setLevelRange(levelRange);
+                textureViewDescriptor->setSliceRange(sliceRange);
+                m_faces[face] = texture->newTextureView(textureViewDescriptor);
+                textureViewDescriptor->release();
+            }
+        }
         if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::ShaderRead))
         {
 
@@ -104,6 +136,14 @@ namespace nitro::rhi::metal
 
     MetalTexture::~MetalTexture()
     {
+
+        for (auto &face : m_faces)
+        {
+            if (face)
+            {
+                face->release();
+            }
+        }
         if (samplerState)
             samplerState->release();
         if (texture)

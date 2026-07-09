@@ -1,4 +1,5 @@
 #include <nitro-renderer/renderers/deferred-renderer.h>
+#include <nitro-renderer/utils.h>
 
 namespace nitro::renderer
 {
@@ -13,6 +14,8 @@ namespace nitro::renderer
           m_isMetal(isMetal),
           m_materialSystem(materialSystem)
     {
+        rhi::RHITexture *hdrTexture = loadHDRImage(m_device, "./assets/modern_evening_street.hdr");
+        m_cubemapTexture = createCubeMap(m_device, hdrTexture, 512, shaderDir, isMetal);
         m_depthPrepass = std::make_shared<DepthPrepass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal, m_materialSystem);
         m_geometryPass = std::make_shared<GeometryPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), m_depthPrepass->getDepthTexture(), shaderDir, isMetal, m_materialSystem);
         m_csmPass = std::make_shared<CascadeShadowMapPass>(m_device, shaderDir, isMetal);
@@ -23,6 +26,7 @@ namespace nitro::renderer
             m_swapchain->getHeight(),
             m_csmPass->getCascadeTextures(),
             m_geometryPass->gBuffer,
+            m_cubemapTexture,
             m_lightStencilPass->getLightingTexture(),
             shaderDir,
             isMetal);
@@ -110,7 +114,7 @@ namespace nitro::renderer
         m_depthPrepass->resize(width, height);
         m_geometryPass->resize(width, height, m_depthPrepass->getDepthTexture());
         m_lightStencilPass->resize(width, height, m_geometryPass->gBuffer);
-        m_deferredLightingPass->recreate(width, height, m_geometryPass->gBuffer, m_lightStencilPass->getLightingTexture());
+        m_deferredLightingPass->recreate(width, height, m_geometryPass->gBuffer, m_cubemapTexture, m_lightStencilPass->getLightingTexture());
         m_toneMapPass->resize(m_deferredLightingPass->getLightTexture(), width, height);
         m_mainScenePass->resize(m_toneMapPass->getToneMappedTexture());
     };

@@ -14,6 +14,8 @@ namespace nitro::rhi::vulkan
             return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         case RHIDescriptorBinding::Type::StorageBuffer:
             return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        case RHIDescriptorBinding::Type::StorageImage:
+            return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 
         default:
             return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;

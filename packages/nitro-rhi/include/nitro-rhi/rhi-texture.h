@@ -15,7 +15,8 @@ namespace nitro::rhi
         ShaderReadOnly,
         TransferSrc,
         TransferDst,
-        Present
+        Present,
+        General
     };
     struct TextureDesc
     {
@@ -39,14 +40,19 @@ namespace nitro::rhi
             None = 0,
             RenderTarget = 1 << 0,
             ShaderRead = 1 << 1,
-            DepthStencil = 1 << 2
+            DepthStencil = 1 << 2,
+            Storage = 1 << 3,
         } usage = Usage::None;
 
         struct Size
         {
             uint32_t width, height;
         } size;
-
+        enum class Type
+        {
+            Flat,
+            Cube
+        } type = Type::Flat;
         const void *initialData = nullptr;
     };
 

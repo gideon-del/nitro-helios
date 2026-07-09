@@ -25,6 +25,8 @@ namespace nitro::rhi::vulkan
             return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         case ImageLayout::Present:
             return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        case ImageLayout::General:
+            return VK_IMAGE_LAYOUT_GENERAL;
         default:
             return VK_IMAGE_LAYOUT_UNDEFINED;
         }
