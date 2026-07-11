@@ -42,6 +42,8 @@ namespace nitro::rhi::vulkan
         void present() override;
         void dispatch(uint32_t x, uint32_t y, uint32_t z) override;
         void submit() override;
+        void generateMipmaps(RHITexture *texture) override;
+        void textureBarrier(const TextureBarrier &barrier) override;
         VkCommandBuffer cmd;
         VkFence inFlight;
         VkSemaphore imageAvailable;

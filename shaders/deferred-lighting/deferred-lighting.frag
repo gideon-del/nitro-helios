@@ -31,7 +31,8 @@ layout(set=1, binding=2) uniform sampler2D gMaterial;
 layout(set=1, binding=3) uniform sampler2D gEmissive;
 layout(set=1, binding=4) uniform sampler2D gDepth;
 layout(set=1, binding=5) uniform sampler2D lightShading;
-layout(set=1, binding=6) uniform samplerCube environment;
+layout(set=1, binding=6) uniform samplerCube irradianceTex;
+layout(set=1, binding=7) uniform sampler2D environment;
 
 layout(set=2, binding=0) uniform sampler2DShadow shadowMap0;
 layout(set=2, binding=1) uniform sampler2DShadow shadowMap1;
@@ -281,11 +282,22 @@ vec3 sampleEnvironment(vec3 N, vec3 V, samplerCube envTexture) {
  
  return texture(envTexture,R).rgb;
 }
+
+vec3 diffuseIBL(vec3 N, vec3 albedo, float metallic, samplerCube irradianceMap) {
+    vec3 irradiance = texture(irradianceMap, N).rgb;
+
+    vec3 kD = albedo * (1.0 - metallic);
+
+    return kD * irradiance;
+}
+
+
 void main() {
   float depth   = texture(gDepth, fragUV).x;
   if(depth >= 1.0)
 {
-   discard;
+    vec3 color = texture(environment, fragUV).rgb;
+    outColor = vec4(color,1.0);
     return;
 }
   vec3 albedo = texture(gAlbedo, fragUV).rgb;
@@ -312,6 +324,7 @@ vec3 F0 = mix(dielectricF0, albedo, metallic);
 float D = distributionGGX(N, H,roughness);
 vec3 F = fresnelSchlick(F0, max(dot(N,V),0.0));
 float G = geometrySmith(N, L, V,roughness);
+vec3 ambient = diffuseIBL(N, albedo, metallic, irradianceTex);
 switch(int(frameUbo.lightMode)) {
   case 0:
     directionalLighting = blingPhongShading(
@@ -324,7 +337,7 @@ switch(int(frameUbo.lightMode)) {
     directionalLighting = lambertDiffuse(albedo, N,L);
     break;
   default:
-   vec3 diffuse = metallicDiffuse(F, metallic) * lambertDiffuse(albedo,N,L);
+   vec3 diffuse = metallicDiffuse(F, metallic) * lambertDiffuse(albedo,N,L) + ambient;
     directionalLighting =(cookTorranceSpecular(N,L,V,H,material.b,F0) + diffuse);
     break;
 }
@@ -362,12 +375,15 @@ switch(int(frameUbo.debugMode)) {
   case 11:
     finalColor = mapToHeatColor(G, 0.0,1.0,0);
     break;
+  case 12:
+    finalColor = ambient;
+    break;
   default:
     finalColor = directionalLighting  + (PLColor * albedo);
     break;
 }
 
-finalColor = sampleEnvironment(N, V, environment);
+
   outColor = vec4(
 finalColor,
     1.0);

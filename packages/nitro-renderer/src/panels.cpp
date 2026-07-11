@@ -123,6 +123,7 @@ namespace nitro::renderer
             "Distribution Heatmap",
             "Fresnel Schlick",
             "Smith Geometry",
+            "Ambient",
         };
         const char *lightModeLabels[] = {
             "Blinn Phong",

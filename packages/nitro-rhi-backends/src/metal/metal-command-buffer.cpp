@@ -258,4 +258,6 @@ namespace nitro::rhi::metal
         m_FrameStats.vertices += count;
     }
     void MetalCommandBuffer::bufferBarrier(RHIBuffer *buffer) {}
+    void MetalCommandBuffer::generateMipmaps(RHITexture *texture) {}
+    void MetalCommandBuffer::textureBarrier(const TextureBarrier &barrier) {};
 } // namespace nitro::rhi::metal

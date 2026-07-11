@@ -213,10 +213,15 @@ namespace nitro::rhi::vulkan
             "VK_KHR_portability_subset",
             VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME};
 
+        VkPhysicalDeviceVulkan13Features vulkan13Features{};
+        vulkan13Features.sType =
+            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+        vulkan13Features.synchronization2 = VK_TRUE;
         VkPhysicalDeviceDynamicRenderingFeatures dynamicRendering{};
         dynamicRendering.sType =
             VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
         dynamicRendering.dynamicRendering = VK_TRUE;
+        dynamicRendering.pNext = &vulkan13Features;
         VkDeviceCreateInfo deviceInfo{};
 
         deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -225,6 +230,7 @@ namespace nitro::rhi::vulkan
         deviceInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
         deviceInfo.ppEnabledExtensionNames = deviceExtensions.data();
         VkPhysicalDeviceFeatures deviceFeatures{};
+
         deviceInfo.pEnabledFeatures = &deviceFeatures;
         deviceInfo.pNext = &dynamicRendering;
 
@@ -776,7 +782,7 @@ namespace nitro::rhi::vulkan
         checkVkResult(vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE),
                       "Failed to submit one-time command");
         vkQueueWaitIdle(graphicsQueue);
-        delete vulkanCmd;
+        vkFreeCommandBuffers(device, commandPool, 1, &vulkanCmd->cmd);
     }
 
     uint32_t VulkanDevice::getCurrentFrameIndex() const

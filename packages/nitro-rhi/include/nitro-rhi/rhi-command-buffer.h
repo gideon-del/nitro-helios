@@ -10,12 +10,30 @@ namespace nitro::rhi
         uint32_t triangles = 0;
         uint32_t vertices = 0;
     };
+    enum class ResourceState
+    {
+        Undefined,
+
+        CopySrc,
+        CopyDst,
+
+        ShaderRead,
+        ShaderWrite,
+
+        RenderTarget,
+        DepthWrite,
+        DepthRead,
+
+        Present,
+    };
+
     class RHIBuffer;
     class RHITexture;
     class RHIPipeline;
     class RHIComputePipeline;
     class RHIDescriptorSet;
     class RHIRenderPass;
+
     struct RHIRenderPassDesc
     {
         float clearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
@@ -43,6 +61,13 @@ namespace nitro::rhi
         uint32_t width;
         uint32_t height;
     };
+
+    struct TextureBarrier
+    {
+        RHITexture *texture;
+        ResourceState before;
+        ResourceState after;
+    };
     class RHICommandBuffer
     {
     public:
@@ -64,7 +89,8 @@ namespace nitro::rhi
         virtual void setScissor(const RHIScissor &scissor) = 0;
         virtual void setStencilReference(uint32_t reference) = 0;
         virtual void bufferBarrier(RHIBuffer *buffer) = 0;
-
+        virtual void generateMipmaps(RHITexture *texture) = 0;
+        virtual void textureBarrier(const TextureBarrier &barrier) = 0;
         virtual void draw(uint32_t vertexCount) = 0;
         virtual void drawIndexed(uint32_t indexCount) = 0;
         virtual FrameStats getFrameStats() = 0;

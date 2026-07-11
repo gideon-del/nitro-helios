@@ -23,6 +23,7 @@ namespace nitro::renderer
         std::shared_ptr<DeferredLightingPass> m_deferredLightingPass;
         std::shared_ptr<DepthPrepass> m_depthPrepass;
         std::shared_ptr<LightingStencilPass> m_lightStencilPass;
+        std::shared_ptr<SkyboxPass> m_skyboxPass;
         std::shared_ptr<ToneMapPass> m_toneMapPass;
         std::shared_ptr<MainScenePass> m_mainScenePass;
         bool m_isMetal;
@@ -31,6 +32,7 @@ namespace nitro::renderer
         RendererPanel m_rendererPanel;
         StatPanel m_statsPanel;
         rhi::RHITexture *m_cubemapTexture;
+        rhi::RHITexture *m_irradianceTexture;
 
         std::shared_ptr<MaterialSystem> m_materialSystem;
     };

@@ -39,7 +39,8 @@ namespace nitro::rhi::metal
         FrameStats getFrameStats() override;
         void resetFrameStats() override;
         void updateVertexCount(uint32_t count) override;
-
+        void generateMipmaps(RHITexture *texture) override;
+        void textureBarrier(const TextureBarrier &barrier) override;
         MTL::CommandBuffer *commandBuffer = nullptr;
         MTL::RenderCommandEncoder *encoder = nullptr;
         MetalSwapchain *swapchain;

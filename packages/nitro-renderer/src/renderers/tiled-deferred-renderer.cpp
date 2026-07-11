@@ -142,8 +142,9 @@ namespace nitro::renderer
           m_isMetal(isMetal),
           m_materialSystem(materialSystem)
     {
-        rhi::RHITexture *hdrTexture = loadHDRImage(m_device, "./assets/modern_evening_street.hdr");
+        rhi::RHITexture *hdrTexture = loadHDRImage(m_device, "./assets/golden_bay_4k.hdr");
         m_cubemapTexture = createCubeMap(m_device, hdrTexture, 512, shaderDir, isMetal);
+        m_irradianceTexture = generateIrradianceMap(m_device, m_cubemapTexture, 64, shaderDir, isMetal);
         m_skyboxPass = std::make_shared<SkyboxPass>(m_device, m_cubemapTexture, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
 
         m_depthPrepass = std::make_shared<DepthPrepass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal, m_materialSystem);
@@ -157,8 +158,9 @@ namespace nitro::renderer
             m_swapchain->getHeight(),
             m_csmPass->getCascadeTextures(),
             m_geometryPass->gBuffer,
-            m_cubemapTexture,
+            m_irradianceTexture,
             m_tileLightPass->getLightTexture(),
+            m_skyboxPass->getSkyboxTexture(),
             shaderDir,
             isMetal);
         m_debugDrawPass = std::make_shared<DebugDrawPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, m_isMetal);
@@ -173,7 +175,8 @@ namespace nitro::renderer
         m_geometryPass->resize(width, height, m_depthPrepass->getDepthTexture());
         m_tileComputePass->resize(width, height, m_geometryPass->gBuffer);
         m_tileLightPass->resize(width, height, m_geometryPass->gBuffer, m_tileComputePass->getFrameResources());
-        m_deferredLightingPass->recreate(width, height, m_geometryPass->gBuffer, m_cubemapTexture, m_tileLightPass->getLightTexture());
+        m_skyboxPass->resize(width, height, m_cubemapTexture);
+        m_deferredLightingPass->recreate(width, height, m_geometryPass->gBuffer, m_irradianceTexture, m_tileLightPass->getLightTexture(), m_skyboxPass->getSkyboxTexture());
         m_toneMapPass->resize(m_deferredLightingPass->getLightTexture(), width, height);
         // m_toneMapPass->resize(m_skyboxPass->getSkyboxTexture(), width, height);
         // m_toneMapPass->resize(hdrTexture, width, height);

@@ -440,4 +440,294 @@ namespace nitro::rhi::vulkan
             0,
             nullptr);
     }
+
+    void VulkanCommandBuffer::generateMipmaps(RHITexture *texture)
+    {
+        VulkanTexture *vulkanTexture = reinterpret_cast<VulkanTexture *>(texture);
+        int i = 1;
+        int totalLayer = vulkanTexture->isCubeMap() ? 6 : 1;
+        if (vulkanTexture->mipmapLevels == 0)
+            return;
+
+        uint32_t texWidth = vulkanTexture->width;
+        uint32_t texHeight = vulkanTexture->height;
+
+        VkImageLayout imageLayout = vulkanTexture->currentLayout;
+        VkImageMemoryBarrier imageBarrier{};
+        imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        imageBarrier.srcAccessMask = 0;
+        imageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        imageBarrier.image = vulkanTexture->image;
+        imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        imageBarrier.oldLayout = imageLayout;
+        imageBarrier.subresourceRange.baseArrayLayer = 0;
+        imageBarrier.subresourceRange.baseMipLevel = 0;
+        imageBarrier.subresourceRange.layerCount = totalLayer;
+        imageBarrier.subresourceRange.levelCount = 1;
+        imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+
+        vkCmdPipelineBarrier(
+            cmd,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            0,
+            0,
+            nullptr,
+            0,
+            nullptr,
+            1,
+            &imageBarrier);
+
+        while (i <= vulkanTexture->mipmapLevels)
+        {
+            VkImageSubresourceRange mipSubresourceRange;
+            mipSubresourceRange.layerCount = totalLayer;
+            mipSubresourceRange.baseMipLevel = i;
+            mipSubresourceRange.baseArrayLayer = 0;
+            mipSubresourceRange.levelCount = 1;
+            mipSubresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+
+            VkImageMemoryBarrier imageBarrier{};
+            imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            imageBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+            imageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+            imageBarrier.image = vulkanTexture->image;
+            imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            imageBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            imageBarrier.subresourceRange = mipSubresourceRange;
+
+            vkCmdPipelineBarrier(
+                cmd,
+                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                VK_PIPELINE_STAGE_TRANSFER_BIT,
+                0,
+                0,
+                nullptr,
+                0,
+                nullptr,
+                1,
+                &imageBarrier);
+
+            VkImageBlit imageBlit{};
+            imageBlit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            imageBlit.srcSubresource.baseArrayLayer = 0;
+            imageBlit.srcSubresource.layerCount = totalLayer;
+            imageBlit.srcSubresource.mipLevel = i - 1;
+
+            imageBlit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            imageBlit.dstSubresource.baseArrayLayer = 0;
+            imageBlit.dstSubresource.layerCount = totalLayer;
+            imageBlit.dstSubresource.mipLevel = i;
+
+            imageBlit.srcOffsets[1].x = int32_t(texWidth >> (i - 1));
+            imageBlit.srcOffsets[1].y = int32_t(texHeight >> (i - 1));
+            imageBlit.srcOffsets[1].z = 1;
+
+            imageBlit.dstOffsets[1].x = int32_t(texWidth >> i);
+            imageBlit.dstOffsets[1].y = int32_t(texHeight >> i);
+            imageBlit.dstOffsets[1].z = 1;
+
+            vkCmdBlitImage(
+                cmd,
+                vulkanTexture->image,
+                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                vulkanTexture->image,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                1,
+                &imageBlit,
+                VK_FILTER_LINEAR);
+
+            VkImageMemoryBarrier secondImageBarrier{};
+            secondImageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            secondImageBarrier.srcAccessMask = 0;
+            secondImageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+            secondImageBarrier.image = vulkanTexture->image;
+            secondImageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+            secondImageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            secondImageBarrier.subresourceRange = mipSubresourceRange;
+
+            vkCmdPipelineBarrier(
+                cmd,
+                VK_PIPELINE_STAGE_TRANSFER_BIT,
+                VK_PIPELINE_STAGE_TRANSFER_BIT,
+                0,
+                0,
+                nullptr,
+                0,
+                nullptr,
+                1,
+                &secondImageBarrier);
+
+            i++;
+        }
+
+        VkImageSubresourceRange subresourceRange;
+        subresourceRange.layerCount = totalLayer;
+        subresourceRange.baseMipLevel = 0;
+        subresourceRange.baseArrayLayer = 0;
+        subresourceRange.levelCount = 1 + vulkanTexture->mipmapLevels;
+        subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+
+        VkImageMemoryBarrier secondImageBarrier{};
+        secondImageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        secondImageBarrier.srcAccessMask = 0;
+        secondImageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        secondImageBarrier.image = vulkanTexture->image;
+        secondImageBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        secondImageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        secondImageBarrier.subresourceRange = subresourceRange;
+
+        vkCmdPipelineBarrier(
+            cmd,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            0,
+            0,
+            nullptr,
+            0,
+            nullptr,
+            1,
+            &secondImageBarrier);
+        vulkanTexture->currentLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    }
+
+    VkImageLayout convertResourceStateToImageLayout(ResourceState state)
+    {
+        switch (state)
+        {
+        case ResourceState::Undefined:
+            return VK_IMAGE_LAYOUT_UNDEFINED;
+            break;
+        case ResourceState::CopyDst:
+            return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            break;
+        case ResourceState::CopySrc:
+            return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+            break;
+        case ResourceState::DepthRead:
+            return VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL;
+            break;
+        case ResourceState::DepthWrite:
+            return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+            break;
+        case ResourceState::Present:
+            return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+            break;
+        case ResourceState::RenderTarget:
+            return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            break;
+        case ResourceState::ShaderRead:
+            return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            break;
+        case ResourceState::ShaderWrite:
+            return VK_IMAGE_LAYOUT_GENERAL;
+            break;
+
+        default:
+            return VK_IMAGE_LAYOUT_UNDEFINED;
+            break;
+        }
+    }
+    VkAccessFlags convertResourceStateToAccessMask(ResourceState state)
+    {
+        switch (state)
+        {
+        case ResourceState::Undefined:
+            return 0;
+            break;
+        case ResourceState::CopyDst:
+            return VK_ACCESS_TRANSFER_WRITE_BIT;
+            break;
+        case ResourceState::CopySrc:
+            return VK_ACCESS_TRANSFER_READ_BIT;
+            break;
+        case ResourceState::DepthRead:
+            return VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+            break;
+        case ResourceState::DepthWrite:
+            return VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+            break;
+        case ResourceState::Present:
+            return VK_ACCESS_2_NONE;
+            break;
+        case ResourceState::RenderTarget:
+            return VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+            break;
+        case ResourceState::ShaderRead:
+            return VK_ACCESS_SHADER_READ_BIT;
+            break;
+        case ResourceState::ShaderWrite:
+            return VK_ACCESS_SHADER_WRITE_BIT;
+            break;
+
+        default:
+            return 0;
+            break;
+        }
+    }
+
+    VkPipelineStageFlags2 convertResourceStateToStage(ResourceState state)
+    {
+        switch (state)
+        {
+        case ResourceState::Undefined:
+            return VK_PIPELINE_STAGE_2_NONE;
+
+        case ResourceState::CopySrc:
+        case ResourceState::CopyDst:
+            return VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+
+        case ResourceState::ShaderRead:
+            return VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
+                   VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+
+        case ResourceState::ShaderWrite:
+            return VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+
+        case ResourceState::RenderTarget:
+            return VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+        case ResourceState::DepthRead:
+        case ResourceState::DepthWrite:
+            return VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
+                   VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+
+        case ResourceState::Present:
+            return VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+        default:
+            return VK_PIPELINE_STAGE_2_NONE;
+        }
+    }
+    void VulkanCommandBuffer::textureBarrier(const TextureBarrier &barrier)
+    {
+        VulkanTexture *vulkanTexture = reinterpret_cast<VulkanTexture *>(barrier.texture);
+
+        int totalLayer = vulkanTexture->isCubeMap() ? 6 : 1;
+
+        VkImageSubresourceRange subresourceRange;
+        subresourceRange.layerCount = totalLayer;
+        subresourceRange.baseMipLevel = 0;
+        subresourceRange.baseArrayLayer = 0;
+        subresourceRange.levelCount = 1 + vulkanTexture->mipmapLevels;
+        subresourceRange.aspectMask = vulkanTexture->imageAspect;
+
+        VkImageMemoryBarrier2 imageBarrier{};
+        imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+        imageBarrier.image = vulkanTexture->image;
+        imageBarrier.newLayout = convertResourceStateToImageLayout(barrier.after);
+        imageBarrier.oldLayout = convertResourceStateToImageLayout(barrier.before);
+        imageBarrier.srcAccessMask = convertResourceStateToAccessMask(barrier.before);
+        imageBarrier.dstAccessMask = convertResourceStateToAccessMask(barrier.after);
+        imageBarrier.subresourceRange = subresourceRange;
+        imageBarrier.srcStageMask = convertResourceStateToStage(barrier.before);
+        imageBarrier.dstStageMask = convertResourceStateToStage(barrier.after);
+
+        VkDependencyInfo dependencyInfo{};
+        dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+        dependencyInfo.imageMemoryBarrierCount = 1;
+        dependencyInfo.pImageMemoryBarriers = &imageBarrier;
+
+        vkCmdPipelineBarrier2(cmd, &dependencyInfo);
+        vulkanTexture->currentLayout = convertResourceStateToImageLayout(barrier.after);
+    }
 }

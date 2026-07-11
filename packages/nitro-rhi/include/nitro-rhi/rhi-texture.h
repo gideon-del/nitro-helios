@@ -54,6 +54,7 @@ namespace nitro::rhi
             Cube
         } type = Type::Flat;
         const void *initialData = nullptr;
+        uint32_t mipmaps = 0;
     };
 
     inline bool hasTextureUsageFlag(TextureDesc::Usage value,

@@ -185,9 +185,8 @@ int main()
     std::shared_ptr<DeviceType> device = std::make_shared<DeviceType>(window);
     std::shared_ptr<RHISwapchain> swapchain(
         device->createSwapchain(nullptr));
-    std::cout << "Before Material" << std::endl;
+
     std::shared_ptr<MaterialSystem> materialSystem = std::make_shared<MaterialSystem>(device);
-    std::cout << "After Material" << std::endl;
     Scene mainScene;
     Scene pbrScene;
     Scene helmetScene;
@@ -293,27 +292,27 @@ int main()
             renderContext.scene = &helmetScene;
             break;
         }
-        tileDeferredRenderer.execute(cmd, renderContext, rendererSettings);
-        // switch (rendererSettings.renderer)
-        // {
-        // case RendererType::Forward:
-        //     forwardRenderer.execute(
-        //         cmd,
-        //         renderContext,
-        //         rendererSettings);
-        //     break;
-        // case RendererType::TiledDeferred:
-        //     tileDeferredRenderer.execute(cmd, renderContext, rendererSettings);
-        //     break;
+        // tileDeferredRenderer.execute(cmd, renderContext, rendererSettings);
+        switch (rendererSettings.renderer)
+        {
+        case RendererType::Forward:
+            forwardRenderer.execute(
+                cmd,
+                renderContext,
+                rendererSettings);
+            break;
+        case RendererType::TiledDeferred:
+            tileDeferredRenderer.execute(cmd, renderContext, rendererSettings);
+            break;
 
-        // case RendererType::Deferred:
-        //     deferredRenderer.execute(
-        //         cmd,
-        //         renderContext,
-        //         rendererSettings);
+        case RendererType::Deferred:
+            deferredRenderer.execute(
+                cmd,
+                renderContext,
+                rendererSettings);
 
-        //     break;
-        // }
+            break;
+        }
         auto frameStat = cmd->getFrameStats();
         timer->end(cmd, "frame-time");
         cmd->present();

@@ -26,7 +26,7 @@ namespace nitro::rhi::vulkan
                 return imageView;
             }
         }
-
+        bool isCubeMap() { return m_isCubeMap; }
         VkImage image = VK_NULL_HANDLE;
         VkImageView imageView = VK_NULL_HANDLE;
         VmaAllocation allocation = VK_NULL_HANDLE;
@@ -36,6 +36,7 @@ namespace nitro::rhi::vulkan
         VkFormat format;
         uint32_t width;
         uint32_t height;
+        uint32_t mipmapLevels = 0;
 
     private:
         VulkanDevice *m_device;

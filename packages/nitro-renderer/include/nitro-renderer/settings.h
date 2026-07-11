@@ -19,6 +19,7 @@ namespace nitro::renderer
         DistributionGGX = 9,
         FresnelSchlick = 10,
         GeometrySmith = 11,
+        Ambient = 12,
     };
 
     enum class LightMode

@@ -51,10 +51,10 @@ namespace nitro::renderer
     class DeferredLightingPass
     {
     public:
-        DeferredLightingPass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, std::vector<rhi::RHITexture *> &cascades, GBuffer &gBuffer, rhi::RHITexture *cubeTexture, rhi::RHITexture *lightTexture, std::string shaderDir, bool isMetal);
+        DeferredLightingPass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, std::vector<rhi::RHITexture *> &cascades, GBuffer &gBuffer, rhi::RHITexture *cubeTexture, rhi::RHITexture *lightTexture, rhi::RHITexture *skybox, std::string shaderDir, bool isMetal);
         ~DeferredLightingPass();
         void execute(rhi::RHICommandBuffer *cmd, DeferredLightingFrameData frameData);
-        void recreate(uint32_t width, uint32_t height, GBuffer &gBuffer, rhi::RHITexture *cubeTexture, rhi::RHITexture *lightTexture);
+        void recreate(uint32_t width, uint32_t height, GBuffer &gBuffer, rhi::RHITexture *cubeTexture, rhi::RHITexture *lightTexture, rhi::RHITexture *skybox);
         rhi::RHITexture *getLightTexture() { return m_lightTexture; }
 
     private:

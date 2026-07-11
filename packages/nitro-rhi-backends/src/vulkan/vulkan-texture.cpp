@@ -59,7 +59,7 @@ namespace nitro::rhi::vulkan
         }
         if (hasTextureUsageFlag(usage, TextureDesc::Usage::ShaderRead))
         {
-            flags |= VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+            flags |= VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         }
         if (hasTextureUsageFlag(usage, TextureDesc::Usage::Storage))
         {
@@ -106,6 +106,7 @@ namespace nitro::rhi::vulkan
         format = convertToFormat(desc.format);
         width = desc.size.width;
         height = desc.size.height;
+        mipmapLevels = desc.mipmaps;
         m_isCubeMap = desc.type == rhi::TextureDesc::Type::Cube;
         VkImageCreateInfo imageInfo{};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -114,11 +115,12 @@ namespace nitro::rhi::vulkan
         imageInfo.format = format;
         imageInfo.imageType = convertVkImageType(desc.type);
         imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        imageInfo.mipLevels = 1;
+        imageInfo.mipLevels = 1 + desc.mipmaps;
         imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
         imageInfo.usage = convertToImageUsage(desc.usage);
+
         if (desc.type == TextureDesc::Type::Cube)
         {
             imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
@@ -192,7 +194,7 @@ namespace nitro::rhi::vulkan
         imageViewInfo.subresourceRange.baseMipLevel = 0;
         imageViewInfo.subresourceRange.layerCount = (desc.type == TextureDesc::Type::Cube) ? 6 : 1;
 
-        imageViewInfo.subresourceRange.levelCount = 1;
+        imageViewInfo.subresourceRange.levelCount = 1 + desc.mipmaps;
         imageViewInfo.viewType = convertVkImageViewType(desc.type);
 
         checkVkResult(vkCreateImageView(
@@ -224,9 +226,14 @@ namespace nitro::rhi::vulkan
         {
             VkSamplerCreateInfo samplerInfo{};
             samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-            samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-            samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-            samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+            samplerInfo.minLod = 0.0f;
+            samplerInfo.maxLod = float(desc.mipmaps);
+            samplerInfo.mipLodBias = 0.0f;
+
             samplerInfo.anisotropyEnable = VK_FALSE;
             samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
             samplerInfo.compareEnable = desc.sampler == TextureDesc::Sampler::Depth ? VK_TRUE : VK_FALSE;

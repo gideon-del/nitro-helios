@@ -16,6 +16,8 @@ namespace nitro::renderer
     {
         rhi::RHITexture *hdrTexture = loadHDRImage(m_device, "./assets/modern_evening_street.hdr");
         m_cubemapTexture = createCubeMap(m_device, hdrTexture, 512, shaderDir, isMetal);
+        m_irradianceTexture = generateIrradianceMap(m_device, m_cubemapTexture, 32, shaderDir, isMetal);
+        m_skyboxPass = std::make_shared<SkyboxPass>(m_device, m_cubemapTexture, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
         m_depthPrepass = std::make_shared<DepthPrepass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal, m_materialSystem);
         m_geometryPass = std::make_shared<GeometryPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), m_depthPrepass->getDepthTexture(), shaderDir, isMetal, m_materialSystem);
         m_csmPass = std::make_shared<CascadeShadowMapPass>(m_device, shaderDir, isMetal);
@@ -28,6 +30,7 @@ namespace nitro::renderer
             m_geometryPass->gBuffer,
             m_cubemapTexture,
             m_lightStencilPass->getLightingTexture(),
+            m_skyboxPass->getSkyboxTexture(),
             shaderDir,
             isMetal);
         m_toneMapPass = std::make_shared<ToneMapPass>(m_device, m_deferredLightingPass->getLightTexture(), m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
@@ -58,6 +61,12 @@ namespace nitro::renderer
         DepthPrePassCamera depthCamera;
         depthCamera.view = geometryCamera.view;
         depthCamera.proj = geometryCamera.proj;
+
+        SkyboxPassUBO skyboxUbo;
+        glm::mat4 viewNoTranslation = glm::mat4(glm::mat3(geometryCamera.view));
+        skyboxUbo.viewProj = glm::inverse(geometryCamera.proj * viewNoTranslation);
+        skyboxUbo.screenSize = {float(m_swapchain->getWidth()), float(m_swapchain->getHeight())};
+        m_skyboxPass->execute(cmd, skyboxUbo);
         m_depthPrepass->execute(cmd, *ctx.scene, depthCamera);
         m_geometryPass->execute(cmd, geometryCamera, *ctx.scene, settings.light);
         LightStencilCamera lightStencilCamera;
@@ -114,7 +123,8 @@ namespace nitro::renderer
         m_depthPrepass->resize(width, height);
         m_geometryPass->resize(width, height, m_depthPrepass->getDepthTexture());
         m_lightStencilPass->resize(width, height, m_geometryPass->gBuffer);
-        m_deferredLightingPass->recreate(width, height, m_geometryPass->gBuffer, m_cubemapTexture, m_lightStencilPass->getLightingTexture());
+        m_skyboxPass->resize(width, height, m_cubemapTexture);
+        m_deferredLightingPass->recreate(width, height, m_geometryPass->gBuffer, m_cubemapTexture, m_lightStencilPass->getLightingTexture(), m_skyboxPass->getSkyboxTexture());
         m_toneMapPass->resize(m_deferredLightingPass->getLightTexture(), width, height);
         m_mainScenePass->resize(m_toneMapPass->getToneMappedTexture());
     };

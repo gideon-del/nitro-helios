@@ -42,7 +42,7 @@ namespace nitro::rhi::metal
             convertToPixelFormat(desc.format),
             NS::UInteger(width),
             NS::UInteger(height),
-            false);
+            desc.mipmaps > 0);
         MTL::TextureUsage usage = MTL::TextureUsageUnknown;
 
         if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::RenderTarget) ||
@@ -61,6 +61,10 @@ namespace nitro::rhi::metal
         }
 
         textureDesc->setUsage(usage);
+        if (desc.mipmaps > 0)
+        {
+            textureDesc->setMipmapLevelCount(1 + desc.mipmaps);
+        }
 
         if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::DepthStencil) &&
             hasTextureUsageFlag(desc.usage, TextureDesc::Usage::ShaderRead))
