@@ -15,6 +15,11 @@ namespace nitro::rhi::metal
     {
         commandBuffer = m_device->commandQueue->commandBuffer();
     }
+
+    MetalCommandBuffer::MetalCommandBuffer(MetalDevice *device) : m_device(device)
+    {
+        commandBuffer = m_device->commandQueue->commandBuffer();
+    }
     void MetalCommandBuffer::beginRenderPass(const RHIRenderPassDesc &desc)
     {
         rpd = MTL::RenderPassDescriptor::alloc()->init();
@@ -55,7 +60,12 @@ namespace nitro::rhi::metal
             m_computeEncoder->release();
             m_computeEncoder = nullptr;
         }
-        encoder->endEncoding();
+        if (encoder)
+        {
+            encoder->endEncoding();
+            encoder->release();
+            encoder = nullptr;
+        }
     }
 
     void MetalCommandBuffer::setViewPort(const RHIViewport &viewport)
@@ -175,6 +185,11 @@ namespace nitro::rhi::metal
             encoder->setFragmentTexture(metalTex->texture, MetalDescriptorSet::s_getMetalTextureBinding(mainBinding, binding));
             encoder->setFragmentSamplerState(metalTex->samplerState, mainBinding);
         }
+        for (auto &[texture, binding] : metalSet->storageTextureBindings)
+        {
+
+            encoder->setFragmentTexture(texture, MetalDescriptorSet::s_getMetalTextureBinding(mainBinding, binding));
+        }
     }
     void MetalCommandBuffer::bindComputeDescriptorSet(RHIDescriptorSet *set, uint32_t mainBinding)
     {
@@ -193,6 +208,11 @@ namespace nitro::rhi::metal
         {
             MetalTexture *metalTex = reinterpret_cast<MetalTexture *>(texture);
             m_computeEncoder->setTexture(metalTex->texture, MetalDescriptorSet::s_getMetalTextureBinding(mainBinding, binding));
+            m_computeEncoder->setSamplerState(metalTex->samplerState, mainBinding);
+        }
+        for (auto &[texture, binding] : metalSet->storageTextureBindings)
+        {
+            m_computeEncoder->setTexture(texture, MetalDescriptorSet::s_getMetalTextureBinding(mainBinding, binding));
         }
     }
     void MetalCommandBuffer::drawIndexed(uint32_t indexCount)
@@ -258,6 +278,32 @@ namespace nitro::rhi::metal
         m_FrameStats.vertices += count;
     }
     void MetalCommandBuffer::bufferBarrier(RHIBuffer *buffer) {}
-    void MetalCommandBuffer::generateMipmaps(RHITexture *texture) {}
+    void MetalCommandBuffer::generateMipmaps(RHITexture *texture)
+    {
+        auto *metalTexture = static_cast<MetalTexture *>(texture);
+
+        if (m_computeEncoder)
+        {
+            m_computeEncoder->endEncoding();
+            m_computeEncoder = nullptr;
+        }
+        MTL::BlitCommandEncoder *blitCommandEncoder = commandBuffer->blitCommandEncoder();
+
+        blitCommandEncoder->generateMipmaps(metalTexture->texture);
+        blitCommandEncoder->endEncoding();
+    }
     void MetalCommandBuffer::textureBarrier(const TextureBarrier &barrier) {};
+    void MetalCommandBuffer::endEncoders()
+    {
+        if (m_computeEncoder)
+        {
+            m_computeEncoder->endEncoding();
+            m_computeEncoder = nullptr;
+        }
+        if (encoder)
+        {
+            encoder->endEncoding();
+            encoder = nullptr;
+        }
+    }
 } // namespace nitro::rhi::metal

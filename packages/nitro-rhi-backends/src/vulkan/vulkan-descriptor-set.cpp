@@ -56,13 +56,13 @@ namespace nitro::rhi::vulkan
 
         m_writes.push_back(std::move(descriptorWriteTexture));
     }
-    void VulkanDescriptorSet::writeStorageImage(RHITexture *texture, uint32_t binding, ImageLayout imageLayout, uint32_t face)
+    void VulkanDescriptorSet::writeStorageImage(RHITexture *texture, uint32_t binding, ImageLayout imageLayout, TextureSubresource subresource)
     {
         VulkanTexture *vulkanTexture = reinterpret_cast<VulkanTexture *>(texture);
 
         VkDescriptorImageInfo imageInfo{};
         imageInfo.imageLayout = toVkImageLayout(imageLayout);
-        imageInfo.imageView = vulkanTexture->getFace(face);
+        imageInfo.imageView = vulkanTexture->getFace(subresource.baseLayer, subresource.baseMip);
         imageInfo.sampler = vulkanTexture->sampler;
 
         m_imageInfos.push_back(std::move(imageInfo));

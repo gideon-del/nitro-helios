@@ -7,4 +7,9 @@ namespace nitro::renderer
     rhi::RHITexture *createCubeMap(std::shared_ptr<rhi::RHIDevice> device, rhi::RHITexture *sourceTexture, uint32_t size, std::string shaderDir, bool isMetal);
     rhi::RHITexture *generateIrradianceMap(
         std::shared_ptr<rhi::RHIDevice> device, rhi::RHITexture *environment, uint32_t size, std::string shaderDir, bool isMetal);
+    rhi::RHITexture *generatePrefliteredMap(
+        std::shared_ptr<rhi::RHIDevice> device, rhi::RHITexture *environment, uint32_t size, std::string shaderDir, bool isMetal);
+    rhi::RHITexture *generateBrdfLUT(
+        std::shared_ptr<rhi::RHIDevice> device, uint32_t size, std::string shaderDir, bool isMetal);
+
 } // namespace nitro::renderer

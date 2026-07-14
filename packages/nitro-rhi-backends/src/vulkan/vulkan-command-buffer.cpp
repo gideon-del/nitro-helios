@@ -468,7 +468,7 @@ namespace nitro::rhi::vulkan
 
         vkCmdPipelineBarrier(
             cmd,
-            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
             VK_PIPELINE_STAGE_TRANSFER_BIT,
             0,
             0,
@@ -480,6 +480,9 @@ namespace nitro::rhi::vulkan
 
         while (i <= vulkanTexture->mipmapLevels)
         {
+            rhi::TextureSubresource finalSubresource;
+            finalSubresource.layerCount = 6;
+
             VkImageSubresourceRange mipSubresourceRange;
             mipSubresourceRange.layerCount = totalLayer;
             mipSubresourceRange.baseMipLevel = i;
@@ -519,23 +522,32 @@ namespace nitro::rhi::vulkan
             imageBlit.dstSubresource.layerCount = totalLayer;
             imageBlit.dstSubresource.mipLevel = i;
 
-            imageBlit.srcOffsets[1].x = int32_t(texWidth >> (i - 1));
-            imageBlit.srcOffsets[1].y = int32_t(texHeight >> (i - 1));
+            imageBlit.srcOffsets[1].x = std::max(int32_t(texWidth >> (i - 1)), 1);
+            imageBlit.srcOffsets[1].y = std::max(int32_t(texHeight >> (i - 1)), 1);
             imageBlit.srcOffsets[1].z = 1;
 
-            imageBlit.dstOffsets[1].x = int32_t(texWidth >> i);
-            imageBlit.dstOffsets[1].y = int32_t(texHeight >> i);
+            imageBlit.dstOffsets[1].x = std::max(int32_t(texWidth >> i), 1);
+            imageBlit.dstOffsets[1].y = std::max(int32_t(texHeight >> i), 1);
             imageBlit.dstOffsets[1].z = 1;
 
-            vkCmdBlitImage(
-                cmd,
-                vulkanTexture->image,
-                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                vulkanTexture->image,
-                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                1,
-                &imageBlit,
-                VK_FILTER_LINEAR);
+            for (uint32_t face = 0; face < totalLayer; ++face)
+            {
+                imageBlit.srcSubresource.baseArrayLayer = face;
+                imageBlit.srcSubresource.layerCount = 1;
+
+                imageBlit.dstSubresource.baseArrayLayer = face;
+                imageBlit.dstSubresource.layerCount = 1;
+
+                vkCmdBlitImage(
+                    cmd,
+                    vulkanTexture->image,
+                    VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                    vulkanTexture->image,
+                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    1,
+                    &imageBlit,
+                    VK_FILTER_LINEAR);
+            }
 
             VkImageMemoryBarrier secondImageBarrier{};
             secondImageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -702,13 +714,11 @@ namespace nitro::rhi::vulkan
     {
         VulkanTexture *vulkanTexture = reinterpret_cast<VulkanTexture *>(barrier.texture);
 
-        int totalLayer = vulkanTexture->isCubeMap() ? 6 : 1;
-
         VkImageSubresourceRange subresourceRange;
-        subresourceRange.layerCount = totalLayer;
-        subresourceRange.baseMipLevel = 0;
-        subresourceRange.baseArrayLayer = 0;
-        subresourceRange.levelCount = 1 + vulkanTexture->mipmapLevels;
+        subresourceRange.layerCount = barrier.subresource.layerCount;
+        subresourceRange.baseMipLevel = barrier.subresource.baseMip;
+        subresourceRange.baseArrayLayer = barrier.subresource.baseLayer;
+        subresourceRange.levelCount = barrier.subresource.mipCount;
         subresourceRange.aspectMask = vulkanTexture->imageAspect;
 
         VkImageMemoryBarrier2 imageBarrier{};

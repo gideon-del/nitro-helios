@@ -10,22 +10,6 @@ namespace nitro::rhi
         uint32_t triangles = 0;
         uint32_t vertices = 0;
     };
-    enum class ResourceState
-    {
-        Undefined,
-
-        CopySrc,
-        CopyDst,
-
-        ShaderRead,
-        ShaderWrite,
-
-        RenderTarget,
-        DepthWrite,
-        DepthRead,
-
-        Present,
-    };
 
     class RHIBuffer;
     class RHITexture;
@@ -33,7 +17,7 @@ namespace nitro::rhi
     class RHIComputePipeline;
     class RHIDescriptorSet;
     class RHIRenderPass;
-
+    struct TextureBarrier;
     struct RHIRenderPassDesc
     {
         float clearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
@@ -62,12 +46,6 @@ namespace nitro::rhi
         uint32_t height;
     };
 
-    struct TextureBarrier
-    {
-        RHITexture *texture;
-        ResourceState before;
-        ResourceState after;
-    };
     class RHICommandBuffer
     {
     public:

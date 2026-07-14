@@ -33,6 +33,8 @@ layout(set=1, binding=4) uniform sampler2D gDepth;
 layout(set=1, binding=5) uniform sampler2D lightShading;
 layout(set=1, binding=6) uniform samplerCube irradianceTex;
 layout(set=1, binding=7) uniform sampler2D environment;
+layout(set=1, binding=8) uniform samplerCube prefilterMap;
+layout(set=1, binding=9) uniform sampler2D brdfLUT;
 
 layout(set=2, binding=0) uniform sampler2DShadow shadowMap0;
 layout(set=2, binding=1) uniform sampler2DShadow shadowMap1;
@@ -227,9 +229,6 @@ float NdotL = max(0.0,dot(N, L));
 return albedo / PI * NdotL;
 }
 
-vec3 cookTorranceStub(vec3 albedo, vec3 N, vec3 L) {
-    return lambertDiffuse(albedo, N, L) + vec3(0.05);
-}
 
 float distributionGGX(vec3 N, vec3 H, float roughness) {
 float a = roughness * roughness;
@@ -291,6 +290,18 @@ vec3 diffuseIBL(vec3 N, vec3 albedo, float metallic, samplerCube irradianceMap) 
     return kD * irradiance;
 }
 
+vec3 specularIBL(vec3 N, vec3 V, float roughness, vec3 F0,samplerCube prefilterEnv, sampler2D brdfLUTTex) {
+vec3 R = reflect(-V, N);
+float maxMip = 4.0; 
+ vec3 prefilteredColor = textureLod(prefilterEnv, R, roughness * maxMip).rgb;
+
+ float NdotV = max(dot(N, V), 0.0);
+  vec2 envBRDF = texture(brdfLUT, vec2(NdotV, roughness)).rg;
+
+ return prefilteredColor * (F0 * envBRDF.x + envBRDF.y); 
+
+}
+
 
 void main() {
   float depth   = texture(gDepth, fragUV).x;
@@ -308,7 +319,7 @@ void main() {
 
   float shadow= cascadeResult.shadow;
   vec3 cascadeColor = cascadeResult.cascadeColor;
-
+float ao = material.r;
 
   vec3 finalColor; 
   vec3 PLColor = texture(lightShading, fragUV).rgb;
@@ -324,7 +335,8 @@ vec3 F0 = mix(dielectricF0, albedo, metallic);
 float D = distributionGGX(N, H,roughness);
 vec3 F = fresnelSchlick(F0, max(dot(N,V),0.0));
 float G = geometrySmith(N, L, V,roughness);
-vec3 ambient = diffuseIBL(N, albedo, metallic, irradianceTex);
+vec3 ambient = diffuseIBL(N, albedo, metallic, irradianceTex) * ao;
+vec3 specularIBLColor = specularIBL(N, V, roughness, F0, prefilterMap, brdfLUT) * ao;
 switch(int(frameUbo.lightMode)) {
   case 0:
     directionalLighting = blingPhongShading(
@@ -337,8 +349,10 @@ switch(int(frameUbo.lightMode)) {
     directionalLighting = lambertDiffuse(albedo, N,L);
     break;
   default:
-   vec3 diffuse = metallicDiffuse(F, metallic) * lambertDiffuse(albedo,N,L) + ambient;
+   vec3 diffuse = metallicDiffuse(F, metallic) * lambertDiffuse(albedo,N,L);
+
     directionalLighting =(cookTorranceSpecular(N,L,V,H,material.b,F0) + diffuse);
+    directionalLighting += ambient + specularIBLColor;
     break;
 }
 switch(int(frameUbo.debugMode)) {
@@ -377,6 +391,9 @@ switch(int(frameUbo.debugMode)) {
     break;
   case 12:
     finalColor = ambient;
+    break;
+  case 13:
+    finalColor = specularIBLColor;
     break;
   default:
     finalColor = directionalLighting  + (PLColor * albedo);

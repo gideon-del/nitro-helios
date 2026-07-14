@@ -63,6 +63,7 @@ namespace nitro::rhi
         return (static_cast<uint32_t>(value) &
                 static_cast<uint32_t>(flag)) != 0;
     }
+
     class RHITexture
     {
     public:
@@ -74,6 +75,40 @@ namespace nitro::rhi
         return static_cast<TextureDesc::Usage>(
             static_cast<uint32_t>(a) |
             static_cast<uint32_t>(b));
+    };
+
+    enum class ResourceState
+    {
+        Undefined,
+
+        CopySrc,
+        CopyDst,
+
+        ShaderRead,
+        ShaderWrite,
+
+        RenderTarget,
+        DepthWrite,
+        DepthRead,
+
+        Present,
+    };
+    struct TextureSubresource
+    {
+        uint32_t baseMip = 0;
+        uint32_t mipCount = 1;
+
+        uint32_t baseLayer = 0;
+        uint32_t layerCount = 1;
+    };
+
+    struct TextureBarrier
+    {
+        RHITexture *texture;
+        ResourceState before;
+        ResourceState after;
+
+        TextureSubresource subresource;
     };
 
 }

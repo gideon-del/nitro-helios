@@ -24,12 +24,12 @@ namespace nitro::rhi::metal
 
         m_tempDescriptorSet.textureBindings[mtTexture] = binding;
     }
-    void MetalDescriptorSet::writeStorageImage(RHITexture *texture, uint32_t binding, ImageLayout imageLayout, uint32_t face)
+    void MetalDescriptorSet::writeStorageImage(RHITexture *texture, uint32_t binding, ImageLayout imageLayout, TextureSubresource subresource)
     {
 
         MetalTexture *mtTexture = reinterpret_cast<MetalTexture *>(texture);
 
-        m_tempDescriptorSet.textureBindings[mtTexture] = binding;
+        m_tempDescriptorSet.storageTextureBindings[mtTexture->getFace(subresource.baseLayer, subresource.baseMip)] = binding;
     }
 
     void MetalDescriptorSet::commit()
@@ -39,9 +39,11 @@ namespace nitro::rhi::metal
 
         textureBindings = m_tempDescriptorSet.textureBindings;
         bufferBindings = m_tempDescriptorSet.bufferBindings;
+        storageTextureBindings = m_tempDescriptorSet.storageTextureBindings;
 
         m_tempDescriptorSet.textureBindings.clear();
         m_tempDescriptorSet.bufferBindings.clear();
+        m_tempDescriptorSet.storageTextureBindings.clear();
     };
 
 } // namespace nitro::rhi::metal

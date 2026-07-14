@@ -14,6 +14,7 @@ namespace nitro::renderer
         float metallic = 0.0;
         float roughness = 0.5;
         uint useTextures = 0;
+        float pad;
     };
     class RenderObject
     {

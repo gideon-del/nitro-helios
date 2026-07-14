@@ -43,6 +43,8 @@ namespace nitro::rhi::metal
             NS::UInteger(width),
             NS::UInteger(height),
             desc.mipmaps > 0);
+        mipLevels = desc.mipmaps;
+        totalLayers = m_isCubeMap ? 6 : 1;
         MTL::TextureUsage usage = MTL::TextureUsageUnknown;
 
         if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::RenderTarget) ||
@@ -101,19 +103,22 @@ namespace nitro::rhi::metal
             }
             texture->replaceRegion(region, NS::UInteger(0), desc.initialData, NS::UInteger(width * bytePerPixel));
         }
-        if (m_isCubeMap)
+        if (!hasTextureUsageFlag(desc.usage, TextureDesc::Usage::DepthStencil))
         {
-            for (int face = 0; face < 6; face++)
+            for (int mip = 0; mip <= mipLevels; mip++)
             {
-                MTL::TextureViewDescriptor *textureViewDescriptor = MTL::TextureViewDescriptor::alloc()->init();
-                textureViewDescriptor->setPixelFormat(convertToPixelFormat(desc.format));
-                textureViewDescriptor->setTextureType(MTL::TextureType2D);
-                NS::Range levelRange = NS::Range::Make(0, 1);
-                NS::Range sliceRange = NS::Range::Make(face, 1);
-                textureViewDescriptor->setLevelRange(levelRange);
-                textureViewDescriptor->setSliceRange(sliceRange);
-                m_faces[face] = texture->newTextureView(textureViewDescriptor);
-                textureViewDescriptor->release();
+                for (int face = 0; face < totalLayers; face++)
+                {
+                    MTL::TextureViewDescriptor *textureViewDescriptor = MTL::TextureViewDescriptor::alloc()->init();
+                    textureViewDescriptor->setPixelFormat(convertToPixelFormat(desc.format));
+                    textureViewDescriptor->setTextureType(MTL::TextureType2D);
+                    NS::Range levelRange = NS::Range::Make(mip, 1);
+                    NS::Range sliceRange = NS::Range::Make(face, 1);
+                    textureViewDescriptor->setLevelRange(levelRange);
+                    textureViewDescriptor->setSliceRange(sliceRange);
+                    m_faceMipViews.push_back(texture->newTextureView(textureViewDescriptor));
+                    textureViewDescriptor->release();
+                }
             }
         }
         if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::ShaderRead))
@@ -121,9 +126,9 @@ namespace nitro::rhi::metal
 
             MTL::SamplerDescriptor *samplerDesc = MTL::SamplerDescriptor::alloc()->init();
             samplerDesc->setMagFilter(MTL::SamplerMinMagFilterLinear);
-            samplerDesc->setRAddressMode(MTL::SamplerAddressModeClampToBorderColor);
-            samplerDesc->setSAddressMode(MTL::SamplerAddressModeClampToBorderColor);
-            samplerDesc->setTAddressMode(MTL::SamplerAddressModeClampToBorderColor);
+            samplerDesc->setRAddressMode(MTL::SamplerAddressModeRepeat);
+            samplerDesc->setSAddressMode(MTL::SamplerAddressModeRepeat);
+            samplerDesc->setTAddressMode(MTL::SamplerAddressModeRepeat);
             samplerDesc->setBorderColor(MTL::SamplerBorderColorOpaqueWhite);
             samplerDesc->setMinFilter(MTL::SamplerMinMagFilterLinear);
             if (desc.sampler == TextureDesc::Sampler::Depth && hasTextureUsageFlag(desc.usage, TextureDesc::Usage::DepthStencil))
@@ -141,7 +146,7 @@ namespace nitro::rhi::metal
     MetalTexture::~MetalTexture()
     {
 
-        for (auto &face : m_faces)
+        for (auto &face : m_faceMipViews)
         {
             if (face)
             {

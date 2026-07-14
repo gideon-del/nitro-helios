@@ -127,18 +127,18 @@ namespace nitro::rhi::metal
         {
             throw std::runtime_error("Metal Swapchain not found");
         }
+        if (m_swapchain->currentDrawable)
+        {
+            m_swapchain->currentDrawable->release();
+        }
         m_swapchain->currentDrawable = m_swapchain->layer->nextDrawable();
         m_currentCommandBuffer = new MetalCommandBuffer(this, m_swapchain);
         return m_currentCommandBuffer;
     }
     RHICommandBuffer *MetalDevice::createCommandBuffer()
     {
-        if (!m_swapchain)
-        {
-            throw std::runtime_error("Metal Swapchain not found");
-        }
-        m_swapchain->currentDrawable = m_swapchain->layer->nextDrawable();
-        m_currentCommandBuffer = new MetalCommandBuffer(this, m_swapchain);
+
+        m_currentCommandBuffer = new MetalCommandBuffer(this);
         return m_currentCommandBuffer;
     }
     void MetalDevice::endFrame(RHICommandBuffer *cmd)
@@ -151,8 +151,9 @@ namespace nitro::rhi::metal
     void MetalDevice::endCommandBuffer(RHICommandBuffer *cmd)
     {
         MetalCommandBuffer *metalCmd = reinterpret_cast<MetalCommandBuffer *>(cmd);
-
+        metalCmd->endEncoders();
         metalCmd->commandBuffer->commit();
+        metalCmd->commandBuffer->waitUntilCompleted();
         delete cmd;
     }
     void MetalDevice::waitIdle() {};

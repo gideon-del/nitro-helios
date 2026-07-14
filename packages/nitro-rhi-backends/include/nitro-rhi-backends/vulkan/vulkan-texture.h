@@ -15,16 +15,9 @@ namespace nitro::rhi::vulkan
         VulkanTexture(VulkanDevice *device, const TextureDesc &desc);
         VulkanTexture(VulkanDevice *device, VkImage image, uint32_t width, uint32_t height, VkFormat format);
         ~VulkanTexture() override;
-        VkImageView getFace(int face)
+        VkImageView getFace(int face, int mip = 0)
         {
-            if (m_isCubeMap)
-            {
-                return m_faceViews[face];
-            }
-            else
-            {
-                return imageView;
-            }
+            return m_faceMipViews[(mip * totalLayers) + face];
         }
         bool isCubeMap() { return m_isCubeMap; }
         VkImage image = VK_NULL_HANDLE;
@@ -37,10 +30,11 @@ namespace nitro::rhi::vulkan
         uint32_t width;
         uint32_t height;
         uint32_t mipmapLevels = 0;
+        uint32_t totalLayers = 1;
 
     private:
         VulkanDevice *m_device;
-        std::vector<VkImageView> m_faceViews{6, VK_NULL_HANDLE};
+        std::vector<VkImageView> m_faceMipViews;
         bool m_isCubeMap;
     };
 

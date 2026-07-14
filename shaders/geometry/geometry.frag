@@ -43,19 +43,18 @@ void main() {
     if(pc.useTextures == 1) {
     vec3 metallicRoughness = texture(metallicRoughnessTexture, fragUV).rgb;
     vec4 color = texture(baseColorTexture, fragUV);
-   
-
     vec3 tangentNormal = texture(normalTexture, fragUV).rgb * 2.0 - 1.0;
     tangentNormal = normalize(tangentNormal);
     vec3 worldNormal = normalize(TBN * tangentNormal);
     gAlbedo =color;
     gNormal = vec4(encodeNormal(worldNormal), 0.0,1.0);
-    gMaterial = vec4(0.0,metallicRoughness.b,metallicRoughness.g,1.0);
+    float ao = texture(aoTexture, fragUV).r;
+    gMaterial = vec4(ao,metallicRoughness.b,metallicRoughness.g,1.0);
     gEmissive = vec4(1.0,1.0,1.0,1.0);
     }else {
     gAlbedo = pc.baseColor;
     gNormal = vec4(encodeNormal(fragNormal), 0.0,1.0);
-    gMaterial = vec4(0.0,pc.metallic,pc.roughness,1.0);
+    gMaterial = vec4(1.0,pc.metallic,pc.roughness,1.0);
     gEmissive = vec4(1.0,1.0,1.0,1.0);
     }
   

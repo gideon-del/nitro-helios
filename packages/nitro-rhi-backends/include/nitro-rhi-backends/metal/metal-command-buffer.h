@@ -13,6 +13,7 @@ namespace nitro::rhi::metal
     {
     public:
         MetalCommandBuffer(MetalDevice *device, MetalSwapchain *swapchain);
+        MetalCommandBuffer(MetalDevice *device);
         ~MetalCommandBuffer() override;
 
         void beginRenderPass(const RHIRenderPassDesc &desc) override;
@@ -41,6 +42,7 @@ namespace nitro::rhi::metal
         void updateVertexCount(uint32_t count) override;
         void generateMipmaps(RHITexture *texture) override;
         void textureBarrier(const TextureBarrier &barrier) override;
+        void endEncoders();
         MTL::CommandBuffer *commandBuffer = nullptr;
         MTL::RenderCommandEncoder *encoder = nullptr;
         MetalSwapchain *swapchain;

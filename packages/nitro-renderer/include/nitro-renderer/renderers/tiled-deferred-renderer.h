@@ -27,6 +27,8 @@ namespace nitro::renderer
         std::shared_ptr<SkyboxPass> m_skyboxPass;
         rhi::RHITexture *m_cubemapTexture;
         rhi::RHITexture *m_irradianceTexture;
+        rhi::RHITexture *m_prefilterMap;
+        rhi::RHITexture *m_brdfLUT;
         bool m_isMetal;
         ShadowPanel m_shadowPanel;
         LightPanel m_lightPanel;

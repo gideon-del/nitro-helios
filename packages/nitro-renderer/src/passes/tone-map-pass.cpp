@@ -28,7 +28,7 @@ namespace nitro::renderer
         pipelineDesc.hasStencil = false;
         pipelineDesc.hasPushConstant = true;
         pipelineDesc.pushConstantSize = sizeof(ToneMapPassUBO);
-
+        pipelineDesc.cullMode = rhi::PipelineDesc::CullMode::None;
         pipelineDesc.layouts = {m_descriptorLayout};
         pipelineDesc.colorAttachments = {rhi::TextureDesc::ImageFormat::ColorSRGB8};
         if (isMetal)

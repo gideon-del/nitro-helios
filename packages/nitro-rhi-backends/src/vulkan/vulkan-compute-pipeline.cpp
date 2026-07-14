@@ -28,6 +28,10 @@ namespace nitro::rhi::vulkan
             layoutInfo.pPushConstantRanges = &pushConstantRange;
             layoutInfo.pushConstantRangeCount = 1;
         }
+        else
+        {
+            layoutInfo.pushConstantRangeCount = 0;
+        }
         std::vector<VkDescriptorSetLayout> descriptorSetLayouts;
 
         for (auto layout : desc.layouts)

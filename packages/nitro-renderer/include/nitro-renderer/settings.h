@@ -20,6 +20,7 @@ namespace nitro::renderer
         FresnelSchlick = 10,
         GeometrySmith = 11,
         Ambient = 12,
+        SpecularIBL = 13,
     };
 
     enum class LightMode

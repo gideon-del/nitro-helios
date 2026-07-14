@@ -176,7 +176,7 @@ int main()
 {
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    GLFWwindow *window = glfwCreateWindow(800, 600, "RHI Triangle", nullptr, nullptr);
+    GLFWwindow *window = glfwCreateWindow(800, 600, "PBR/IBL", nullptr, nullptr);
 
     bool isMetal = false;
 #ifdef USE_METAL
@@ -239,7 +239,7 @@ int main()
     TiledDeferredRenderer tileDeferredRenderer = TiledDeferredRenderer(device, swapchain, std::string(SHADER_DIR), isMetal, materialSystem);
     helmetScene.objects = Scene::loadGltfScene("./assets/DamagedHelmet/DamagedHelmet.gltf", device, materialSystem);
     renderContext.scene = &helmetScene;
-    IRenderer *currentRenderer = &deferredRenderer;
+    // IRenderer *currentRenderer = &deferredRenderer;
     int cachedWidth, cachedHeight;
     glfwGetFramebufferSize(window, &cachedWidth, &cachedHeight);
     while (!glfwWindowShouldClose(window))
@@ -313,6 +313,7 @@ int main()
 
             break;
         }
+
         auto frameStat = cmd->getFrameStats();
         timer->end(cmd, "frame-time");
         cmd->present();

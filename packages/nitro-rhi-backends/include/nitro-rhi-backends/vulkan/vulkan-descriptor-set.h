@@ -13,7 +13,7 @@ namespace nitro::rhi::vulkan
         ~VulkanDescriptorSet() override;
         void writeBuffer(RHIBuffer *buffer, uint32_t binding) override;
         void writeTexture(RHITexture *texture, uint32_t binding, ImageLayout imageLayout) override;
-        void writeStorageImage(RHITexture *texture, uint32_t binding, ImageLayout imageLayout, uint32_t face = 0) override;
+        void writeStorageImage(RHITexture *texture, uint32_t binding, ImageLayout imageLayout, TextureSubresource subresource) override;
         void commit() override;
 
         VkDescriptorSet descriptorSet;

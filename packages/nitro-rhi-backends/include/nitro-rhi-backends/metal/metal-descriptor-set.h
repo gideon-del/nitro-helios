@@ -1,6 +1,7 @@
 #pragma once
 #include <unordered_map>
 #include <nitro-rhi/rhi-descriptor-set.h>
+#include <Metal/Metal.hpp>
 
 namespace nitro::rhi::metal
 {
@@ -14,6 +15,7 @@ namespace nitro::rhi::metal
     {
         std::unordered_map<MetalTexture *, uint32_t> textureBindings;
         std::unordered_map<MetalBuffer *, uint32_t> bufferBindings;
+        std::unordered_map<MTL::Texture *, uint32_t> storageTextureBindings;
     };
     class MetalDescriptorSet : public RHIDescriptorSet
     {
@@ -23,7 +25,7 @@ namespace nitro::rhi::metal
 
         void writeBuffer(RHIBuffer *buffer, uint32_t binding) override;
         void writeTexture(RHITexture *texture, uint32_t binding, ImageLayout imageLayout) override;
-        void writeStorageImage(RHITexture *texture, uint32_t binding, ImageLayout imageLayout, uint32_t face = 0) override;
+        void writeStorageImage(RHITexture *texture, uint32_t binding, ImageLayout imageLayout, TextureSubresource subresource) override;
         void commit() override;
 
         static constexpr uint32_t c_TEXTURES_PER_SET = 16;
@@ -44,6 +46,7 @@ namespace nitro::rhi::metal
         }
         std::unordered_map<MetalTexture *, uint32_t> textureBindings;
         std::unordered_map<MetalBuffer *, uint32_t> bufferBindings;
+        std::unordered_map<MTL::Texture *, uint32_t> storageTextureBindings;
 
         MetalDescriptorLayout *descriptorLayout;
 

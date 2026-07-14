@@ -17,6 +17,8 @@ namespace nitro::renderer
         rhi::RHITexture *hdrTexture = loadHDRImage(m_device, "./assets/modern_evening_street.hdr");
         m_cubemapTexture = createCubeMap(m_device, hdrTexture, 512, shaderDir, isMetal);
         m_irradianceTexture = generateIrradianceMap(m_device, m_cubemapTexture, 32, shaderDir, isMetal);
+        m_prefilterMap = generatePrefliteredMap(m_device, m_cubemapTexture, 512, shaderDir, isMetal);
+        m_brdfLUT = generateBrdfLUT(m_device, 512, shaderDir, isMetal);
         m_skyboxPass = std::make_shared<SkyboxPass>(m_device, m_cubemapTexture, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
         m_depthPrepass = std::make_shared<DepthPrepass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal, m_materialSystem);
         m_geometryPass = std::make_shared<GeometryPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), m_depthPrepass->getDepthTexture(), shaderDir, isMetal, m_materialSystem);
@@ -31,6 +33,8 @@ namespace nitro::renderer
             m_cubemapTexture,
             m_lightStencilPass->getLightingTexture(),
             m_skyboxPass->getSkyboxTexture(),
+            m_brdfLUT,
+            m_prefilterMap,
             shaderDir,
             isMetal);
         m_toneMapPass = std::make_shared<ToneMapPass>(m_device, m_deferredLightingPass->getLightTexture(), m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
@@ -124,7 +128,8 @@ namespace nitro::renderer
         m_geometryPass->resize(width, height, m_depthPrepass->getDepthTexture());
         m_lightStencilPass->resize(width, height, m_geometryPass->gBuffer);
         m_skyboxPass->resize(width, height, m_cubemapTexture);
-        m_deferredLightingPass->recreate(width, height, m_geometryPass->gBuffer, m_cubemapTexture, m_lightStencilPass->getLightingTexture(), m_skyboxPass->getSkyboxTexture());
+        m_deferredLightingPass->recreate(width, height, m_geometryPass->gBuffer, m_cubemapTexture, m_lightStencilPass->getLightingTexture(), m_skyboxPass->getSkyboxTexture(), m_brdfLUT,
+                                         m_prefilterMap);
         m_toneMapPass->resize(m_deferredLightingPass->getLightTexture(), width, height);
         m_mainScenePass->resize(m_toneMapPass->getToneMappedTexture());
     };

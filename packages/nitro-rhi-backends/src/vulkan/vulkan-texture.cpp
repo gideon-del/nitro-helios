@@ -107,10 +107,13 @@ namespace nitro::rhi::vulkan
         width = desc.size.width;
         height = desc.size.height;
         mipmapLevels = desc.mipmaps;
+        totalLayers = (desc.type == TextureDesc::Type::Cube) ? 6 : 1;
+
         m_isCubeMap = desc.type == rhi::TextureDesc::Type::Cube;
+
         VkImageCreateInfo imageInfo{};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-        imageInfo.arrayLayers = (desc.type == TextureDesc::Type::Cube) ? 6 : 1;
+        imageInfo.arrayLayers = totalLayers;
         imageInfo.extent = {desc.size.width, desc.size.height, 1};
         imageInfo.format = format;
         imageInfo.imageType = convertVkImageType(desc.type);
@@ -192,7 +195,7 @@ namespace nitro::rhi::vulkan
 
         imageViewInfo.subresourceRange.baseArrayLayer = 0;
         imageViewInfo.subresourceRange.baseMipLevel = 0;
-        imageViewInfo.subresourceRange.layerCount = (desc.type == TextureDesc::Type::Cube) ? 6 : 1;
+        imageViewInfo.subresourceRange.layerCount = totalLayers;
 
         imageViewInfo.subresourceRange.levelCount = 1 + desc.mipmaps;
         imageViewInfo.viewType = convertVkImageViewType(desc.type);
@@ -204,9 +207,9 @@ namespace nitro::rhi::vulkan
                           &imageView),
                       "Unable to create a image view");
 
-        if (desc.type == rhi::TextureDesc::Type::Cube)
+        for (int mip = 0; mip <= mipmapLevels; mip++)
         {
-            for (int face = 0; face < 6; face++)
+            for (int face = 0; face < totalLayers; face++)
             {
                 VkImageViewCreateInfo faceViewInfo{};
                 faceViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -214,21 +217,23 @@ namespace nitro::rhi::vulkan
                 faceViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
                 faceViewInfo.format = format;
                 faceViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-                faceViewInfo.subresourceRange.baseMipLevel = 0;
+                faceViewInfo.subresourceRange.baseMipLevel = mip;
                 faceViewInfo.subresourceRange.levelCount = 1;
                 faceViewInfo.subresourceRange.baseArrayLayer = face;
                 faceViewInfo.subresourceRange.layerCount = 1;
+                VkImageView faceImageView;
+                checkVkResult(vkCreateImageView(m_device->device, &faceViewInfo, nullptr, &faceImageView), "Failed to create cube face");
 
-                checkVkResult(vkCreateImageView(m_device->device, &faceViewInfo, nullptr, &m_faceViews[face]), "Failed to create cube face");
+                m_faceMipViews.push_back(faceImageView);
             }
         }
         if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::ShaderRead))
         {
             VkSamplerCreateInfo samplerInfo{};
             samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-            samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-            samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-            samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+            samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+            samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
             samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
             samplerInfo.minLod = 0.0f;
             samplerInfo.maxLod = float(desc.mipmaps);
@@ -278,7 +283,7 @@ namespace nitro::rhi::vulkan
     }
     VulkanTexture::~VulkanTexture()
     {
-        for (auto &faceView : m_faceViews)
+        for (auto &faceView : m_faceMipViews)
         {
             if (faceView != VK_NULL_HANDLE)
             {

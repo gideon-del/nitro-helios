@@ -33,6 +33,8 @@ namespace nitro::renderer
         StatPanel m_statsPanel;
         rhi::RHITexture *m_cubemapTexture;
         rhi::RHITexture *m_irradianceTexture;
+        rhi::RHITexture *m_prefilterMap;
+        rhi::RHITexture *m_brdfLUT;
 
         std::shared_ptr<MaterialSystem> m_materialSystem;
     };

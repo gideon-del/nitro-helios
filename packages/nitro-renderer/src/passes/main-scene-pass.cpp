@@ -16,6 +16,7 @@ namespace nitro::renderer
         std::string shaderPath = shaderDir + "/main-scene-pass/main-scene-pass";
         rhi::PipelineDesc pipelineDesc;
         pipelineDesc.hasPushConstant = false;
+        pipelineDesc.cullMode = rhi::PipelineDesc::CullMode::None;
         pipelineDesc.layouts = {m_descriptorLayout};
         if (isMetal)
         {

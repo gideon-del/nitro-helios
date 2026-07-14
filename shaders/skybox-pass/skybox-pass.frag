@@ -11,7 +11,6 @@ layout(set=0, binding=2) uniform Camera {
 void main() {
     vec2 uv = gl_FragCoord.xy / camera.screenSize;
     vec2 ndc = uv * 2.0 - 1.0;
-ndc.y = -ndc.y;
     vec4 fragDir = camera.invViewProj * vec4(ndc, 1.0,1.0);
     vec3 finalDir = fragDir.xyz / fragDir.w;
     vec3 finalColor = texture(skyboxTexture, normalize(finalDir)).rgb;

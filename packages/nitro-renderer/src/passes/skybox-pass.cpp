@@ -24,6 +24,7 @@ namespace nitro::renderer
         pipelineDesc.colorAttachments = {rhi::TextureDesc::ImageFormat::ColorRGBA16};
         pipelineDesc.layouts = {m_descriptorLayout};
         pipelineDesc.hasPushConstant = false;
+        pipelineDesc.cullMode = rhi::PipelineDesc::CullMode::None;
         std::string shaderPath = shaderDir + "/skybox-pass/skybox-pass";
 
         if (isMetal)

@@ -16,21 +16,17 @@ namespace nitro::rhi::metal
         MTL::SamplerState *samplerState = nullptr;
         uint32_t width;
         uint32_t height;
-        MTL::Texture *getFace(int face)
+        uint32_t mipLevels;
+        uint32_t totalLayers;
+        MTL::Texture *getFace(int face, int mip = 0)
         {
-            if (m_isCubeMap)
-            {
-                return m_faces[face];
-            }
-            else
-            {
-                return texture;
-            }
+
+            return m_faceMipViews[(mip * totalLayers) + face];
         }
 
     private:
         MetalDevice *m_device;
-        std::vector<MTL::Texture *> m_faces{6, nullptr};
+        std::vector<MTL::Texture *> m_faceMipViews;
         bool m_isCubeMap;
     };
 } // namespace nitro::rhi::metal

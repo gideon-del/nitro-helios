@@ -25,7 +25,9 @@ struct FrameUniformBuffer {
     float shadowBias;
     float shadowNormalBias;
     float showCascadeColors;    
-    float debugMode;    
+    float debugMode; 
+    float lightMode; 
+    float roughness;   
 };
 
 vertex VertexOut vs(
@@ -123,6 +125,7 @@ float blendCascade(
   }
 }
 
+constant float PI = 3.14159265358979323846;
 
 float3 blinnPhongShade(float3 worldPos, float3 normal, float shadow, FrameUniformBuffer fub) {
 
@@ -192,6 +195,90 @@ float   shadow2 = shadowPoisson(depthTex2,depthTexSamp,fub.lightViewProj[2] * fl
   result.cascadeColor =cascadeColor;
   return result;
 };
+float3 mapToHeatColor(float value, float minVal, float maxVal, uint ramp) {
+float t = clamp((value-minVal)/(maxVal-minVal),0.0, 1.0);
+if(ramp == 0) return float3(t);
+if(ramp == 1) return mix(float3(0.2,0.0,0.4), float3(1.0,0.9,0.2), t);
+return mix(float3(0,0,1), float3(1,0,0), t);
+}
+
+
+float3 lambertDiffuse(float3 albedo, float3 N, float3 L) {
+  float3 NdotL = max(dot(N,L),0.0);
+  return albedo / PI * NdotL;
+}
+
+float distributionGGX(float3 N, float3 H, float roughness) {
+  float a = roughness * roughness;
+  float a2 = a*a;
+  float NdotH = max(dot(N, H), 0.0);
+  float NdotH2 = NdotH * NdotH;
+  float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+  denom = PI * denom * denom;
+  return a2/max(denom, 0.00001);
+}
+
+float3 fresnelSchlick(float3 F0, float cosTheta) {
+  return F0 + (1.0 - F0)*pow(clamp(1.0- cosTheta, 0.0,1.0),5);
+}
+
+float geometrySchlickGGX(float NdotV, float roughness) {
+  float r = roughness +1.0;
+  float k = (r*r)/8.0;
+  return NdotV/(NdotV * (1.0-k) + k);
+}
+
+float geometrySmith(float3 N, float3 L, float3 V, float roughness) {
+  float ggx_L = geometrySchlickGGX(max(dot(N,L), 0.0), roughness);
+  float ggx_V = geometrySchlickGGX(max(dot(N,V), 0.0), roughness);
+  return ggx_V * ggx_L;
+}
+
+float3 cookTorranceSpecular(float3 N, float3 V, float3 L, float3 H,
+                           float roughness, float3 F0) {
+ float D = distributionGGX(N, H, roughness);
+ float3 F = fresnelSchlick(F0,max(dot(H,V),0.0));
+ float G = geometrySmith(N,L,V,roughness);
+ float NdotL = max(dot(N,L),0.0);
+ float NdotV = max(dot(N,V),0.0);
+ float denom = 4.0 * NdotL * NdotV + 0.00001;
+
+ return (D*F*G)/ denom;
+}
+
+float3 metallicDiffuse(float3 F ,float metallic) {
+  float3 kS = F;
+  float3 kD = float3(1.0) - kS;
+return kD * (1.0 - metallic);
+}
+
+
+float3 sampleEnvironment(float3 N, float3 V, texturecube<float> envTexture, sampler envSampler) {
+  float3 R = reflect(-V,N);
+
+ return envTexture.sample(envSampler,R).rgb;
+}
+
+float3 diffuseIBL(float3 N, float3 albedo, float metallic, texturecube<float> irradianceMap, sampler irradianceSampler) {
+    float3 irradiance = irradianceMap.sample(irradianceSampler, N).rgb;
+
+    float3 kD = albedo * (1.0 - metallic);
+
+    return kD * irradiance;
+}
+
+float3 specularIBL(float3 N, float3 V, float roughness, float3 F0,texturecube<float>  prefilterEnv, sampler prefilterSampler, texture2d<float> brdfLUTTex, sampler brdfSampler) {
+float3 R = reflect(-V, N);
+float maxMip = 4.0; 
+ float3 prefilteredColor = prefilterEnv.sample(prefilterSampler, R, level(roughness * maxMip)).rgb;
+
+ float NdotV = max(dot(N, V), 0.0);
+  float2 envBRDF = brdfLUTTex.sample(brdfSampler, float2(NdotV, roughness)).rg;
+
+ return prefilteredColor * (F0 * envBRDF.x + envBRDF.y); 
+
+}
+
 
 fragment float4 fs(
     VertexOut in [[stage_in]],
@@ -203,6 +290,10 @@ fragment float4 fs(
    texture2d<float> gEmissiveTex [[texture(19)]], 
    texture2d<float> gDepthTex [[texture(20)]], 
    texture2d<float> lightingTex [[texture(21)]], 
+   texturecube<float> irradianceTex [[texture(22)]], 
+   texture2d<float> environment [[texture(23)]], 
+   texturecube<float> prefilterMap [[texture(24)]], 
+   texture2d<float> brdfLUT [[texture(25)]], 
     sampler gSamp [[sampler(1)]],
 
    depth2d<float> depthTex0 [[texture(32)]],
@@ -213,17 +304,50 @@ fragment float4 fs(
 ) {
   float depth = gDepthTex.sample(gSamp, in.uv).r;
   if(depth >= 1.0) {
-discard_fragment();
+   
+   float3 color = environment.sample(gSamp, in.uv).rgb;
+   return float4(color, 1.0);
   }
   float3 albedo = gAlbedoTex.sample(gSamp, in.uv).rgb;
   float3 N = decodeNormal(gNormalTex.sample(gSamp,in.uv).rg);
+   float3 metallicRoughness = gMaterialTex.sample(gSamp, in.uv).rgb;
+   float metallic = metallicRoughness.g;
+   float roughness = metallicRoughness.b;
+   float ao = metallicRoughness.r;
   float3 worldPos = reconstructPosition(in.uv, depth, fub.invViewProj);
  float3 finalColor;
  CascadeResult cascadeResult = getCascadeShadow(worldPos, N, fub, depthTex0, depthTex1,depthTex2, depthTex3, depthTexSamp);
  float shadow = cascadeResult.shadow;
  float3 cascadeColor = cascadeResult.cascadeColor;
- float3 directionalLightColor =blinnPhongShade(worldPos, N, shadow, fub)  * albedo; 
- float3 pointLightColor = lightingTex.sample(gSamp, in.uv).rgb * albedo;
+
+ float3 pointLightColor = lightingTex.sample(gSamp, in.uv).rgb ;
+ float3 L =  normalize(fub.lightPosition.xyz - worldPos);
+float3 V = normalize(fub.cameraPosition.xyz - worldPos);
+float3 H = normalize(L + V);
+ float3 dielectricF0 = float3(0.04);
+ float3 F0 = mix(dielectricF0, albedo,metallic);
+float D = distributionGGX(N, H,roughness);
+float3 F = fresnelSchlick(F0, max(dot(N,V),0.0));
+float G = geometrySmith(N, L, V,roughness);
+
+float3 directDiffuse = metallicDiffuse(F, metallic) * lambertDiffuse(albedo,N,L);
+float3 directSpecular = cookTorranceSpecular(N,L,V,H,roughness,F0);
+
+float3 ambient = diffuseIBL(N, albedo, metallic, irradianceTex, gSamp) * ao;
+float3 specularIBLColor = specularIBL(N, V, roughness, F0, prefilterMap, gSamp, brdfLUT, gSamp) * ao;
+
+float3 directionalLighting;
+
+switch(int(fub.lightMode)){
+  case 0:
+   directionalLighting = blinnPhongShade(worldPos, N, shadow, fub);
+   break;
+  case 1:
+   directionalLighting =  lambertDiffuse(albedo, N,L);
+   break;
+   default:
+    directionalLighting = directDiffuse + directSpecular + ambient + specularIBLColor;
+}
 switch(int(fub.debugMode)) {
 case 1: 
   finalColor = albedo;
@@ -244,13 +368,28 @@ case 6:
    finalColor =pointLightColor;
    break;
 case 7:
-   finalColor =directionalLightColor;
+   finalColor =directionalLighting;
    break;
 case 8:
    finalColor =pointLightColor;
    break;
+ case 9:
+    finalColor = mapToHeatColor(D,0.0,1.0,2);
+    break;
+  case 10:
+    finalColor = F;
+    break;
+  case 11:
+    finalColor = mapToHeatColor(G, 0.0,1.0,0);
+    break;
+  case 12:
+    finalColor = ambient;
+    break;
+  case 13:
+    finalColor = specularIBLColor;
+    break;  
 default:
-  finalColor = directionalLightColor + pointLightColor;
+  finalColor = (directionalLighting+ pointLightColor) * albedo;
   break;   
 }
 
