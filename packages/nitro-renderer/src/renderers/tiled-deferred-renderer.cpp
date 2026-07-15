@@ -167,6 +167,10 @@ namespace nitro::renderer
             shaderDir,
             isMetal);
         m_debugDrawPass = std::make_shared<DebugDrawPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, m_isMetal);
+        m_brightnessPass = std::make_shared<BrightnessPass>(m_device, m_swapchain->getWidth(),
+                                                            m_swapchain->getHeight(), shaderDir, isMetal);
+        m_gaussianBlurPass = std::make_shared<GaussianBlurPass>(m_device, m_swapchain->getWidth(),
+                                                                m_swapchain->getHeight(), shaderDir, isMetal);
         m_toneMapPass = std::make_shared<ToneMapPass>(m_device, m_deferredLightingPass->getLightTexture(), m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
 
         // m_toneMapPass = std::make_shared<ToneMapPass>(m_device, m_skyboxPass->getSkyboxTexture(), m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
@@ -181,6 +185,8 @@ namespace nitro::renderer
         m_skyboxPass->resize(width, height, m_cubemapTexture);
         m_deferredLightingPass->recreate(width, height, m_geometryPass->gBuffer, m_irradianceTexture, m_tileLightPass->getLightTexture(), m_skyboxPass->getSkyboxTexture(), m_brdfLUT,
                                          m_prefilterMap);
+        m_brightnessPass->resize(width, height);
+        m_gaussianBlurPass->resize(width, height);
         m_toneMapPass->resize(m_deferredLightingPass->getLightTexture(), width, height);
         // m_toneMapPass->resize(m_skyboxPass->getSkyboxTexture(), width, height);
         // m_toneMapPass->resize(hdrTexture, width, height);
@@ -267,6 +273,20 @@ namespace nitro::renderer
         }
 
         m_deferredLightingPass->execute(cmd, frameData);
+
+        BrightnessPassPushConstant brightnessPc;
+
+        brightnessPc.screenSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
+        brightnessPc.threshold = 0.3;
+
+        rhi::RHITexture *brightTexture = m_brightnessPass->execute(cmd, brightnessPc, m_deferredLightingPass->getLightTexture());
+
+        GaussianBlurPushConstant gaussianPc;
+
+        gaussianPc.inputTextureSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
+        gaussianPc.outputTextureSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
+        m_gaussianBlurPass->execute(cmd, gaussianPc, brightTexture);
+
         ToneMapPassUBO toneMapUBO;
         toneMapUBO.exposure = settings.tonemap.exposure;
         toneMapUBO.mode = static_cast<uint>(settings.tonemap.mode);

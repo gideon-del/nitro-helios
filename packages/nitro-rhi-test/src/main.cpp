@@ -176,7 +176,7 @@ int main()
 {
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    GLFWwindow *window = glfwCreateWindow(800, 600, "PBR/IBL", nullptr, nullptr);
+    GLFWwindow *window = glfwCreateWindow(800, 600, "POST Processing", nullptr, nullptr);
 
     bool isMetal = false;
 #ifdef USE_METAL
@@ -227,17 +227,19 @@ int main()
     RHITimer *timer = device->createTimer();
     RendererSettings rendererSettings;
 
-    rendererSettings.light.pointLights = createRandomLights(1000, 500);
+    rendererSettings.light.pointLights = createRandomLights(10, 500);
     // rendererSettings.light.pointLights = createRandomLights(10, 100);
     RenderContext renderContext;
     renderContext.camera = &camera;
 
     rendererSettings.light.lightCamera = light;
     rendererSettings.light.pointLightRenderer = pointLightRenderer;
+    // helmetScene.objects = Scene::loadGltfScene("./assets/buster_drone/scene.gltf", device, materialSystem);
     ForwardRenderer forwardRenderer = ForwardRenderer(device, swapchain, std::string(SHADER_DIR), isMetal);
     DeferredRenderer deferredRenderer = DeferredRenderer(device, swapchain, std::string(SHADER_DIR), isMetal, materialSystem);
     TiledDeferredRenderer tileDeferredRenderer = TiledDeferredRenderer(device, swapchain, std::string(SHADER_DIR), isMetal, materialSystem);
     helmetScene.objects = Scene::loadGltfScene("./assets/DamagedHelmet/DamagedHelmet.gltf", device, materialSystem);
+
     renderContext.scene = &helmetScene;
     // IRenderer *currentRenderer = &deferredRenderer;
     int cachedWidth, cachedHeight;

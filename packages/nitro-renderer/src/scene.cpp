@@ -104,42 +104,24 @@ namespace nitro::renderer
         std::vector<std::shared_ptr<Material>> materials;
         std::vector<RenderObject> renderObjects;
 
-        for (auto gltfMaterial : model.materials)
+        std::function<void(int, geometry::MeshTransformation)> walkNode;
+        walkNode = [&](int nodeIdx, geometry::MeshTransformation parentTransform)
         {
-            MaterialDesc materialDesc;
-            materialDesc.baseColor = loadGltfTexture(device, model, gltfMaterial.pbrMetallicRoughness.baseColorTexture, rhi::TextureDesc::ImageFormat::ColorSRGB8);
-            std::cout << "Created Color Texture" << std::endl;
-            materialDesc.metallicRoughness = loadGltfTexture(device, model, gltfMaterial.pbrMetallicRoughness.metallicRoughnessTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
-            std::cout << "Created Roughness Texture" << std::endl;
-            if (gltfMaterial.normalTexture.index > -1)
+            const auto &node = model.nodes[nodeIdx];
+            if (node.mesh < 0)
             {
-                auto normalTexture = model.textures[gltfMaterial.normalTexture.index];
-                materialDesc.normal = loadGltfTexture(device, model, normalTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
-                std::cout << "Created Normal Texture" << std::endl;
+                for (auto childrenIdx : node.children)
+                {
+                    walkNode(childrenIdx, parentTransform);
+                }
+                return;
             }
-            if (gltfMaterial.occlusionTexture.index > -1)
-            {
-                auto occlusionTexture = model.textures[gltfMaterial.occlusionTexture.index];
-                materialDesc.ao = loadGltfTexture(device, model, occlusionTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
-                std::cout << "Created ocllusion Texture" << std::endl;
-            }
-            if (gltfMaterial.emissiveTexture.index > -1)
-            {
-                auto emissiveTexture = model.textures[gltfMaterial.emissiveTexture.index];
-                materialDesc.emissive = loadGltfTexture(device, model, emissiveTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
-                std::cout << "Created emissive Texture" << std::endl;
-            }
-
-            materials.push_back(materialSystem->createMaterial(materialDesc));
-        }
-        for (auto nodeIdx : defaultScene.nodes)
-        {
-            tinygltf::Node node = model.nodes[nodeIdx];
             geometry::MeshTransformation transformation;
 
             if (node.rotation.size() == 4)
             {
                 auto rotation = glm::qua{node.rotation[3], node.rotation[0], node.rotation[1], node.rotation[2]};
+
                 transformation.rotate(rotation);
             }
 
@@ -159,9 +141,10 @@ namespace nitro::renderer
                 std::cout << "Loading Primitive " << std::endl;
                 std::vector<geometry::Vertex> vertices;
                 std::vector<uint32_t> indices;
-                tinygltf::Accessor positionAccessor = model.accessors[primitive.attributes.at("POSITION")];
-                tinygltf::Accessor normalAccessor = model.accessors[primitive.attributes.at("NORMAL")];
-                tinygltf::Accessor uvAccessor = model.accessors[primitive.attributes.at("TEXCOORD_0")];
+
+                const auto &positionAccessor = model.accessors[primitive.attributes.at("POSITION")];
+                const auto &normalAccessor = model.accessors[primitive.attributes.at("NORMAL")];
+                const auto &uvAccessor = model.accessors[primitive.attributes.at("TEXCOORD_0")];
 
                 for (int i = 0; i < positionAccessor.count; i++)
                 {
@@ -209,21 +192,55 @@ namespace nitro::renderer
                 mesh.indices = indices;
 
                 std::shared_ptr<MeshRenderer> renderer = std::make_shared<MeshRenderer>(mesh, device);
-                auto material = materials[primitive.material];
-                // if (primitive.material > -1)
-                // {
-                //     material = materials[primitive.material];
-                // }
-                // else
-                // {
-                // material->roughnessFactor = 1.0;
-                // material->metallicFactor = 1.0;
-                // material->baseColorFactor = {1.0, 1.0, 1.0, 1.0};
-                // }
-                renderObjects.push_back(RenderObject(renderer, transformation, material));
+                std::shared_ptr<Material> material = nullptr;
+                if (primitive.material >= 0)
+                {
+                    material = materials[primitive.material];
+                        }
 
-                std::cout << "Done with Loading Primitive " << std::endl;
+                renderObjects.push_back(RenderObject(renderer, transformation, material));
             };
+
+            std::cout << "Done with Loading Node " << nodeIdx << std::endl;
+            if (!node.children.empty())
+            {
+                for (auto childrenIdx : node.children)
+                {
+                    walkNode(childrenIdx, transformation);
+                }
+            }
+        };
+        for (auto gltfMaterial : model.materials)
+        {
+            MaterialDesc materialDesc;
+            materialDesc.baseColor = loadGltfTexture(device, model, gltfMaterial.pbrMetallicRoughness.baseColorTexture, rhi::TextureDesc::ImageFormat::ColorSRGB8);
+            std::cout << "Created Color Texture" << std::endl;
+            materialDesc.metallicRoughness = loadGltfTexture(device, model, gltfMaterial.pbrMetallicRoughness.metallicRoughnessTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+            std::cout << "Created Roughness Texture" << std::endl;
+            if (gltfMaterial.normalTexture.index > -1)
+            {
+                auto normalTexture = model.textures[gltfMaterial.normalTexture.index];
+                materialDesc.normal = loadGltfTexture(device, model, normalTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+                std::cout << "Created Normal Texture" << std::endl;
+            }
+            if (gltfMaterial.occlusionTexture.index > -1)
+            {
+                auto occlusionTexture = model.textures[gltfMaterial.occlusionTexture.index];
+                materialDesc.ao = loadGltfTexture(device, model, occlusionTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+                std::cout << "Created ocllusion Texture" << std::endl;
+            }
+            if (gltfMaterial.emissiveTexture.index > -1)
+            {
+                auto emissiveTexture = model.textures[gltfMaterial.emissiveTexture.index];
+                materialDesc.emissive = loadGltfTexture(device, model, emissiveTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+                std::cout << "Created emissive Texture" << std::endl;
+            }
+
+            materials.push_back(materialSystem->createMaterial(materialDesc));
+        }
+        for (auto nodeIdx : defaultScene.nodes)
+        {
+            walkNode(nodeIdx, geometry::MeshTransformation{});
         }
 
         return renderObjects;

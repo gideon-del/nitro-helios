@@ -30,6 +30,8 @@ add_library(nitro-renderer STATIC
  src/passes/main-scene-pass.cpp
  src/utils.cpp
  src/passes/skybox-pass.cpp
+ src/passes/brightness-pass.cpp
+ src/passes/gaussian-blur-pass.cpp
 )
 
 find_package(glm REQUIRED)

@@ -1,0 +1,26 @@
+#version 450
+layout(local_size_x=16, local_size_y=16,local_size_z=1) in;
+
+layout(push_constant) uniform PushConstant
+{
+    vec2 screenSize;
+    float threshold;
+} pc;
+
+layout(set=0, binding =2) uniform sampler2D hdrTexture;
+layout(set =0, binding =3, rgba16f) uniform writeonly image2D brightTex;
+
+
+
+
+void main() {
+ ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
+ if(float(pixelCoord.x) >= pc.screenSize.x || float(pixelCoord.y) >= pc.screenSize.y) return;
+
+ vec3 color = texelFetch(hdrTexture, pixelCoord, 0).rgb;
+ float luma = dot(color, vec3(0.2126, 0.7152, 0.0722));
+
+ vec3 result = luma > pc.threshold ? color : vec3(0.0);
+
+ imageStore(brightTex, pixelCoord, vec4(result, 1.0));
+}

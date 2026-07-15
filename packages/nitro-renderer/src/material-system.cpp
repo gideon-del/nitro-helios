@@ -32,7 +32,7 @@ namespace nitro::renderer
             return m_device->createTexture(textureDesc);
         };
 
-        m_defaults.baseColor = createSolidTexture({1.0f, 1.0f, 1.0f, 1.0f});
+        m_defaults.baseColor = createSolidTexture({1.0f, 0.0f, 0.0f, 1.0f});
         m_defaults.normal = createSolidTexture({0.5f, 0.5f, 1.0f, 1.0f});
         m_defaults.metallicRoughness = createSolidTexture({0.0f, 0.5f, 0.0f, 1.0f});
         m_defaults.ao = createSolidTexture({1.0f, 1.0f, 1.0f, 1.0f});

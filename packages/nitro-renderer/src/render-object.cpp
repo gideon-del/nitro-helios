@@ -30,7 +30,7 @@ namespace nitro::renderer
             {
                 pc.metallic = material->metallicFactor;
                 pc.roughness = material->roughnessFactor;
-                pc.useTextures = material->hasTextures() ? 1 : 0;
+                pc.useTextures = 1;
                 pc.baseColor = material->baseColorFactor;
             }
             cmd->setPushConstant(&pc, sizeof(RenderObjectPushConstant), 1);

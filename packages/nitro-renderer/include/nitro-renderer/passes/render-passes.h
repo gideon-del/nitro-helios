@@ -12,3 +12,5 @@
 #include "debug-draw-pass.h"
 #include "tone-map-pass.h"
 #include "skybox-pass.h"
+#include "brightness-pass.h"
+#include "gaussian-blur-pass.h"
