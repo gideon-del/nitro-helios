@@ -24,4 +24,8 @@ namespace nitro::renderer
     {
         void draw(ToneMapSettings &settings);
     };
+    struct BloomPanel
+    {
+        void draw(BloomSettings &settings);
+    };
 } // namespace nitro::renderer

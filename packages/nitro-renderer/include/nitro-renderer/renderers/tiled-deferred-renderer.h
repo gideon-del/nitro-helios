@@ -27,6 +27,7 @@ namespace nitro::renderer
         std::shared_ptr<SkyboxPass> m_skyboxPass;
         std::shared_ptr<BrightnessPass> m_brightnessPass;
         std::shared_ptr<GaussianBlurPass> m_gaussianBlurPass;
+        std::shared_ptr<CombineTexturePass> m_combineTexturePass;
         rhi::RHITexture *m_cubemapTexture;
         rhi::RHITexture *m_irradianceTexture;
         rhi::RHITexture *m_prefilterMap;

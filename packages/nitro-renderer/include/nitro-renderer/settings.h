@@ -74,6 +74,12 @@ namespace nitro::renderer
         TiledDeferred
     };
 
+    struct BloomSettings
+    {
+        float threshold = 0.4;
+        float intensity = 0.5;
+        bool enable = true;
+    };
     struct StatSettings
     {
         float fps;
@@ -103,6 +109,7 @@ namespace nitro::renderer
         RendererType renderer = RendererType::TiledDeferred;
         StatSettings stats;
         ToneMapSettings tonemap;
+        BloomSettings bloom;
         DebugMode selectedDebugMode = DebugMode::Lit;
         LightMode selectedLightMode = LightMode::BlinnPhong;
         RendererScenes selectedScene = RendererScenes::DamageHelmet;

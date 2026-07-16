@@ -23,6 +23,7 @@ namespace nitro::renderer
         RendererPanel m_rendererPanel;
         StatPanel m_statsPanel;
         ToneMapPanel m_tonemapPanel;
+        BloomPanel m_bloomPanel;
         std::shared_ptr<rhi::RHIDevice> m_device;
         std::shared_ptr<rhi::RHISwapchain> m_swapchain;
         rhi::RHIPipeline *m_pipeline;

@@ -220,4 +220,22 @@ namespace nitro::renderer
         }
         ImGui::End();
     }
+
+    void BloomPanel::draw(BloomSettings &settings)
+    {
+        ImGui::Begin("Bloom");
+        ImGui::Checkbox("Enable", &settings.enable);
+        ImGui::SliderFloat(
+            "Brightness Threshold",
+            &settings.threshold,
+            0.0f,
+            30.0f);
+        ImGui::SliderFloat(
+            "Intensity",
+            &settings.intensity,
+            0.0f,
+            30.0f);
+
+        ImGui::End();
+    }
 } // namespace nitro::renderer

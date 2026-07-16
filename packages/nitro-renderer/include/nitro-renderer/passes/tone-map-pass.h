@@ -15,17 +15,16 @@ namespace nitro::renderer
     {
     public:
         ToneMapPass(std::shared_ptr<rhi::RHIDevice> device,
-                    rhi::RHITexture *hdrTexture,
                     uint32_t width,
                     uint32_t height,
                     std::string shaderDir,
                     bool isMetal);
 
         ~ToneMapPass();
-        void resize(rhi::RHITexture *hdrTexture,
-                    uint32_t width,
-                    uint32_t height);
-        void execute(rhi::RHICommandBuffer *cmd, ToneMapPassUBO ubo);
+        void resize(
+            uint32_t width,
+            uint32_t height);
+        void execute(rhi::RHICommandBuffer *cmd, ToneMapPassUBO ubo, rhi::RHITexture *hdrTexture);
 
         rhi::RHITexture *getToneMappedTexture() { return m_toneMappedTexture; }
 

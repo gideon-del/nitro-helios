@@ -71,6 +71,7 @@ namespace nitro::renderer
         m_rendererPanel.draw(settings);
         m_statsPanel.draw(settings.stats);
         m_tonemapPanel.draw(settings.tonemap);
+        m_bloomPanel.draw(settings.bloom);
         m_device->endImGuiFrame();
         m_device->drawImGui(cmd);
         cmd->endRenderPass();

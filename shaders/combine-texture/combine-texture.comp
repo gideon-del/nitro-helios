@@ -1,0 +1,26 @@
+#version 450
+layout(local_size_x=16, local_size_y=16, local_size_z=1) in;
+
+layout(push_constant) uniform PushConstant {
+ vec2 textureSize;
+ float intensity;
+} pc;
+
+layout(set=0, binding=2) uniform sampler2D textureA;
+layout(set=0, binding=3) uniform sampler2D textureB;
+layout(set=0, binding=4, rgba16f) uniform writeonly image2D finalTexture;
+
+
+
+void main() {
+    ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
+    if(pixelCoord.x >= int(pc.textureSize.x) || pixelCoord.y >= int(pc.textureSize.y)) return;
+
+    vec2 uv = (vec2(pixelCoord) + 0.5) /pc.textureSize;
+    vec3 colorA = texture(textureA, uv).rgb;
+    vec3 colorB =texture(textureB, uv).rgb;
+
+    vec3 result = (colorA + colorB) * pc.intensity;
+
+    imageStore(finalTexture, pixelCoord, vec4(result, 1.0));
+}

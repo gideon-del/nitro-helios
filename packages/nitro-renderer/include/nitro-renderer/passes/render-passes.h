@@ -14,3 +14,4 @@
 #include "skybox-pass.h"
 #include "brightness-pass.h"
 #include "gaussian-blur-pass.h"
+#include "combine-texture-pass.h"

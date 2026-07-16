@@ -5,7 +5,6 @@ namespace nitro::renderer
 
     ToneMapPass::ToneMapPass(
         std::shared_ptr<rhi::RHIDevice> device,
-        rhi::RHITexture *hdrTexture,
         uint32_t width,
         uint32_t height,
         std::string shaderDir,
@@ -66,9 +65,6 @@ namespace nitro::renderer
         m_renderPass = m_device->createRenderPass(renderPassDesc);
 
         m_descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
-
-        m_descriptorSet->writeTexture(hdrTexture, 2, rhi::ImageLayout::ShaderReadOnly);
-        m_descriptorSet->commit();
     };
 
     ToneMapPass::~ToneMapPass()
@@ -80,9 +76,9 @@ namespace nitro::renderer
         m_device->destroyRenderPass(m_renderPass);
     }
 
-    void ToneMapPass::resize(rhi::RHITexture *hdrTexture,
-                             uint32_t width,
-                             uint32_t height)
+    void ToneMapPass::resize(
+        uint32_t width,
+        uint32_t height)
     {
         m_device->destroyTexture(m_toneMappedTexture);
         m_device->destroyRenderPass(m_renderPass);
@@ -108,17 +104,14 @@ namespace nitro::renderer
         renderPassDesc.width = m_width;
 
         m_renderPass = m_device->createRenderPass(renderPassDesc);
-
-        m_descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
-
-        m_descriptorSet->writeTexture(hdrTexture, 2, rhi::ImageLayout::ShaderReadOnly);
-        m_descriptorSet->commit();
     }
 
-    void ToneMapPass::execute(rhi::RHICommandBuffer *cmd, ToneMapPassUBO ubo)
+    void ToneMapPass::execute(rhi::RHICommandBuffer *cmd, ToneMapPassUBO ubo, rhi::RHITexture *hdrTexture)
     {
         cmd->beginRenderPass(m_renderPass);
         cmd->bindPipeline(m_pipeline);
+        m_descriptorSet->writeTexture(hdrTexture, 2, rhi::ImageLayout::ShaderReadOnly);
+        m_descriptorSet->commit();
         cmd->bindDescriptorSet(m_descriptorSet, 0);
         cmd->setPushConstant(&ubo, sizeof(ToneMapPassUBO), 1);
         rhi::RHIViewport viewport;
