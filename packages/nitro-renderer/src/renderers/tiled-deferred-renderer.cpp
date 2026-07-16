@@ -167,15 +167,10 @@ namespace nitro::renderer
             shaderDir,
             isMetal);
         m_debugDrawPass = std::make_shared<DebugDrawPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, m_isMetal);
-        m_brightnessPass = std::make_shared<BrightnessPass>(m_device, m_swapchain->getWidth(),
-                                                            m_swapchain->getHeight(), shaderDir, isMetal);
-        m_gaussianBlurPass = std::make_shared<GaussianBlurPass>(m_device, m_swapchain->getWidth(),
-                                                                m_swapchain->getHeight(), shaderDir, isMetal);
-        m_combineTexturePass = std::make_shared<CombineTexturePass>(m_device, m_swapchain->getWidth(),
-                                                                    m_swapchain->getHeight(), shaderDir, isMetal);
+        m_bloomEffect = std::make_unique<BloomEffect>(m_device, m_swapchain->getWidth(),
+                                                      m_swapchain->getHeight(), shaderDir, isMetal);
         m_toneMapPass = std::make_shared<ToneMapPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
 
-        // m_toneMapPass = std::make_shared<ToneMapPass>(m_device, m_skyboxPass->getSkyboxTexture(), m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
         m_mainScenePass = std::make_shared<MainScenePass>(m_device, m_swapchain, m_toneMapPass->getToneMappedTexture(), shaderDir, isMetal);
     }
     void TiledDeferredRenderer::resize(uint32_t width, uint32_t height)
@@ -187,12 +182,8 @@ namespace nitro::renderer
         m_skyboxPass->resize(width, height, m_cubemapTexture);
         m_deferredLightingPass->recreate(width, height, m_geometryPass->gBuffer, m_irradianceTexture, m_tileLightPass->getLightTexture(), m_skyboxPass->getSkyboxTexture(), m_brdfLUT,
                                          m_prefilterMap);
-        m_brightnessPass->resize(width, height);
-        m_gaussianBlurPass->resize(width, height);
-        m_combineTexturePass->resize(width, height);
+        m_bloomEffect->resize(width, height);
         m_toneMapPass->resize(width, height);
-        // m_toneMapPass->resize(m_skyboxPass->getSkyboxTexture(), width, height);
-        // m_toneMapPass->resize(hdrTexture, width, height);
         m_mainScenePass->resize(m_toneMapPass->getToneMappedTexture());
     };
 
@@ -281,24 +272,7 @@ namespace nitro::renderer
         rhi::RHITexture *sceneTexture = hdrTexture;
         if (settings.bloom.enable)
         {
-            BrightnessPassPushConstant brightnessPc;
-
-            brightnessPc.screenSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
-            brightnessPc.threshold = settings.bloom.threshold;
-            rhi::RHITexture *brightTexture = m_brightnessPass->execute(cmd, brightnessPc, hdrTexture);
-
-            GaussianBlurPushConstant gaussianPc;
-
-            gaussianPc.inputTextureSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
-            gaussianPc.outputTextureSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
-            rhi::RHITexture *blurredTexture = m_gaussianBlurPass->execute(cmd, gaussianPc, brightTexture);
-
-            CombineTexturePushConstant combineTexturePc;
-            combineTexturePc.textureSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
-            combineTexturePc.intensity = settings.bloom.intensity;
-
-            rhi::RHITexture *bloomTexture = m_combineTexturePass->execute(cmd, combineTexturePc, hdrTexture, blurredTexture);
-            sceneTexture = bloomTexture;
+            sceneTexture = m_bloomEffect->execute(cmd, sceneTexture, settings.bloom);
         }
         ToneMapPassUBO toneMapUBO;
         toneMapUBO.exposure = settings.tonemap.exposure;

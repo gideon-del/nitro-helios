@@ -75,6 +75,15 @@ namespace nitro::renderer
         textureDesc.usage = rhi::TextureDesc::Usage::Storage | rhi::TextureDesc::Usage::ShaderRead;
 
         m_brightnessTexture = m_device->createTexture(textureDesc);
+
+        rhi::RHICommandBuffer *cmd = m_device->createCommandBuffer();
+
+        rhi::TextureBarrier textureBarrier;
+        textureBarrier.texture = m_brightnessTexture;
+        textureBarrier.before = rhi::ResourceState::Undefined;
+        textureBarrier.after = rhi::ResourceState::ShaderRead;
+        cmd->textureBarrier(textureBarrier);
+        m_device->endCommandBuffer(cmd);
     }
 
     rhi::RHITexture *BrightnessPass::execute(rhi::RHICommandBuffer *cmd, BrightnessPassPushConstant pc, rhi::RHITexture *hdrScene)

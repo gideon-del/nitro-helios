@@ -4,6 +4,7 @@
 #include <nitro-renderer/interface/renderer.h>
 #include <nitro-renderer/panels.h>
 #include <nitro-renderer/material-system.h>
+#include <nitro-renderer/post-process/post-process.h>
 
 namespace nitro::renderer
 {
@@ -26,9 +27,7 @@ namespace nitro::renderer
         std::shared_ptr<SkyboxPass> m_skyboxPass;
         std::shared_ptr<ToneMapPass> m_toneMapPass;
         std::shared_ptr<MainScenePass> m_mainScenePass;
-        std::shared_ptr<BrightnessPass> m_brightnessPass;
-        std::shared_ptr<GaussianBlurPass> m_gaussianBlurPass;
-        std::shared_ptr<CombineTexturePass> m_combineTexturePass;
+        std::unique_ptr<BloomEffect> m_bloomEffect;
         bool m_isMetal;
         ShadowPanel m_shadowPanel;
         LightPanel m_lightPanel;
