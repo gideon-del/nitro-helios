@@ -28,11 +28,14 @@ namespace nitro::renderer
                 uint8_t(color.a * 255.0f)};
             textureDesc.initialData = bytes;
             textureDesc.sampler = rhi::TextureDesc::Sampler::Sampler2D;
+            rhi::TextureBinding textureBinding;
 
-            return m_device->createTexture(textureDesc);
+            textureBinding.texture = m_device->createTexture(textureDesc);
+            textureBinding.sampler = m_device->defaultSamplers().anisotropicRepeat;
+            return textureBinding;
         };
 
-        m_defaults.baseColor = createSolidTexture({1.0f, 0.0f, 0.0f, 1.0f});
+        m_defaults.baseTexture = createSolidTexture({1.0f, 0.0f, 0.0f, 1.0f});
         m_defaults.normal = createSolidTexture({0.5f, 0.5f, 1.0f, 1.0f});
         m_defaults.metallicRoughness = createSolidTexture({0.0f, 0.5f, 0.0f, 1.0f});
         m_defaults.ao = createSolidTexture({1.0f, 1.0f, 1.0f, 1.0f});
@@ -40,7 +43,7 @@ namespace nitro::renderer
 
         m_materialDescriptorSet = m_device->createDescriptorSet(m_materialLayout);
 
-        m_materialDescriptorSet->writeTexture(m_defaults.baseColor, 0, rhi::ImageLayout::ShaderReadOnly);
+        m_materialDescriptorSet->writeTexture(m_defaults.baseTexture, 0, rhi::ImageLayout::ShaderReadOnly);
         m_materialDescriptorSet->writeTexture(m_defaults.normal, 1, rhi::ImageLayout::ShaderReadOnly);
         m_materialDescriptorSet->writeTexture(m_defaults.metallicRoughness, 2, rhi::ImageLayout::ShaderReadOnly);
         m_materialDescriptorSet->writeTexture(m_defaults.ao, 3, rhi::ImageLayout::ShaderReadOnly);
@@ -49,22 +52,19 @@ namespace nitro::renderer
 
         m_defaultMaterial = std::make_shared<Material>();
 
-        m_defaultMaterial->baseColor = m_defaults.baseColor;
-        m_defaultMaterial->normal = m_defaults.normal;
-        m_defaultMaterial->ao = m_defaults.ao;
-        m_defaultMaterial->metallicRoughness = m_defaults.metallicRoughness;
-        m_defaultMaterial->emissive = m_defaults.emissive;
+        m_defaultMaterial->textures = m_defaults;
         m_defaultMaterial->descriptorSet = m_materialDescriptorSet;
     };
 
     MaterialSystem::~MaterialSystem()
     {
         m_device->destroyDescriptorSet(m_materialDescriptorSet);
-        m_device->destroyTexture(m_defaults.baseColor);
-        m_device->destroyTexture(m_defaults.normal);
-        m_device->destroyTexture(m_defaults.metallicRoughness);
-        m_device->destroyTexture(m_defaults.ao);
-        m_device->destroyTexture(m_defaults.emissive);
+        m_device->destroyTexture(m_defaults.baseTexture.texture);
+        m_device->destroyTexture(m_defaults.normal.texture);
+        m_device->destroyTexture(m_defaults.metallicRoughness.texture);
+        m_device->destroyTexture(m_defaults.ao.texture);
+        m_device->destroyTexture(m_defaults.emissive.texture);
+
         m_device->destroyDescriptorLayout(m_materialLayout);
     }
 
@@ -73,34 +73,28 @@ namespace nitro::renderer
         return m_defaultMaterial;
     };
 
-    std::shared_ptr<Material> MaterialSystem::createMaterial(MaterialDesc &desc)
+    std::shared_ptr<Material> MaterialSystem::createMaterial(const MaterialDesc &desc)
     {
         auto material = std::make_shared<Material>();
 
-        material->baseColor = desc.baseColor;
-        material->normal = desc.normal;
-        material->metallicRoughness = desc.metallicRoughness;
-        material->ao = desc.ao;
-        material->emissive = desc.emissive;
+        material->textures = desc.textures;
         material->baseColorFactor = desc.baseColorFactor;
         material->metallicFactor = desc.metallicFactor;
         material->roughnessFactor = desc.roughnessFactor;
 
-        material->descriptorSet = m_device->createDescriptorSet(m_materialLayout);
+        if (desc.textures.baseTexture.isValid())
+        {
+            material->descriptorSet = m_device->createDescriptorSet(m_materialLayout);
 
-        // material->descriptorSet->writeTexture(material->baseColor != nullptr ? material->baseColor : m_defaults.baseColor, 0, rhi::ImageLayout::ShaderReadOnly);
-        // material->descriptorSet->writeTexture(material->normal != nullptr ? material->normal : m_defaults.normal, 1, rhi::ImageLayout::ShaderReadOnly);
-        // material->descriptorSet->writeTexture(material->metallicRoughness != nullptr ? material->metallicRoughness : m_defaults.metallicRoughness, 2, rhi::ImageLayout::ShaderReadOnly);
-        // material->descriptorSet->writeTexture(material->ao != nullptr ? material->ao : m_defaults.ao, 3, rhi::ImageLayout::ShaderReadOnly);
-        // material->descriptorSet->writeTexture(material->emissive != nullptr ? material->emissive : m_defaults.emissive, 4, rhi::ImageLayout::ShaderReadOnly);
-        material->descriptorSet->writeTexture(material->baseColor, 0, rhi::ImageLayout::ShaderReadOnly);
-        material->descriptorSet->writeTexture(material->normal, 1, rhi::ImageLayout::ShaderReadOnly);
-        material->descriptorSet->writeTexture(material->metallicRoughness, 2, rhi::ImageLayout::ShaderReadOnly);
-        material->descriptorSet->writeTexture(material->ao, 3, rhi::ImageLayout::ShaderReadOnly);
-        material->descriptorSet->writeTexture(material->emissive, 4, rhi::ImageLayout::ShaderReadOnly);
+            material->descriptorSet->writeTexture(material->textures.baseTexture, 0, rhi::ImageLayout::ShaderReadOnly);
 
-        material->descriptorSet->commit();
+            material->descriptorSet->writeTexture(material->textures.normal.isValid() ? material->textures.normal : m_defaults.normal, 1, rhi::ImageLayout::ShaderReadOnly);
+            material->descriptorSet->writeTexture(material->textures.metallicRoughness.isValid() ? material->textures.metallicRoughness : m_defaults.metallicRoughness, 2, rhi::ImageLayout::ShaderReadOnly);
+            material->descriptorSet->writeTexture(material->textures.ao.isValid() ? material->textures.ao : m_defaults.ao, 3, rhi::ImageLayout::ShaderReadOnly);
+            material->descriptorSet->writeTexture(material->textures.emissive.isValid() ? material->textures.emissive : m_defaults.emissive, 4, rhi::ImageLayout::ShaderReadOnly);
 
+            material->descriptorSet->commit();
+        }
         return material;
     };
 } // namespace nitro::renderer

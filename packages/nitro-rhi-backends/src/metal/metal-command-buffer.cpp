@@ -306,4 +306,35 @@ namespace nitro::rhi::metal
             encoder = nullptr;
         }
     }
+
+    void MetalCommandBuffer::copyTextureToBuffer(RHITexture *texture, RHIBuffer *buffer)
+    {
+        MetalTexture *metalTexture = reinterpret_cast<MetalTexture *>(texture);
+        MetalBuffer *metalBuffer = reinterpret_cast<MetalBuffer *>(buffer);
+
+        if (m_computeEncoder)
+        {
+            m_computeEncoder->endEncoding();
+            m_computeEncoder = nullptr;
+        }
+        if (encoder)
+        {
+            encoder->endEncoding();
+            encoder = nullptr;
+        }
+
+        MTL::BlitCommandEncoder *blitEncoder = commandBuffer->blitCommandEncoder();
+
+        blitEncoder->copyFromTexture(
+            metalTexture->texture,
+            0,
+            0,
+            MTL::Origin::Make(0, 0, 0),
+            MTL::Size::Make(metalTexture->width, metalTexture->height, 1),
+            metalBuffer->buffer,
+            0,
+            16,
+            16);
+        blitEncoder->endEncoding();
+    }
 } // namespace nitro::rhi::metal

@@ -13,7 +13,8 @@ namespace nitro::rhi::vulkan
 
         void upload(const void *data, size_t size) override;
         size_t getSize() const override;
-
+        void *map() override;
+        void unmap() override;
         VmaAllocation allocation;
         VkBuffer buffer;
 

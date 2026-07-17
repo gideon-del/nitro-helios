@@ -18,7 +18,8 @@ namespace nitro::rhi
             Index,
             Uniform,
             Storage,
-            Staging
+            Staging,
+            TransferDst
         } usage;
 
         size_t size;
@@ -32,5 +33,8 @@ namespace nitro::rhi
         virtual ~RHIBuffer() = default;
         virtual void upload(const void *data, size_t size) = 0;
         virtual size_t getSize() const = 0;
+
+        virtual void *map() = 0;
+        virtual void unmap() = 0;
     };
 }

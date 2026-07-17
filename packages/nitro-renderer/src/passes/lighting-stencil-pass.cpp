@@ -128,8 +128,12 @@ namespace nitro::renderer
                 resource.descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
 
                 resource.descriptorSet->writeBuffer(resource.uniformBuffer, 2);
-                resource.descriptorSet->writeTexture(gBuffer.depth, 3, ImageLayout::DepthReadOnlyStencilAttachment);
-                resource.descriptorSet->writeTexture(gBuffer.normal, 4, ImageLayout::ShaderReadOnly);
+                rhi::TextureBinding textureBinding;
+                textureBinding.texture = gBuffer.depth;
+                textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+                resource.descriptorSet->writeTexture(textureBinding, 3, ImageLayout::DepthReadOnlyStencilAttachment);
+                textureBinding.texture = gBuffer.normal;
+                resource.descriptorSet->writeTexture(textureBinding, 4, ImageLayout::ShaderReadOnly);
 
                 resource.descriptorSet->commit();
                 return resource;
@@ -199,8 +203,12 @@ namespace nitro::renderer
         for (auto &resource : m_resources)
         {
             resource.descriptorSet->writeBuffer(resource.uniformBuffer, 2);
-            resource.descriptorSet->writeTexture(gBuffer.depth, 3, ImageLayout::DepthReadOnlyStencilAttachment);
-            resource.descriptorSet->writeTexture(gBuffer.normal, 4, ImageLayout::ShaderReadOnly);
+            rhi::TextureBinding textureBinding;
+            textureBinding.texture = gBuffer.depth;
+            textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+            resource.descriptorSet->writeTexture(textureBinding, 3, ImageLayout::DepthReadOnlyStencilAttachment);
+            textureBinding.texture = gBuffer.normal;
+            resource.descriptorSet->writeTexture(textureBinding, 4, ImageLayout::ShaderReadOnly);
 
             resource.descriptorSet->commit();
         }

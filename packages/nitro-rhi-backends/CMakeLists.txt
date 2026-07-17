@@ -28,6 +28,7 @@ imgui/imgui.cpp
 imgui/imgui_impl_glfw.cpp
 imgui/imgui_impl_vulkan.cpp
 src/vulkan/vulkan-compute-pipeline.cpp
+src/vulkan/vulkan-sampler.cpp
 )
 
 

@@ -85,7 +85,10 @@ namespace nitro::renderer
         {
 
             rhi::RHIDescriptorSet *descriptorSet = device->createDescriptorSet(descriptorLayout);
-            descriptorSet->writeTexture(sourceTexture, 2, rhi::ImageLayout::ShaderReadOnly);
+            rhi::TextureBinding textureBinding;
+            textureBinding.texture = sourceTexture;
+            textureBinding.sampler = device->defaultSamplers().linearRepeat;
+            descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
             rhi::TextureSubresource subresource{};
             subresource.baseMip = 0;
             subresource.baseLayer = i;
@@ -171,9 +174,12 @@ namespace nitro::renderer
         std::vector<rhi::RHIDescriptorSet *> descriptorSets;
         for (int i = 0; i < 6; i++)
         {
+            rhi::TextureBinding textureBinding;
+            textureBinding.texture = environment;
+            textureBinding.sampler = device->defaultSamplers().linearRepeat;
 
             rhi::RHIDescriptorSet *descriptorSet = device->createDescriptorSet(descriptorLayout);
-            descriptorSet->writeTexture(environment, 2, rhi::ImageLayout::ShaderReadOnly);
+            descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
             rhi::TextureSubresource subresource{};
             subresource.baseMip = 0;
             subresource.baseLayer = i;
@@ -265,8 +271,11 @@ namespace nitro::renderer
             for (int i = 0; i < 6; i++)
             {
 
+                rhi::TextureBinding textureBinding;
+                textureBinding.texture = environment;
+                textureBinding.sampler = device->defaultSamplers().linearRepeat;
                 rhi::RHIDescriptorSet *descriptorSet = device->createDescriptorSet(descriptorLayout);
-                descriptorSet->writeTexture(environment, 2, rhi::ImageLayout::ShaderReadOnly);
+                descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
                 rhi::TextureSubresource subresource{};
                 subresource.baseMip = mip;
                 subresource.baseLayer = i;

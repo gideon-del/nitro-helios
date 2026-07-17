@@ -71,7 +71,10 @@ namespace nitro::renderer
 
                                resource.descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
                                resource.descriptorSet->writeBuffer(resource.cameraUniformBuffer, 2);
-                               resource.descriptorSet->writeTexture(gBuffer.depth, 3, rhi::ImageLayout::ShaderReadOnly);
+                               rhi::TextureBinding textureBinding;
+                               textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+                               textureBinding.texture = gBuffer.depth;
+                               resource.descriptorSet->writeTexture(textureBinding, 3, rhi::ImageLayout::ShaderReadOnly);
                                resource.descriptorSet->writeBuffer(resource.pointLightBuffer, 4);
                                resource.descriptorSet->writeBuffer(resource.tileLightCountBuffer, 5);
                                resource.descriptorSet->writeBuffer(resource.tileLightIndicesBuffer, 6);
@@ -168,7 +171,10 @@ namespace nitro::renderer
 
             resource.descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
             resource.descriptorSet->writeBuffer(resource.cameraUniformBuffer, 2);
-            resource.descriptorSet->writeTexture(gBuffer.depth, 3, rhi::ImageLayout::ShaderReadOnly);
+            rhi::TextureBinding textureBinding;
+            textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+            textureBinding.texture = gBuffer.depth;
+            resource.descriptorSet->writeTexture(textureBinding, 3, rhi::ImageLayout::ShaderReadOnly);
             resource.descriptorSet->writeBuffer(resource.pointLightBuffer, 4);
             resource.descriptorSet->writeBuffer(resource.tileLightCountBuffer, 5);
             resource.descriptorSet->writeBuffer(resource.tileLightIndicesBuffer, 6);

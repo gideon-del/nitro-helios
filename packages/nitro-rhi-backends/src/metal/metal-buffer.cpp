@@ -34,4 +34,13 @@ namespace nitro::rhi::metal
     {
         return m_size;
     }
+
+    void *MetalBuffer::map()
+    {
+        return buffer->contents();
+    }
+
+    void MetalBuffer::unmap()
+    {
+    }
 } // namespace nitro::rhi::metal

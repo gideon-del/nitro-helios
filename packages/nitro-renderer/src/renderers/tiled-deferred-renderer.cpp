@@ -169,6 +169,8 @@ namespace nitro::renderer
         m_debugDrawPass = std::make_shared<DebugDrawPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, m_isMetal);
         m_bloomEffect = std::make_unique<BloomEffect>(m_device, m_swapchain->getWidth(),
                                                       m_swapchain->getHeight(), shaderDir, isMetal);
+        m_autoExposurePass = std::make_unique<AutoExposurePass>(m_device, m_swapchain->getWidth(),
+                                                                m_swapchain->getHeight(), shaderDir, isMetal);
         m_toneMapPass = std::make_shared<ToneMapPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
 
         m_mainScenePass = std::make_shared<MainScenePass>(m_device, m_swapchain, m_toneMapPass->getToneMappedTexture(), shaderDir, isMetal);
@@ -184,6 +186,7 @@ namespace nitro::renderer
                                          m_prefilterMap);
         m_bloomEffect->resize(width, height);
         m_toneMapPass->resize(width, height);
+        m_autoExposurePass->resize(width, height);
         m_mainScenePass->resize(m_toneMapPass->getToneMappedTexture());
     };
 
@@ -270,6 +273,14 @@ namespace nitro::renderer
 
         rhi::RHITexture *hdrTexture = m_deferredLightingPass->getLightTexture();
         rhi::RHITexture *sceneTexture = hdrTexture;
+        if (settings.tonemap.autoExposure)
+        {
+            AutoExposurePushConstant autoExposurePc;
+            autoExposurePc.inputTextureSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
+
+            settings.tonemap.exposure = m_autoExposurePass->execute(cmd, autoExposurePc, hdrTexture, settings.tonemap, ctx.deltaTime);
+        }
+
         if (settings.bloom.enable)
         {
             sceneTexture = m_bloomEffect->execute(cmd, sceneTexture, settings.bloom);

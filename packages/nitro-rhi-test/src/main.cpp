@@ -248,6 +248,9 @@ int main()
     {
         glfwPollEvents();
 
+        auto currentTime = glfwGetTime();
+        renderContext.deltaTime = std::max(currentTime - renderContext.lastFrameTime, 0.0001);
+        renderContext.lastFrameTime = currentTime;
         ImGuiIO &io = ImGui::GetIO();
 
         if (!io.WantCaptureKeyboard)

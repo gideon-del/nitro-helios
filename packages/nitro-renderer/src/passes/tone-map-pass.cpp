@@ -110,7 +110,10 @@ namespace nitro::renderer
     {
         cmd->beginRenderPass(m_renderPass);
         cmd->bindPipeline(m_pipeline);
-        m_descriptorSet->writeTexture(hdrTexture, 2, rhi::ImageLayout::ShaderReadOnly);
+        rhi::TextureBinding textureBinding;
+        textureBinding.texture = hdrTexture;
+        textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+        m_descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
         m_descriptorSet->commit();
         cmd->bindDescriptorSet(m_descriptorSet, 0);
         cmd->setPushConstant(&ubo, sizeof(ToneMapPassUBO), 1);

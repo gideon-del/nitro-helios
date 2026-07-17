@@ -1,10 +1,12 @@
 #pragma once
 #include <nitro-rhi/rhi-device.h>
+#include <nitro-rhi/rhi-pool.h>
 #include <vulkan/vulkan.h>
 #include <optional>
 #include "vulkan-surface.h"
 #include <vector>
-
+#include "vulkan-sampler.h"
+#include "vulkan-sampler-cache.h"
 struct VmaAllocator_T;
 typedef VmaAllocator_T *VmaAllocator;
 
@@ -24,6 +26,7 @@ namespace nitro::rhi::vulkan
 
     class VulkanCommandBuffer;
     class VulkanSwapchain;
+
     class VulkanDevice : public RHIDevice
     {
 
@@ -55,6 +58,11 @@ namespace nitro::rhi::vulkan
         void destroyComputePipeline(RHIComputePipeline *pipeline) override;
         uint32_t getCurrentFrameIndex() const override;
 
+        RHISamplerHandle create(const RHISamplerDesc &desc) override;
+        void destroy(RHISamplerHandle &handle) override;
+
+        const DefaultSamplers &defaultSamplers() const override { return m_defaultSamplers; };
+        const VulkanSampler &get(RHISamplerHandle handle) { return m_samplers.get(handle.id); }
         void beginImGuiFrame() override;
         void endImGuiFrame() override;
         void drawImGui(RHICommandBuffer *cmd) override;
@@ -102,5 +110,8 @@ namespace nitro::rhi::vulkan
         std::vector<VulkanCommandBuffer *> m_frames;
         uint32_t m_currentFrame = 0;
         VulkanSwapchain *m_swapchain;
+        RHIPool<VulkanSampler> m_samplers;
+        VulkanSamplerCache m_samplerCache;
+        DefaultSamplers m_defaultSamplers;
     };
 }

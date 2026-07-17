@@ -103,22 +103,30 @@ namespace nitro::renderer
 
         for (int i = 0; i < GAUSSIAN_MIP_COUNT; i++)
         {
+            rhi::TextureBinding textureBinding;
+            textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
             if (i != 0)
             {
-                m_downSampleBlurMips[i].horizontalDescriptorSet->writeTexture(m_downSampleBlurMips[i - 1].texture, 2, rhi::ImageLayout::ShaderReadOnly);
+                textureBinding.texture = m_downSampleBlurMips[i - 1].texture;
+                m_downSampleBlurMips[i].horizontalDescriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
                 m_downSampleBlurMips[i].horizontalDescriptorSet->writeStorageImage(m_downSampleBlurMips[i].horizontalScratch, 3, rhi::ImageLayout::General, rhi::TextureSubresource{});
                 m_downSampleBlurMips[i].horizontalDescriptorSet->commit();
             }
 
-            m_downSampleBlurMips[i].verticalDescriptorSet->writeTexture(m_downSampleBlurMips[i].horizontalScratch, 2, rhi::ImageLayout::ShaderReadOnly);
+            textureBinding.texture = m_downSampleBlurMips[i].horizontalScratch;
+            m_downSampleBlurMips[i].verticalDescriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
             m_downSampleBlurMips[i].verticalDescriptorSet->writeStorageImage(m_downSampleBlurMips[i].texture, 3, rhi::ImageLayout::General, rhi::TextureSubresource{});
             m_downSampleBlurMips[i].verticalDescriptorSet->commit();
         }
 
         for (int i = GAUSSIAN_MIP_COUNT - 2; i >= 0; i--)
         {
-            m_upSampleBlurMips[i].verticalDescriptorSet->writeTexture(i == GAUSSIAN_MIP_COUNT - 2 ? m_downSampleBlurMips[GAUSSIAN_MIP_COUNT - 1].texture : m_upSampleBlurMips[i + 1].texture, 2, rhi::ImageLayout::ShaderReadOnly);
-            m_upSampleBlurMips[i].verticalDescriptorSet->writeTexture(m_downSampleBlurMips[i].texture, 3, rhi::ImageLayout::ShaderReadOnly);
+            rhi::TextureBinding textureBinding;
+            textureBinding.texture = i == GAUSSIAN_MIP_COUNT - 2 ? m_downSampleBlurMips[GAUSSIAN_MIP_COUNT - 1].texture : m_upSampleBlurMips[i + 1].texture;
+            textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+            m_upSampleBlurMips[i].verticalDescriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
+            textureBinding.texture = m_downSampleBlurMips[i].texture;
+            m_upSampleBlurMips[i].verticalDescriptorSet->writeTexture(textureBinding, 3, rhi::ImageLayout::ShaderReadOnly);
             m_upSampleBlurMips[i].verticalDescriptorSet->writeStorageImage(m_upSampleBlurMips[i].texture, 4, rhi::ImageLayout::General, rhi::TextureSubresource{});
             m_upSampleBlurMips[i].verticalDescriptorSet->commit();
         }
@@ -198,22 +206,30 @@ namespace nitro::renderer
 
         for (int i = 0; i < GAUSSIAN_MIP_COUNT; i++)
         {
+            rhi::TextureBinding textureBinding;
+            textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
             if (i != 0)
             {
-                m_downSampleBlurMips[i].horizontalDescriptorSet->writeTexture(m_downSampleBlurMips[i - 1].texture, 2, rhi::ImageLayout::ShaderReadOnly);
+                textureBinding.texture = m_downSampleBlurMips[i - 1].texture;
+                m_downSampleBlurMips[i].horizontalDescriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
                 m_downSampleBlurMips[i].horizontalDescriptorSet->writeStorageImage(m_downSampleBlurMips[i].horizontalScratch, 3, rhi::ImageLayout::General, rhi::TextureSubresource{});
                 m_downSampleBlurMips[i].horizontalDescriptorSet->commit();
             }
 
-            m_downSampleBlurMips[i].verticalDescriptorSet->writeTexture(m_downSampleBlurMips[i].horizontalScratch, 2, rhi::ImageLayout::ShaderReadOnly);
+            textureBinding.texture = m_downSampleBlurMips[i].horizontalScratch;
+            m_downSampleBlurMips[i].verticalDescriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
             m_downSampleBlurMips[i].verticalDescriptorSet->writeStorageImage(m_downSampleBlurMips[i].texture, 3, rhi::ImageLayout::General, rhi::TextureSubresource{});
             m_downSampleBlurMips[i].verticalDescriptorSet->commit();
         }
 
         for (int i = GAUSSIAN_MIP_COUNT - 2; i >= 0; i--)
         {
-            m_upSampleBlurMips[i].verticalDescriptorSet->writeTexture(i == GAUSSIAN_MIP_COUNT - 2 ? m_downSampleBlurMips[GAUSSIAN_MIP_COUNT - 1].texture : m_upSampleBlurMips[i + 1].texture, 2, rhi::ImageLayout::ShaderReadOnly);
-            m_upSampleBlurMips[i].verticalDescriptorSet->writeTexture(m_downSampleBlurMips[i].texture, 3, rhi::ImageLayout::ShaderReadOnly);
+            rhi::TextureBinding textureBinding;
+            textureBinding.texture = i == GAUSSIAN_MIP_COUNT - 2 ? m_downSampleBlurMips[GAUSSIAN_MIP_COUNT - 1].texture : m_upSampleBlurMips[i + 1].texture;
+            textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+            m_upSampleBlurMips[i].verticalDescriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
+            textureBinding.texture = m_downSampleBlurMips[i].texture;
+            m_upSampleBlurMips[i].verticalDescriptorSet->writeTexture(textureBinding, 3, rhi::ImageLayout::ShaderReadOnly);
             m_upSampleBlurMips[i].verticalDescriptorSet->writeStorageImage(m_upSampleBlurMips[i].texture, 4, rhi::ImageLayout::General, rhi::TextureSubresource{});
             m_upSampleBlurMips[i].verticalDescriptorSet->commit();
         }
@@ -227,7 +243,10 @@ namespace nitro::renderer
         if (m_lastInputTexture != inputTexture)
         {
             m_lastInputTexture = inputTexture;
-            m_downSampleBlurMips[0].horizontalDescriptorSet->writeTexture(m_lastInputTexture, 2, rhi::ImageLayout::ShaderReadOnly);
+            rhi::TextureBinding textureBinding;
+            textureBinding.texture = m_lastInputTexture;
+            textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+            m_downSampleBlurMips[0].horizontalDescriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
             m_downSampleBlurMips[0].horizontalDescriptorSet->writeStorageImage(m_downSampleBlurMips[0].horizontalScratch, 3, rhi::ImageLayout::General, rhi::TextureSubresource{});
             m_downSampleBlurMips[0].horizontalDescriptorSet->commit();
         }

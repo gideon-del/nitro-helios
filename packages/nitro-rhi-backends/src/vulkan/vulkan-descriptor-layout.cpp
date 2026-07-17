@@ -51,7 +51,7 @@ namespace nitro::rhi::vulkan
     VkDescriptorPoolSize convertToPoolSize(const RHIDescriptorBinding &rhiBinding)
     {
         VkDescriptorPoolSize poolSize{};
-        poolSize.descriptorCount = 1000 * VulkanDevice::MAX_FRAMES_IN_FLIGHT;
+        poolSize.descriptorCount = 10000 * VulkanDevice::MAX_FRAMES_IN_FLIGHT;
         poolSize.type = convertToDescriptorType(rhiBinding.type);
 
         return poolSize;
@@ -97,7 +97,8 @@ namespace nitro::rhi::vulkan
 
     VkDescriptorSet VulkanDescriptorLayout::allocateDescriptorSet()
     {
-
+        static uint32_t allocations = 0;
+        std::cout << "Descriptor Set #" << ++allocations << '\n';
         VkDescriptorSetAllocateInfo allocateInfo{};
         allocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocateInfo.descriptorPool = descriptorPool;

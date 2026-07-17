@@ -403,6 +403,13 @@ namespace nitro::rhi::vulkan
         queryPool = create_query_pool(device);
         timestampPeriod = get_gpu_timestamp(physicalDevice);
 
+        m_defaultSamplers.anisotropicRepeat = create(RHISamplerDesc::AnisotropicRepeat());
+        m_defaultSamplers.linearClamp = create(RHISamplerDesc::LinearClamp());
+        m_defaultSamplers.linearRepeat = create(RHISamplerDesc::LinearRepeat());
+        m_defaultSamplers.nearestClamp = create(RHISamplerDesc::NearestClamp());
+        m_defaultSamplers.nearestRepeat = create(RHISamplerDesc::NearestRepeat());
+        m_defaultSamplers.shadow = create(RHISamplerDesc::Shadow());
+
         // ImGUI
         float main_scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor());
         IMGUI_CHECKVERSION();
@@ -784,7 +791,35 @@ namespace nitro::rhi::vulkan
         vkQueueWaitIdle(graphicsQueue);
         vkFreeCommandBuffers(device, commandPool, 1, &vulkanCmd->cmd);
     }
+    RHISamplerHandle VulkanDevice::create(const RHISamplerDesc &desc)
+    {
 
+        auto cachedHandle = m_samplerCache.lookup(desc);
+
+        if (cachedHandle.isValid())
+        {
+            return cachedHandle;
+        }
+
+        VulkanSampler sampler{*this, desc};
+
+        auto id = m_samplers.allocate(std::move(sampler));
+
+        RHISamplerHandle handle{id};
+
+        m_samplerCache.add(handle, desc);
+        return handle;
+    };
+
+    void VulkanDevice::destroy(RHISamplerHandle &handle)
+    {
+        if (!handle.isValid())
+            return;
+        auto &vulkanSampler = m_samplers.get(handle.id);
+        vkDestroySampler(device, vulkanSampler.sampler, nullptr);
+        m_samplers.free(handle.id);
+        handle.id = 0;
+    }
     uint32_t VulkanDevice::getCurrentFrameIndex() const
     {
         return m_currentFrame;

@@ -11,3 +11,6 @@
 #include "rhi-pipeline.h"
 #include "rhi-compute-pipeline.h"
 #include "rhi-render-pass.h"
+#include "rhi-pool.h"
+#include "rhi-handle.h"
+#include "rhi-sampler.h"

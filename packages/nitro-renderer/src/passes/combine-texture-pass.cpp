@@ -100,8 +100,12 @@ namespace nitro::renderer
         initialTextureBarrier.after = rhi::ResourceState::ShaderWrite;
         cmd->textureBarrier(initialTextureBarrier);
 
-        m_descriptorSet->writeTexture(textureA, 2, rhi::ImageLayout::ShaderReadOnly);
-        m_descriptorSet->writeTexture(textureB, 3, rhi::ImageLayout::ShaderReadOnly);
+        rhi::TextureBinding textureBinding;
+        textureBinding.texture = textureA;
+        textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+        m_descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
+        textureBinding.texture = textureB;
+        m_descriptorSet->writeTexture(textureBinding, 3, rhi::ImageLayout::ShaderReadOnly);
         m_descriptorSet->writeStorageImage(m_combinedTexture, 4, rhi::ImageLayout::General, rhi::TextureSubresource{});
         m_descriptorSet->commit();
 

@@ -110,23 +110,40 @@ namespace nitro::renderer
 
                 resource.gBufferDescriptorSet = m_device->createDescriptorSet(m_gBufferDescriptorLayout);
 
-                resource.gBufferDescriptorSet->writeTexture(gBuffer.albedo, 0, ImageLayout::ShaderReadOnly);
-                resource.gBufferDescriptorSet->writeTexture(gBuffer.normal, 1, ImageLayout::ShaderReadOnly);
-                resource.gBufferDescriptorSet->writeTexture(gBuffer.material, 2, ImageLayout::ShaderReadOnly);
-                resource.gBufferDescriptorSet->writeTexture(gBuffer.emissive, 3, ImageLayout::ShaderReadOnly);
-                resource.gBufferDescriptorSet->writeTexture(gBuffer.depth, 4, ImageLayout::ShaderReadOnly);
-                resource.gBufferDescriptorSet->writeTexture(lightTexture, 5, ImageLayout::ShaderReadOnly);
-                resource.gBufferDescriptorSet->writeTexture(cubeTexture, 6, ImageLayout::ShaderReadOnly);
-                resource.gBufferDescriptorSet->writeTexture(skybox, 7, ImageLayout::ShaderReadOnly);
-                resource.gBufferDescriptorSet->writeTexture(prefilteredEnv, 8, ImageLayout::ShaderReadOnly);
-                resource.gBufferDescriptorSet->writeTexture(brdfLut, 9, ImageLayout::ShaderReadOnly);
+                rhi::TextureBinding textureBinding;
+                textureBinding.texture = gBuffer.albedo;
+                textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+                resource.gBufferDescriptorSet->writeTexture(textureBinding, 0, ImageLayout::ShaderReadOnly);
+                textureBinding.texture = gBuffer.normal;
+                resource.gBufferDescriptorSet->writeTexture(textureBinding, 1, ImageLayout::ShaderReadOnly);
+                textureBinding.texture = gBuffer.material;
+
+                resource.gBufferDescriptorSet->writeTexture(textureBinding, 2, ImageLayout::ShaderReadOnly);
+                textureBinding.texture = gBuffer.emissive;
+
+                resource.gBufferDescriptorSet->writeTexture(textureBinding, 3, ImageLayout::ShaderReadOnly);
+                textureBinding.texture = gBuffer.depth;
+                resource.gBufferDescriptorSet->writeTexture(textureBinding, 4, ImageLayout::ShaderReadOnly);
+                textureBinding.texture = lightTexture;
+                resource.gBufferDescriptorSet->writeTexture(textureBinding, 5, ImageLayout::ShaderReadOnly);
+                textureBinding.texture = cubeTexture;
+                resource.gBufferDescriptorSet->writeTexture(textureBinding, 6, ImageLayout::ShaderReadOnly);
+                textureBinding.texture = skybox;
+                resource.gBufferDescriptorSet->writeTexture(textureBinding, 7, ImageLayout::ShaderReadOnly);
+                textureBinding.texture = prefilteredEnv;
+                resource.gBufferDescriptorSet->writeTexture(textureBinding, 8, ImageLayout::ShaderReadOnly);
+                textureBinding.texture = brdfLut;
+                resource.gBufferDescriptorSet->writeTexture(textureBinding, 9, ImageLayout::ShaderReadOnly);
                 resource.gBufferDescriptorSet->commit();
 
                 resource.shadowDescriptorSet = m_device->createDescriptorSet(m_shadowDescriptorLayout);
 
                 for (uint32_t i = 0; i < cascades.size(); i++)
                 {
-                    resource.shadowDescriptorSet->writeTexture(cascades[i], i, ImageLayout::ShaderReadOnly);
+                    rhi::TextureBinding shadowTextureBinding;
+                    shadowTextureBinding.texture = cascades[i];
+                    shadowTextureBinding.sampler = m_device->defaultSamplers().shadow;
+                    resource.shadowDescriptorSet->writeTexture(shadowTextureBinding, i, ImageLayout::ShaderReadOnly);
                 }
 
                 resource.shadowDescriptorSet->commit();
@@ -195,16 +212,30 @@ namespace nitro::renderer
         m_renderPass = m_device->createRenderPass(renderPassDesc);
         for (auto &resource : m_resources)
         {
-            resource.gBufferDescriptorSet->writeTexture(gBuffer.albedo, 0, ImageLayout::ShaderReadOnly);
-            resource.gBufferDescriptorSet->writeTexture(gBuffer.normal, 1, ImageLayout::ShaderReadOnly);
-            resource.gBufferDescriptorSet->writeTexture(gBuffer.material, 2, ImageLayout::ShaderReadOnly);
-            resource.gBufferDescriptorSet->writeTexture(gBuffer.emissive, 3, ImageLayout::ShaderReadOnly);
-            resource.gBufferDescriptorSet->writeTexture(gBuffer.depth, 4, ImageLayout::ShaderReadOnly);
-            resource.gBufferDescriptorSet->writeTexture(lightTexture, 5, ImageLayout::ShaderReadOnly);
-            resource.gBufferDescriptorSet->writeTexture(cubeTexture, 6, ImageLayout::ShaderReadOnly);
-            resource.gBufferDescriptorSet->writeTexture(skybox, 7, ImageLayout::ShaderReadOnly);
-            resource.gBufferDescriptorSet->writeTexture(prefilteredEnv, 8, ImageLayout::ShaderReadOnly);
-            resource.gBufferDescriptorSet->writeTexture(brdfLut, 9, ImageLayout::ShaderReadOnly);
+            rhi::TextureBinding textureBinding;
+            textureBinding.texture = gBuffer.albedo;
+            textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+            resource.gBufferDescriptorSet->writeTexture(textureBinding, 0, ImageLayout::ShaderReadOnly);
+            textureBinding.texture = gBuffer.normal;
+            resource.gBufferDescriptorSet->writeTexture(textureBinding, 1, ImageLayout::ShaderReadOnly);
+            textureBinding.texture = gBuffer.material;
+
+            resource.gBufferDescriptorSet->writeTexture(textureBinding, 2, ImageLayout::ShaderReadOnly);
+            textureBinding.texture = gBuffer.emissive;
+
+            resource.gBufferDescriptorSet->writeTexture(textureBinding, 3, ImageLayout::ShaderReadOnly);
+            textureBinding.texture = gBuffer.depth;
+            resource.gBufferDescriptorSet->writeTexture(textureBinding, 4, ImageLayout::ShaderReadOnly);
+            textureBinding.texture = lightTexture;
+            resource.gBufferDescriptorSet->writeTexture(textureBinding, 5, ImageLayout::ShaderReadOnly);
+            textureBinding.texture = cubeTexture;
+            resource.gBufferDescriptorSet->writeTexture(textureBinding, 6, ImageLayout::ShaderReadOnly);
+            textureBinding.texture = skybox;
+            resource.gBufferDescriptorSet->writeTexture(textureBinding, 7, ImageLayout::ShaderReadOnly);
+            textureBinding.texture = prefilteredEnv;
+            resource.gBufferDescriptorSet->writeTexture(textureBinding, 8, ImageLayout::ShaderReadOnly);
+            textureBinding.texture = brdfLut;
+            resource.gBufferDescriptorSet->writeTexture(textureBinding, 9, ImageLayout::ShaderReadOnly);
             resource.gBufferDescriptorSet->commit();
         }
     };

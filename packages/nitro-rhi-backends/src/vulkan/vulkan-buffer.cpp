@@ -48,6 +48,10 @@ namespace nitro::rhi::vulkan
             return VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
         case BufferDesc::Usage::Staging:
             return VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        case BufferDesc::Usage::TransferDst:
+            return VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        default:
+            return VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
         }
     }
     VulkanBuffer::VulkanBuffer(VulkanDevice *device, const BufferDesc &desc) : m_device(device), m_size(desc.size)
@@ -92,6 +96,17 @@ namespace nitro::rhi::vulkan
         void *bufferData;
         vmaMapMemory(m_device->allocator, allocation, &bufferData);
         memcpy(bufferData, data, size);
+        vmaUnmapMemory(m_device->allocator, allocation);
+    }
+
+    void *VulkanBuffer::map()
+    {
+        void *data;
+        vmaMapMemory(m_device->allocator, allocation, &data);
+        return data;
+    };
+    void VulkanBuffer::unmap()
+    {
         vmaUnmapMemory(m_device->allocator, allocation);
     }
 

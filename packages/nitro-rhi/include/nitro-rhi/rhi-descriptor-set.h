@@ -1,16 +1,26 @@
 #pragma once
 #include "rhi-buffer.h"
 #include "rhi-texture.h"
+#include "rhi-handle.h"
 #include "rhi-descriptor-layout.h"
 namespace nitro::rhi
 {
+    struct TextureBinding
+    {
 
+        RHITexture *texture = nullptr;
+        RHISamplerHandle sampler{};
+        bool isValid() const
+        {
+            return texture != nullptr;
+        }
+    };
     class RHIDescriptorSet
     {
     public:
         virtual ~RHIDescriptorSet() = default;
         virtual void writeBuffer(RHIBuffer *buffer, uint32_t binding) = 0;
-        virtual void writeTexture(RHITexture *texture, uint32_t binding, ImageLayout imageLayout) = 0;
+        virtual void writeTexture(const TextureBinding &textureBinding, uint32_t binding, ImageLayout imageLayout) = 0;
         virtual void writeStorageImage(RHITexture *texture, uint32_t binding, ImageLayout imageLayout, TextureSubresource subresource) = 0;
         virtual void commit() = 0;
     };

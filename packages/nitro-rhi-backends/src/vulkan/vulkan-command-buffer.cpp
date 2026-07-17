@@ -740,4 +740,32 @@ namespace nitro::rhi::vulkan
         vkCmdPipelineBarrier2(cmd, &dependencyInfo);
         vulkanTexture->currentLayout = convertResourceStateToImageLayout(barrier.after);
     }
+    void VulkanCommandBuffer::copyTextureToBuffer(RHITexture *texture, RHIBuffer *buffer)
+    {
+        VulkanBuffer *vulkanBuffer = reinterpret_cast<VulkanBuffer *>(buffer);
+        VulkanTexture *vulkanTexture = reinterpret_cast<VulkanTexture *>(texture);
+
+        VkBufferImageCopy2 region{};
+        region.sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2;
+        region.bufferImageHeight = vulkanTexture->height;
+        region.bufferOffset = 0;
+        region.bufferRowLength = 0;
+        region.imageExtent = {1, 1, 1};
+        region.imageSubresource.aspectMask = vulkanTexture->imageAspect;
+        region.imageSubresource.baseArrayLayer = 0;
+        region.imageSubresource.layerCount = 1;
+        region.imageSubresource.mipLevel = 0;
+
+        VkCopyImageToBufferInfo2 bufferInfo{};
+        bufferInfo.sType = VK_STRUCTURE_TYPE_COPY_IMAGE_TO_BUFFER_INFO_2;
+        bufferInfo.srcImage = vulkanTexture->image;
+        bufferInfo.srcImageLayout = vulkanTexture->currentLayout;
+        bufferInfo.regionCount = 1;
+        bufferInfo.pRegions = &region;
+        bufferInfo.dstBuffer = vulkanBuffer->buffer;
+
+        vkCmdCopyImageToBuffer2(
+            cmd,
+            &bufferInfo);
+    }
 }

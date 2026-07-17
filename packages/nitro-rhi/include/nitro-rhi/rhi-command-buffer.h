@@ -71,6 +71,7 @@ namespace nitro::rhi
         virtual void textureBarrier(const TextureBarrier &barrier) = 0;
         virtual void draw(uint32_t vertexCount) = 0;
         virtual void drawIndexed(uint32_t indexCount) = 0;
+        virtual void copyTextureToBuffer(RHITexture *texture, RHIBuffer *buffer) = 0;
         virtual FrameStats getFrameStats() = 0;
         virtual void resetFrameStats() = 0;
         virtual void updateVertexCount(uint32_t count) = 0;

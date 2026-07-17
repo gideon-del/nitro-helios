@@ -99,8 +99,14 @@ namespace nitro::renderer
     void TileLightShadingPass::m_linkDescriptorSet(TiledLightPassResource &resource, const GBuffer &gBuffer, const TileLightingComputeResource &tileResource)
     {
         resource.descriptorSet->writeBuffer(resource.uniformBuffer, 2);
-        resource.descriptorSet->writeTexture(gBuffer.depth, 3, ImageLayout::ShaderReadOnly);
-        resource.descriptorSet->writeTexture(gBuffer.normal, 4, ImageLayout::ShaderReadOnly);
+
+        rhi::TextureBinding textureBinding;
+        textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+        textureBinding.texture = gBuffer.depth;
+        resource.descriptorSet->writeTexture(textureBinding, 3, rhi::ImageLayout::ShaderReadOnly);
+        resource.descriptorSet->writeTexture(textureBinding, 3, ImageLayout::ShaderReadOnly);
+        textureBinding.texture = gBuffer.normal;
+        resource.descriptorSet->writeTexture(textureBinding, 4, ImageLayout::ShaderReadOnly);
         resource.descriptorSet->writeBuffer(tileResource.pointLightBuffer, 5);
         resource.descriptorSet->writeBuffer(tileResource.tileLightCountBuffer, 6);
         resource.descriptorSet->writeBuffer(tileResource.tileLightIndicesBuffer, 7);
@@ -167,7 +173,7 @@ namespace nitro::renderer
 
         resource.uniformBuffer->upload(&ubo, sizeof(TiledLightPassUBO));
 
-                cmd->beginRenderPass(m_renderPass);
+        cmd->beginRenderPass(m_renderPass);
         cmd->bindPipeline(m_pipeline);
         rhi::RHIViewport viewport;
         viewport.width = m_width;

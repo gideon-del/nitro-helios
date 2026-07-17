@@ -12,7 +12,8 @@ namespace nitro::rhi::metal
         ~MetalBuffer() override;
         void upload(const void *data, size_t size) override;
         size_t getSize() const override;
-
+        void *map() override;
+        void unmap() override;
         MTL::Buffer *buffer;
 
     private:

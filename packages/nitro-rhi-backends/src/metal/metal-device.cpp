@@ -23,6 +23,13 @@ namespace nitro::rhi::metal
         device = MTL::CreateSystemDefaultDevice();
         commandQueue = device->newCommandQueue();
 
+        m_defaultSamplers.anisotropicRepeat = create(RHISamplerDesc::AnisotropicRepeat());
+        m_defaultSamplers.linearClamp = create(RHISamplerDesc::LinearClamp());
+        m_defaultSamplers.linearRepeat = create(RHISamplerDesc::LinearRepeat());
+        m_defaultSamplers.nearestClamp = create(RHISamplerDesc::NearestClamp());
+        m_defaultSamplers.nearestRepeat = create(RHISamplerDesc::NearestRepeat());
+        m_defaultSamplers.shadow = create(RHISamplerDesc::Shadow());
+
         float main_scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor());
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
@@ -140,6 +147,14 @@ namespace nitro::rhi::metal
 
         m_currentCommandBuffer = new MetalCommandBuffer(this);
         return m_currentCommandBuffer;
+    }
+
+    RHISamplerHandle MetalDevice::create(const RHISamplerDesc &desc)
+    {
+        return RHISamplerHandle{};
+    };
+    void MetalDevice::destroy(RHISamplerHandle &handle)
+    {
     }
     void MetalDevice::endFrame(RHICommandBuffer *cmd)
     {

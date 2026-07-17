@@ -101,6 +101,7 @@ namespace nitro::renderer
     {
         float exposure;
         ToneMapMode mode;
+        bool autoExposure = true;
     };
     struct RendererSettings
     {

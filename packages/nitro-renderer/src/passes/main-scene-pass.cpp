@@ -32,7 +32,10 @@ namespace nitro::renderer
         m_pipeline = m_device->createPipeline(pipelineDesc);
 
         m_descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
-        m_descriptorSet->writeTexture(finalTexture, 2, rhi::ImageLayout::ShaderReadOnly);
+        rhi::TextureBinding textureBinding;
+        textureBinding.texture = finalTexture;
+        textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+        m_descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
         m_descriptorSet->commit();
     }
 
@@ -44,7 +47,10 @@ namespace nitro::renderer
     }
     void MainScenePass::resize(rhi::RHITexture *finalTexture)
     {
-        m_descriptorSet->writeTexture(finalTexture, 2, rhi::ImageLayout::ShaderReadOnly);
+        rhi::TextureBinding textureBinding;
+        textureBinding.texture = finalTexture;
+        textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+        m_descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
         m_descriptorSet->commit();
     }
     void MainScenePass::execute(rhi::RHICommandBuffer *cmd, rhi::RHIRenderPassDesc &desc, RendererSettings &settings)

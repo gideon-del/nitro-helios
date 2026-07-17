@@ -227,39 +227,6 @@ namespace nitro::rhi::vulkan
                 m_faceMipViews.push_back(faceImageView);
             }
         }
-        if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::ShaderRead))
-        {
-            VkSamplerCreateInfo samplerInfo{};
-            samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-            samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-            samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-            samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-            samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-            samplerInfo.minLod = 0.0f;
-            samplerInfo.maxLod = float(desc.mipmaps);
-            samplerInfo.mipLodBias = 0.0f;
-
-            samplerInfo.anisotropyEnable = VK_FALSE;
-            samplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-            samplerInfo.compareEnable = desc.sampler == TextureDesc::Sampler::Depth ? VK_TRUE : VK_FALSE;
-            samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-
-            if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::DepthStencil) && desc.sampler == TextureDesc::Sampler::Depth)
-            {
-
-                samplerInfo.compareEnable = VK_TRUE;
-                samplerInfo.compareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-            }
-            samplerInfo.unnormalizedCoordinates = VK_FALSE;
-            samplerInfo.magFilter = VK_FILTER_LINEAR;
-            samplerInfo.minFilter = VK_FILTER_LINEAR;
-
-            checkVkResult(vkCreateSampler(m_device->device,
-                                          &samplerInfo,
-                                          nullptr,
-                                          &sampler),
-                          "Unable to create sampler");
-        }
     }
     VulkanTexture::VulkanTexture(VulkanDevice *device, VkImage existingImage, uint32_t width, uint32_t height, VkFormat surfaceFormat) : m_device(device), width(width), height(height), image(existingImage), format(surfaceFormat)
     {

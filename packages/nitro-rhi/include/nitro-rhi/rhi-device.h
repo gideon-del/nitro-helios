@@ -10,8 +10,20 @@
 #include "rhi-render-pass.h"
 #include "rhi-timer.h"
 #include "rhi-compute-pipeline.h"
+#include "rhi-handle.h"
+#include "rhi-sampler.h"
 namespace nitro::rhi
 {
+
+    struct DefaultSamplers
+    {
+        RHISamplerHandle linearRepeat;
+        RHISamplerHandle linearClamp;
+        RHISamplerHandle nearestRepeat;
+        RHISamplerHandle nearestClamp;
+        RHISamplerHandle shadow;
+        RHISamplerHandle anisotropicRepeat;
+    };
 
     class RHIDevice
     {
@@ -41,10 +53,15 @@ namespace nitro::rhi
 
         virtual RHIComputePipeline *createComputePipeline(const ComputePipelineDesc &desc) = 0;
         virtual void destroyComputePipeline(RHIComputePipeline *pipeline) = 0;
+
+        virtual RHISamplerHandle create(const RHISamplerDesc &desc) = 0;
+        virtual void destroy(RHISamplerHandle &handle) = 0;
+        virtual const DefaultSamplers &defaultSamplers() const = 0;
         virtual void waitIdle() = 0;
         virtual uint32_t getCurrentFrameIndex() const = 0;
         virtual RHICommandBuffer *beginFrame() = 0;
         virtual RHICommandBuffer *createCommandBuffer() = 0;
+
         virtual void endFrame(RHICommandBuffer *cmd) = 0;
         virtual void endCommandBuffer(RHICommandBuffer *cmd) = 0;
         virtual void beginImGuiFrame() = 0;

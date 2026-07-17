@@ -42,6 +42,7 @@ namespace nitro::rhi::metal
         void updateVertexCount(uint32_t count) override;
         void generateMipmaps(RHITexture *texture) override;
         void textureBarrier(const TextureBarrier &barrier) override;
+        void copyTextureToBuffer(RHITexture *texture, RHIBuffer *buffer) override;
         void endEncoders();
         MTL::CommandBuffer *commandBuffer = nullptr;
         MTL::RenderCommandEncoder *encoder = nullptr;

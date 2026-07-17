@@ -196,7 +196,7 @@ namespace nitro::renderer
                 if (primitive.material >= 0)
                 {
                     material = materials[primitive.material];
-                        }
+                }
 
                 renderObjects.push_back(RenderObject(renderer, transformation, material));
             };
@@ -213,29 +213,35 @@ namespace nitro::renderer
         for (auto gltfMaterial : model.materials)
         {
             MaterialDesc materialDesc;
-            materialDesc.baseColor = loadGltfTexture(device, model, gltfMaterial.pbrMetallicRoughness.baseColorTexture, rhi::TextureDesc::ImageFormat::ColorSRGB8);
-            std::cout << "Created Color Texture" << std::endl;
-            materialDesc.metallicRoughness = loadGltfTexture(device, model, gltfMaterial.pbrMetallicRoughness.metallicRoughnessTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
-            std::cout << "Created Roughness Texture" << std::endl;
-            if (gltfMaterial.normalTexture.index > -1)
+            MaterialTextures textures;
+            auto anisotropicRepeatSampler = device->defaultSamplers().anisotropicRepeat;
+            textures.baseTexture.texture = loadGltfTexture(device, model, gltfMaterial.pbrMetallicRoughness.baseColorTexture, rhi::TextureDesc::ImageFormat::ColorSRGB8);
+            textures.baseTexture.sampler = anisotropicRepeatSampler;
+
+            textures.metallicRoughness.texture = loadGltfTexture(device, model, gltfMaterial.pbrMetallicRoughness.metallicRoughnessTexture,
+                                                                 rhi::TextureDesc::ImageFormat::ColorRGBA8);
+            textures.metallicRoughness.sampler = anisotropicRepeatSampler;
             {
                 auto normalTexture = model.textures[gltfMaterial.normalTexture.index];
-                materialDesc.normal = loadGltfTexture(device, model, normalTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+                textures.normal.texture = loadGltfTexture(device, model, normalTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+                textures.normal.sampler = anisotropicRepeatSampler;
                 std::cout << "Created Normal Texture" << std::endl;
             }
             if (gltfMaterial.occlusionTexture.index > -1)
             {
                 auto occlusionTexture = model.textures[gltfMaterial.occlusionTexture.index];
-                materialDesc.ao = loadGltfTexture(device, model, occlusionTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+                textures.ao.texture = loadGltfTexture(device, model, occlusionTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+                textures.ao.sampler = anisotropicRepeatSampler;
                 std::cout << "Created ocllusion Texture" << std::endl;
             }
             if (gltfMaterial.emissiveTexture.index > -1)
             {
                 auto emissiveTexture = model.textures[gltfMaterial.emissiveTexture.index];
-                materialDesc.emissive = loadGltfTexture(device, model, emissiveTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+                textures.emissive.texture = loadGltfTexture(device, model, emissiveTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+                textures.emissive.sampler = anisotropicRepeatSampler;
                 std::cout << "Created emissive Texture" << std::endl;
             }
-
+            materialDesc.textures = textures;
             materials.push_back(materialSystem->createMaterial(materialDesc));
         }
         for (auto nodeIdx : defaultScene.nodes)

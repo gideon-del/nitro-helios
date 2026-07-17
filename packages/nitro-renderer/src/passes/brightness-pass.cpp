@@ -96,8 +96,11 @@ namespace nitro::renderer
         cmd->textureBarrier(textureBarrier);
         cmd->bindComputePipeline(m_computePipeline);
 
+        rhi::TextureBinding textureBinding;
+        textureBinding.texture = hdrScene;
+        textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
         m_descriptorSet->writeStorageImage(m_brightnessTexture, 3, rhi::ImageLayout::General, rhi::TextureSubresource{});
-        m_descriptorSet->writeTexture(hdrScene, 2, rhi::ImageLayout::ShaderReadOnly);
+        m_descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
         m_descriptorSet->commit();
         cmd->setPushConstant(&pc, sizeof(BrightnessPassPushConstant), 1, true);
         cmd->bindComputeDescriptorSet(m_descriptorSet, 0);

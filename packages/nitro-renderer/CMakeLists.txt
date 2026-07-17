@@ -34,6 +34,7 @@ add_library(nitro-renderer STATIC
  src/passes/gaussian-blur-pass.cpp
  src/passes/combine-texture-pass.cpp
  src/post-process/bloom-effect.cpp
+ src/passes/auto-exposure-pass.cpp
 )
 
 find_package(glm REQUIRED)

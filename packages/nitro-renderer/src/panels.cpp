@@ -205,6 +205,8 @@ namespace nitro::renderer
             static_cast<int>(settings.mode);
         ImGui::Begin("Tonemap");
 
+        ImGui::Checkbox("Auto Exposure", &settings.autoExposure);
+
         ImGui::SliderFloat(
             "Exposure",
             &settings.exposure,

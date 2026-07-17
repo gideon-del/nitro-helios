@@ -35,6 +35,10 @@ namespace nitro::rhi::metal
         RHIComputePipeline *createComputePipeline(const ComputePipelineDesc &desc) override;
         void destroyComputePipeline(RHIComputePipeline *pipeline) override;
 
+        RHISamplerHandle create(const RHISamplerDesc &desc) override;
+        void destroy(RHISamplerHandle &handle) override;
+
+        const DefaultSamplers &defaultSamplers() const override { return m_defaultSamplers; };
         RHICommandBuffer *beginFrame() override;
         void endFrame(RHICommandBuffer *cmd) override;
         uint32_t getCurrentFrameIndex() const override;
@@ -51,5 +55,6 @@ namespace nitro::rhi::metal
         MetalSwapchain *m_swapchain = nullptr;
         void *m_window = nullptr;
         MetalCommandBuffer *m_currentCommandBuffer = nullptr;
+        DefaultSamplers m_defaultSamplers;
     };
 } // namespace nitro::rhi::metal

@@ -5,6 +5,7 @@
 namespace nitro::rhi::vulkan
 {
     VkShaderModule loadShaderModule(VkDevice &device, const ShaderDesc &desc);
+    VkCompareOp convertToCompareOp(CompareOp test);
     class VulkanDevice;
     class VulkanPipeline : public RHIPipeline
     {

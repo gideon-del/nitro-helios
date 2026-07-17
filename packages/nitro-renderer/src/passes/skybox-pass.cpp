@@ -75,7 +75,10 @@ namespace nitro::renderer
 
                 resource.descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
                 resource.descriptorSet->writeBuffer(resource.uniformBuffer, 2);
-                resource.descriptorSet->writeTexture(cubeTexture, 3, rhi::ImageLayout::ShaderReadOnly);
+                rhi::TextureBinding textureBinding;
+                textureBinding.texture = cubeTexture;
+                textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+                resource.descriptorSet->writeTexture(textureBinding, 3, rhi::ImageLayout::ShaderReadOnly);
                 resource.descriptorSet->commit();
 
                 return resource;
@@ -127,7 +130,10 @@ namespace nitro::renderer
         for (auto &resource : m_resources)
         {
             resource.descriptorSet->writeBuffer(resource.uniformBuffer, 2);
-            resource.descriptorSet->writeTexture(cubeTexture, 3, rhi::ImageLayout::ShaderReadOnly);
+            rhi::TextureBinding textureBinding;
+            textureBinding.texture = cubeTexture;
+            textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+            resource.descriptorSet->writeTexture(textureBinding, 3, rhi::ImageLayout::ShaderReadOnly);
             resource.descriptorSet->commit();
         }
     }
