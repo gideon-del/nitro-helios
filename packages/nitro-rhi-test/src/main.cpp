@@ -220,9 +220,9 @@ int main()
     glfwSetScrollCallback(window, [](GLFWwindow *w, double xoffset, double yoffset)
                           {
 
-                              auto state = reinterpret_cast<AppState *>(glfwGetWindowUserPointer(w));
+                                auto state = reinterpret_cast<AppState *>(glfwGetWindowUserPointer(w));
 
-                              state->camera->onScroll(yoffset); });
+                                state->camera->onScroll(yoffset); });
 
     RHITimer *timer = device->createTimer();
     RendererSettings rendererSettings;
@@ -241,6 +241,7 @@ int main()
     helmetScene.objects = Scene::loadGltfScene("./assets/DamagedHelmet/DamagedHelmet.gltf", device, materialSystem);
 
     renderContext.scene = &helmetScene;
+    renderContext.ssaoSamples.generate();
     // IRenderer *currentRenderer = &deferredRenderer;
     int cachedWidth, cachedHeight;
     glfwGetFramebufferSize(window, &cachedWidth, &cachedHeight);

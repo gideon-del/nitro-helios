@@ -1,0 +1,42 @@
+#version 450
+
+layout(local_size_x=16,local_size_y=16, local_size_z=1) in;
+
+layout(set=0, binding=2) uniform sampler2D gDepth;
+layout(set=0, binding=3) uniform sampler2D aoTexture;
+layout(set=0, binding=4, rgba16f) uniform writeonly image2D outputTexture;
+
+layout(push_constant) uniform PushConstant {
+    vec2 textureSize;
+    float depthSigma;
+} pc;
+
+void main() {
+    ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
+    if (pixelCoord.x >= int(pc.textureSize.x) || pixelCoord.y >= int(pc.textureSize.y)) return;
+
+    vec2 uv = (vec2(pixelCoord) + 0.5) / pc.textureSize;
+    float centerDepth = texture(gDepth, uv).r;
+
+    float totalWeight = 0.0;
+    float result = 0.0;
+    int radius = 2; 
+
+    for (int x = -radius; x <= radius; x++) {
+        for (int y = -radius; y <= radius; y++) {
+            vec2 sampleUV = uv + vec2(x, y) / pc.textureSize;
+            float sampleDepth = texture(gDepth, sampleUV).r;
+            float ao = texture(aoTexture, sampleUV).r;
+
+            // float depthDiff = abs(centerDepth - sampleDepth);
+            // float depthWeight = exp(-(depthDiff * depthDiff) / (2.0 * pc.depthSigma * pc.depthSigma));
+
+            result += ao;
+            // totalWeight += depthWeight;
+            totalWeight++;
+        }
+    }
+
+    result /= max(totalWeight, 0.0001); 
+    imageStore(outputTexture, pixelCoord, vec4(vec3(result), 1.0));
+}

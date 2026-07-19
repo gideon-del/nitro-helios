@@ -35,6 +35,8 @@ add_library(nitro-renderer STATIC
  src/passes/combine-texture-pass.cpp
  src/post-process/bloom-effect.cpp
  src/passes/auto-exposure-pass.cpp
+ src/passes/color-grading-pass.cpp
+ src/passes/ssao-pass.cpp
 )
 
 find_package(glm REQUIRED)

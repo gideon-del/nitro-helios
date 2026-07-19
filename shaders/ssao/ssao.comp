@@ -1,0 +1,102 @@
+#version 450
+layout(local_size_x =16, local_size_y=16, local_size_z=1) in;
+
+
+layout(set=0, binding=2) uniform sampler2D gDepth;
+layout(set=0, binding=3) uniform sampler2D gNormal;
+layout(set =0, binding=4,rgba16f) uniform writeonly image2D ssaoTexture;
+layout(std430,set=0, binding=5) buffer RandomSamples {
+    vec4 randomSamples[];
+};
+layout(set=0, binding=6) uniform sampler2D noiseTexture;
+
+layout(push_constant) uniform PushConstant {
+ mat4 view;
+ mat4 invProj;
+ mat4 proj;
+ vec2 textureSize;
+ uint totalSamples;
+ float radius;
+} pc;
+
+
+
+vec3 decodeNormal(vec2 n) {
+vec2 f = n * 2.0 - 1.0;
+vec3 v = vec3(
+    f.x,
+    f.y,
+    1.0 - abs(f.x) - abs(f.y));
+
+if (v.z < 0.0)
+{
+    v.xy =
+        (1.0 - abs(v.yx))
+        * sign(v.xy);
+}
+
+return normalize(v);
+}
+
+
+
+mat3 generateTBN(vec3 normal, vec3 randomVec) {
+   vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
+   vec3 bitangent = cross(normal, tangent);
+
+    return mat3(tangent, bitangent, normal);
+}
+
+vec3 reconstructViewPosition(vec2 uv, float depth, mat4 invProj) {
+    vec3 ndc = vec3(uv * 2.0 -1.0, depth);
+
+    vec4 clip = invProj * vec4(ndc, 1.0);
+
+    return clip.xyz /clip.w;
+}
+
+void main() {
+    ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
+
+    if(pixelCoord.x >= int(pc.textureSize.x) || pixelCoord.y >= int(pc.textureSize.y)) return;
+
+    vec2 uv = (vec2(pixelCoord) + 0.5) / pc.textureSize;
+    vec3 normal = decodeNormal(texture(gNormal, uv).xy);
+    normal = normalize(mat3(pc.view) * normal);
+   vec2 noiseScale = pc.textureSize /4.0;
+    vec2 randomVecUV = uv * noiseScale;
+   vec3 randomVec = normalize(texture(noiseTexture, randomVecUV).xyz);
+    mat3 TBN = generateTBN(normal,randomVec);
+   float ownDepth = texture(gDepth, uv).r;
+vec3 pixelViewPos = reconstructViewPosition(uv, ownDepth, pc.invProj);
+   uint occlusionCount = 0u;
+
+    float radius =pc.radius;
+
+   for(uint i =0; i < pc.totalSamples; i++) {
+    vec3 tangentSample = randomSamples[i].rgb;
+    vec3 orientedSample = normalize(TBN * tangentSample);
+    vec3 samplePos = pixelViewPos + orientedSample * radius;  
+
+    vec4 sampleOffset = pc.proj * vec4(samplePos, 1.0);
+    vec2 sampleOffsetNDC = sampleOffset.xy / sampleOffset.w; 
+    vec2 sampleUV = sampleOffsetNDC * 0.5 + 0.5;
+    float depth = texture(gDepth, sampleUV).r;
+
+    float sceneDepth = reconstructViewPosition(sampleUV, depth, pc.invProj).z;
+
+    bool occluded = sceneDepth >= samplePos.z;
+
+    if(occluded) {
+        occlusionCount++;
+    }
+
+   }
+
+   float ao = float(occlusionCount) /float(pc.totalSamples);
+
+   imageStore(ssaoTexture, pixelCoord, vec4(vec3(ao), 1.0));
+   
+
+}
+

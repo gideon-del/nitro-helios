@@ -16,3 +16,5 @@
 #include "gaussian-blur-pass.h"
 #include "combine-texture-pass.h"
 #include "auto-exposure-pass.h"
+#include "color-grading-pass.h"
+#include "ssao-pass.h"

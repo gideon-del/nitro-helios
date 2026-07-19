@@ -29,6 +29,7 @@ namespace nitro::renderer
         std::shared_ptr<MainScenePass> m_mainScenePass;
         std::unique_ptr<BloomEffect> m_bloomEffect;
         std::unique_ptr<AutoExposurePass> m_autoExposurePass;
+        std::unique_ptr<SSAOPass> m_ssaoPass;
         bool m_isMetal;
         ShadowPanel m_shadowPanel;
         LightPanel m_lightPanel;

@@ -28,4 +28,12 @@ namespace nitro::renderer
     {
         void draw(BloomSettings &settings);
     };
+    struct ColorGradingPanel
+    {
+        void draw(ColorGradingSettings &settings);
+    };
+    struct SSAOPanel
+    {
+        void draw(SSAOSettings &settings);
+    };
 } // namespace nitro::renderer

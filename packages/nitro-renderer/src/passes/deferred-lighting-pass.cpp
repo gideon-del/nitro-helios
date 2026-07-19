@@ -2,7 +2,7 @@
 
 namespace nitro::renderer
 {
-    DeferredLightingPass::DeferredLightingPass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, std::vector<rhi::RHITexture *> &cascades, GBuffer &gBuffer, rhi::RHITexture *cubeTexture, rhi::RHITexture *lightTexture, rhi::RHITexture *skybox, rhi::RHITexture *brdfLut, rhi::RHITexture *prefilteredEnv, std::string shaderDir, bool isMetal) : m_device(device), m_width(width), m_height(height)
+    DeferredLightingPass::DeferredLightingPass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, std::vector<rhi::RHITexture *> &cascades, GBuffer &gBuffer, rhi::RHITexture *cubeTexture, rhi::RHITexture *lightTexture, rhi::RHITexture *skybox, rhi::RHITexture *brdfLut, rhi::RHITexture *prefilteredEnv, rhi::RHITexture *ssaoTexture, std::string shaderDir, bool isMetal) : m_device(device), m_width(width), m_height(height)
     {
         std::vector<rhi::RHIDescriptorBinding> mainBindings = {
             {rhi::RHIDescriptorBinding::Type::UniformBuffer,
@@ -39,6 +39,9 @@ namespace nitro::renderer
             {rhi::RHIDescriptorBinding::Type::Sampler,
              rhi::RHIDescriptorBinding::ShaderStage::Fragment,
              9},
+            {rhi::RHIDescriptorBinding::Type::Sampler,
+             rhi::RHIDescriptorBinding::ShaderStage::Fragment,
+             10},
         };
 
         std::vector<rhi::RHIDescriptorBinding> cascadeBindings;
@@ -134,6 +137,8 @@ namespace nitro::renderer
                 resource.gBufferDescriptorSet->writeTexture(textureBinding, 8, ImageLayout::ShaderReadOnly);
                 textureBinding.texture = brdfLut;
                 resource.gBufferDescriptorSet->writeTexture(textureBinding, 9, ImageLayout::ShaderReadOnly);
+                textureBinding.texture = ssaoTexture;
+                resource.gBufferDescriptorSet->writeTexture(textureBinding, 10, ImageLayout::ShaderReadOnly);
                 resource.gBufferDescriptorSet->commit();
 
                 resource.shadowDescriptorSet = m_device->createDescriptorSet(m_shadowDescriptorLayout);
@@ -186,7 +191,7 @@ namespace nitro::renderer
         cmd->endRenderPass();
     }
 
-    void DeferredLightingPass::recreate(uint32_t width, uint32_t height, GBuffer &gBuffer, rhi::RHITexture *cubeTexture, rhi::RHITexture *lightTexture, rhi::RHITexture *skybox, rhi::RHITexture *brdfLut, rhi::RHITexture *prefilteredEnv)
+    void DeferredLightingPass::recreate(uint32_t width, uint32_t height, GBuffer &gBuffer, rhi::RHITexture *cubeTexture, rhi::RHITexture *lightTexture, rhi::RHITexture *skybox, rhi::RHITexture *brdfLut, rhi::RHITexture *prefilteredEnv, rhi::RHITexture *ssaoTexture)
     {
         m_width = width;
         m_height = height;
@@ -236,6 +241,8 @@ namespace nitro::renderer
             resource.gBufferDescriptorSet->writeTexture(textureBinding, 8, ImageLayout::ShaderReadOnly);
             textureBinding.texture = brdfLut;
             resource.gBufferDescriptorSet->writeTexture(textureBinding, 9, ImageLayout::ShaderReadOnly);
+            textureBinding.texture = ssaoTexture;
+            resource.gBufferDescriptorSet->writeTexture(textureBinding, 10, ImageLayout::ShaderReadOnly);
             resource.gBufferDescriptorSet->commit();
         }
     };

@@ -1,6 +1,9 @@
 
 #include <nitro-renderer/utils.h>
 #include <stb_image.h>
+#include <vector>
+#include <glm/glm.hpp>
+#include <random>
 namespace nitro::renderer
 {
     struct CubemapPushConstant
@@ -401,6 +404,30 @@ namespace nitro::renderer
         device->destroyDescriptorLayout(descriptorLayout);
 
         return brdfLutTexture;
+    }
+
+    rhi::RHITexture *generateSSAONoiseTexture(std::shared_ptr<rhi::RHIDevice> device)
+    {
+        std::vector<glm::vec4> noiseSamples;
+        std::uniform_real_distribution<float> randomFloats(0.0f, 1.0f);
+        std::default_random_engine generator;
+        for (int i = 0; i < 16; i++)
+        {
+            glm::vec4 noiseSample{
+                randomFloats(generator) * 2.0 - 1.0,
+                randomFloats(generator) * 2.0 - 1.0,
+                0.0f,
+                0.0f};
+            noiseSamples.push_back(noiseSample);
+        }
+
+        rhi::TextureDesc textureDesc;
+        textureDesc.size = {4, 4};
+        textureDesc.initialData = noiseSamples.data();
+        textureDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA32;
+        textureDesc.usage = rhi::TextureDesc::Usage::ShaderRead;
+
+        return device->createTexture(textureDesc);
     }
 
 } // namespace nitro::renderer

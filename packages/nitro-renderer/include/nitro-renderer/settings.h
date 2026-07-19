@@ -99,9 +99,22 @@ namespace nitro::renderer
     };
     struct ToneMapSettings
     {
-        float exposure;
-        ToneMapMode mode;
+        float exposure = 0.4;
+        ToneMapMode mode = ToneMapMode::ACES;
         bool autoExposure = true;
+    };
+
+    struct ColorGradingSettings
+    {
+        glm::vec3 lift = glm::vec3(0.0f);
+        glm::vec3 gain = glm::vec3(1.0f);
+        glm::vec3 gamma = glm::vec3(1.0f);
+        bool enable = true;
+    };
+    struct SSAOSettings
+    {
+        float radius = 0.2f;
+        float depthSigma = 1.0f;
     };
     struct RendererSettings
     {
@@ -111,8 +124,10 @@ namespace nitro::renderer
         StatSettings stats;
         ToneMapSettings tonemap;
         BloomSettings bloom;
+        ColorGradingSettings colorGrading;
+        SSAOSettings ssao;
         DebugMode selectedDebugMode = DebugMode::Lit;
-        LightMode selectedLightMode = LightMode::BlinnPhong;
+        LightMode selectedLightMode = LightMode::CookTorrenceStub;
         RendererScenes selectedScene = RendererScenes::DamageHelmet;
     };
 

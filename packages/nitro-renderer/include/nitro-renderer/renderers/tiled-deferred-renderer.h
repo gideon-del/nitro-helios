@@ -28,6 +28,8 @@ namespace nitro::renderer
         std::shared_ptr<SkyboxPass> m_skyboxPass;
         std::unique_ptr<BloomEffect> m_bloomEffect;
         std::unique_ptr<AutoExposurePass> m_autoExposurePass;
+        std::unique_ptr<ColorGradingPass> m_colorGradingPass;
+        std::unique_ptr<SSAOPass> m_ssaoPass;
         rhi::RHITexture *m_cubemapTexture;
         rhi::RHITexture *m_irradianceTexture;
         rhi::RHITexture *m_prefilterMap;

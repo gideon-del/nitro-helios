@@ -1,0 +1,32 @@
+#version 450
+layout(local_size_x=16, local_size_y=16, local_size_z =1) in;
+
+layout(set=0, binding =2) uniform sampler2D hdrTexture;
+layout(set=0, binding=3, rgba16f) uniform writeonly image2D outputTexture;
+
+
+layout(push_constant) uniform PushConstant {
+ vec4 lift;
+ vec4 gamma;
+ vec4 gain;
+ vec2 textureSize;
+} pc;
+
+
+void main() {
+ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
+
+if(pixelCoord.x >= int(pc.textureSize.x) || pixelCoord.y >= int(pc.textureSize.y)) return;
+vec2 uv = (vec2(pixelCoord) + 0.5)/ pc.textureSize;
+vec3 color = texture(hdrTexture,uv).rgb;
+vec3 lift = pc.lift.rgb;
+vec3 gamma = pc.gamma.rgb;
+vec3 gain = pc.gain.rgb;
+
+color = color + lift * (1.0 - color);
+color = pow(max(color,0.01), 1.0/gamma);
+color *= gain;
+
+imageStore(outputTexture, pixelCoord, vec4(color,1.0));
+
+}

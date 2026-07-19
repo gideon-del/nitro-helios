@@ -35,6 +35,7 @@ layout(set=1, binding=6) uniform samplerCube irradianceTex;
 layout(set=1, binding=7) uniform sampler2D environment;
 layout(set=1, binding=8) uniform samplerCube prefilterMap;
 layout(set=1, binding=9) uniform sampler2D brdfLUT;
+layout(set=1, binding=10) uniform sampler2D ssaoTexture;
 
 layout(set=2, binding=0) uniform sampler2DShadow shadowMap0;
 layout(set=2, binding=1) uniform sampler2DShadow shadowMap1;
@@ -335,8 +336,9 @@ vec3 F0 = mix(dielectricF0, albedo, metallic);
 float D = distributionGGX(N, H,roughness);
 vec3 F = fresnelSchlick(F0, max(dot(N,V),0.0));
 float G = geometrySmith(N, L, V,roughness);
-vec3 ambient = diffuseIBL(N, albedo, metallic, irradianceTex) * ao;
-vec3 specularIBLColor = specularIBL(N, V, roughness, F0, prefilterMap, brdfLUT) * ao;
+vec3 ambientFactor = vec3(1.0 - texture(ssaoTexture, fragUV).r);
+vec3 ambient = diffuseIBL(N, albedo, metallic, irradianceTex) * ao * ambientFactor;
+vec3 specularIBLColor = specularIBL(N, V, roughness, F0, prefilterMap, brdfLUT) * ao * ambientFactor;
 switch(int(frameUbo.lightMode)) {
   case 0:
     directionalLighting = blingPhongShading(

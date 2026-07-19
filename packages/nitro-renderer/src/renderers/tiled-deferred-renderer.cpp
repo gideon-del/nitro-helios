@@ -150,6 +150,8 @@ namespace nitro::renderer
         m_skyboxPass = std::make_shared<SkyboxPass>(m_device, m_cubemapTexture, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
         m_depthPrepass = std::make_shared<DepthPrepass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal, m_materialSystem);
         m_geometryPass = std::make_shared<GeometryPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), m_depthPrepass->getDepthTexture(), shaderDir, isMetal, m_materialSystem);
+
+        m_ssaoPass = std::make_unique<SSAOPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), m_geometryPass->gBuffer.depth, m_geometryPass->gBuffer.normal, shaderDir, isMetal);
         m_csmPass = std::make_shared<CascadeShadowMapPass>(m_device, shaderDir, isMetal);
         m_tileComputePass = std::make_shared<TiledLightingComputePass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), 1000, m_geometryPass->gBuffer, shaderDir, m_isMetal);
         m_tileLightPass = std::make_shared<TileLightShadingPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), m_geometryPass->gBuffer, m_tileComputePass->getFrameResources(), shaderDir, isMetal);
@@ -164,12 +166,15 @@ namespace nitro::renderer
             m_skyboxPass->getSkyboxTexture(),
             m_brdfLUT,
             m_prefilterMap,
+            m_ssaoPass->getSSAOTexture(),
             shaderDir,
             isMetal);
         m_debugDrawPass = std::make_shared<DebugDrawPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, m_isMetal);
         m_bloomEffect = std::make_unique<BloomEffect>(m_device, m_swapchain->getWidth(),
                                                       m_swapchain->getHeight(), shaderDir, isMetal);
         m_autoExposurePass = std::make_unique<AutoExposurePass>(m_device, m_swapchain->getWidth(),
+                                                                m_swapchain->getHeight(), shaderDir, isMetal);
+        m_colorGradingPass = std::make_unique<ColorGradingPass>(m_device, m_swapchain->getWidth(),
                                                                 m_swapchain->getHeight(), shaderDir, isMetal);
         m_toneMapPass = std::make_shared<ToneMapPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
 
@@ -180,13 +185,15 @@ namespace nitro::renderer
         m_depthPrepass->resize(width, height);
         m_geometryPass->resize(width, height, m_depthPrepass->getDepthTexture());
         m_tileComputePass->resize(width, height, m_geometryPass->gBuffer);
+        m_ssaoPass->resize(width, height, m_geometryPass->gBuffer.depth, m_geometryPass->gBuffer.normal);
         m_tileLightPass->resize(width, height, m_geometryPass->gBuffer, m_tileComputePass->getFrameResources());
         m_skyboxPass->resize(width, height, m_cubemapTexture);
         m_deferredLightingPass->recreate(width, height, m_geometryPass->gBuffer, m_irradianceTexture, m_tileLightPass->getLightTexture(), m_skyboxPass->getSkyboxTexture(), m_brdfLUT,
-                                         m_prefilterMap);
+                                         m_prefilterMap, m_ssaoPass->getSSAOTexture());
         m_bloomEffect->resize(width, height);
         m_toneMapPass->resize(width, height);
         m_autoExposurePass->resize(width, height);
+        m_colorGradingPass->resize(width, height);
         m_mainScenePass->resize(m_toneMapPass->getToneMappedTexture());
     };
 
@@ -221,7 +228,15 @@ namespace nitro::renderer
         m_skyboxPass->execute(cmd, skyboxUbo);
         m_depthPrepass->execute(cmd, *ctx.scene, depthCamera);
         m_geometryPass->execute(cmd, geometryCamera, *ctx.scene, settings.light);
+        SSAOPushConstant ssaoPc;
+        ssaoPc.invProj = glm::inverse(geometryCamera.proj);
+        ssaoPc.view = geometryCamera.view;
+        ssaoPc.proj = geometryCamera.proj;
+        ssaoPc.textureSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
+        ssaoPc.totalSamples = static_cast<uint>(ctx.ssaoSamples.samples.size());
+        ssaoPc.radius = settings.ssao.radius;
 
+        m_ssaoPass->execute(cmd, ssaoPc, ctx.ssaoSamples.samples, settings.ssao.depthSigma);
         TiledCameraUBO computeUBO;
         computeUBO.farPlane = ctx.CAMERA_FAR;
         computeUBO.nearPlane = ctx.CAMERA_NEAR;
@@ -280,6 +295,16 @@ namespace nitro::renderer
 
             settings.tonemap.exposure = m_autoExposurePass->execute(cmd, autoExposurePc, hdrTexture, settings.tonemap, ctx.deltaTime);
         }
+
+        if (settings.colorGrading.enable)
+        {
+            ColorGradingPushConstant pc;
+            pc.gain = glm::vec4(settings.colorGrading.gain, 1.0);
+            pc.lift = glm::vec4(settings.colorGrading.lift, 1.0);
+            pc.gamma = glm::vec4(settings.colorGrading.gamma, 1.0);
+            pc.textureSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
+            sceneTexture = m_colorGradingPass->execute(cmd, pc, sceneTexture);
+        };
 
         if (settings.bloom.enable)
         {

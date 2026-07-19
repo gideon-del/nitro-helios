@@ -12,4 +12,6 @@ namespace nitro::renderer
     rhi::RHITexture *generateBrdfLUT(
         std::shared_ptr<rhi::RHIDevice> device, uint32_t size, std::string shaderDir, bool isMetal);
 
+    rhi::RHITexture *generateSSAONoiseTexture(std::shared_ptr<rhi::RHIDevice> device);
+
 } // namespace nitro::renderer

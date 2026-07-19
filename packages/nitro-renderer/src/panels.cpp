@@ -240,4 +240,20 @@ namespace nitro::renderer
 
         ImGui::End();
     }
+    void ColorGradingPanel::draw(ColorGradingSettings &settings)
+    {
+        ImGui::Begin("Color Grading");
+        ImGui::Checkbox("Enable", &settings.enable);
+        ImGui::ColorEdit3("Lift", &settings.lift.x);
+        ImGui::ColorEdit3("Gain", &settings.gain.x);
+        ImGui::ColorEdit3("Gamma", &settings.gamma.x);
+        ImGui::End();
+    }
+    void SSAOPanel::draw(SSAOSettings &settings)
+    {
+        ImGui::Begin("SSAO");
+        ImGui::SliderFloat("Radius", &settings.radius, 0.0f, 3.0f);
+        ImGui::SliderFloat("Depth Sigma", &settings.depthSigma, 0.0f, 2.0f);
+        ImGui::End();
+    }
 } // namespace nitro::renderer
