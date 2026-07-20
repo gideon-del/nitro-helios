@@ -1,0 +1,84 @@
+#version 450
+layout(local_size_x=16,local_size_y=16, local_size_z=1)in;
+
+layout(push_constant) uniform PushConstant {
+  vec2 textureSize;
+  float contrastThreshold;
+} pc;
+
+
+layout(set=0, binding=2) uniform sampler2D inputTexture;
+layout(set=0, binding=3, rgba8) uniform writeonly image2D outputTexture;
+
+float luma(vec3 color) { return dot(color, vec3(0.299, 0.587, 0.114)); }
+
+
+void main() {
+    ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
+
+     if (pixelCoord.x >= int(pc.textureSize.x) || pixelCoord.y >= int(pc.textureSize.y)) return;
+
+    vec2 uv = (vec2(pixelCoord) + 0.5) / pc.textureSize;
+    vec2 texelSize = 1.0/pc.textureSize;
+    vec3 centerColor =texture(inputTexture, uv).rgb;
+    float lumaCenter = luma(centerColor);
+    
+    float lumaUp = luma(texture(inputTexture, uv + vec2(0.0, -texelSize.y)).rgb);
+    float lumaDown = luma(texture(inputTexture, uv + vec2(0.0, texelSize.y)).rgb);
+    float lumaLeft = luma(texture(inputTexture, uv + vec2(-texelSize.x, 0.0)).rgb);
+    float lumaRight = luma(texture(inputTexture, uv + vec2(texelSize.x, 0.0)).rgb);
+
+    float lumaMin = min(min(lumaUp, lumaDown), min(lumaLeft, lumaRight));
+    float lumaMax = max(max(lumaUp, lumaDown), max(lumaLeft, lumaRight));
+
+    float contrast = lumaMax  - lumaMin;
+
+    if(contrast <= pc.contrastThreshold){
+        imageStore(outputTexture, pixelCoord, vec4(centerColor, 1.0));
+        return;
+    }
+
+    float lumaUpLeft = luma(texture(inputTexture, uv + vec2(-texelSize.x, -texelSize.y)).rgb);
+    float lumaUpRight = luma(texture(inputTexture, uv + vec2(texelSize.x, -texelSize.y)).rgb);
+    float lumaDownLeft = luma(texture(inputTexture, uv + vec2(-texelSize.x, texelSize.y)).rgb);
+    float lumaDownRight = luma(texture(inputTexture, uv + vec2(texelSize.x, texelSize.y)).rgb);
+
+    float edgeHorizontal = abs((lumaUpLeft + lumaUpRight) - (lumaDownLeft + lumaDownRight));
+    float edgeVertical = abs((lumaUpLeft + lumaDownLeft) - (lumaUpRight + lumaDownRight));
+
+    bool isHorizontalEdge = edgeHorizontal >= edgeVertical;
+
+    float gradientStep  = isHorizontalEdge ? texelSize.y : texelSize.x;
+   
+
+    float luma1 = isHorizontalEdge ? lumaUp : lumaLeft;
+    float luma2 = isHorizontalEdge ? lumaDown : lumaRight;
+
+    float gradient1 = abs(luma1 - lumaCenter);
+    float gradient2 = abs(luma2 - lumaCenter);
+
+    bool is1Stepper = gradient1 >= gradient2;
+
+   float lumaLocalAverage;
+   if(is1Stepper) {
+    gradientStep = -gradientStep;
+    lumaLocalAverage = 0.5 * (luma1 + lumaCenter);
+   }else {
+      lumaLocalAverage = 0.5 * (luma2 + lumaCenter);
+   }
+    vec2 currentUV = uv;
+
+    if(isHorizontalEdge){
+        currentUV.y += gradientStep * 0.5;
+    }else {
+        currentUV.x += gradientStep * 0.5;
+    }
+    
+    vec3 blendColor =texture(inputTexture, currentUV).rgb;
+
+ 
+    imageStore(outputTexture, pixelCoord, vec4(blendColor, 1.0));
+    
+
+    
+}

@@ -177,8 +177,9 @@ namespace nitro::renderer
         m_colorGradingPass = std::make_unique<ColorGradingPass>(m_device, m_swapchain->getWidth(),
                                                                 m_swapchain->getHeight(), shaderDir, isMetal);
         m_toneMapPass = std::make_shared<ToneMapPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
+        m_fxaaPass = std::make_unique<FXAAPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), m_toneMapPass->getToneMappedTexture(), shaderDir, isMetal);
 
-        m_mainScenePass = std::make_shared<MainScenePass>(m_device, m_swapchain, m_toneMapPass->getToneMappedTexture(), shaderDir, isMetal);
+        m_mainScenePass = std::make_shared<MainScenePass>(m_device, m_swapchain, m_fxaaPass->getFXAATexture(), shaderDir, isMetal);
     }
     void TiledDeferredRenderer::resize(uint32_t width, uint32_t height)
     {
@@ -192,9 +193,10 @@ namespace nitro::renderer
                                          m_prefilterMap, m_ssaoPass->getSSAOTexture());
         m_bloomEffect->resize(width, height);
         m_toneMapPass->resize(width, height);
+        m_fxaaPass->resize(width, height, m_toneMapPass->getToneMappedTexture());
         m_autoExposurePass->resize(width, height);
         m_colorGradingPass->resize(width, height);
-        m_mainScenePass->resize(m_toneMapPass->getToneMappedTexture());
+        m_mainScenePass->resize(m_fxaaPass->getFXAATexture());
     };
 
     void TiledDeferredRenderer::execute(rhi::RHICommandBuffer *cmd, const RenderContext &ctx, RendererSettings &settings)
@@ -314,6 +316,11 @@ namespace nitro::renderer
         toneMapUBO.exposure = settings.tonemap.exposure;
         toneMapUBO.mode = static_cast<uint>(settings.tonemap.mode);
         m_toneMapPass->execute(cmd, toneMapUBO, sceneTexture);
+
+        FXAAPushConstant fxaaPc;
+        fxaaPc.textureSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
+
+        m_fxaaPass->execute(cmd, fxaaPc);
         rhi::RHIRenderPassDesc rpDesc{};
         rpDesc.clearColor[0] = 0.3f;
         rpDesc.clearColor[1] = 0.3f;

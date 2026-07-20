@@ -20,7 +20,7 @@ void main() {
     vec3 colorA = texture(textureA, uv).rgb;
     vec3 colorB =texture(textureB, uv).rgb;
 
-    vec3 result = (colorA + colorB) * pc.intensity;
+    vec3 result = colorA + colorB * pc.intensity;
 
     imageStore(finalTexture, pixelCoord, vec4(result, 1.0));
 }

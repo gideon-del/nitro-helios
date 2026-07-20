@@ -30,6 +30,7 @@ namespace nitro::renderer
         std::unique_ptr<AutoExposurePass> m_autoExposurePass;
         std::unique_ptr<ColorGradingPass> m_colorGradingPass;
         std::unique_ptr<SSAOPass> m_ssaoPass;
+        std::unique_ptr<FXAAPass> m_fxaaPass;
         rhi::RHITexture *m_cubemapTexture;
         rhi::RHITexture *m_irradianceTexture;
         rhi::RHITexture *m_prefilterMap;
