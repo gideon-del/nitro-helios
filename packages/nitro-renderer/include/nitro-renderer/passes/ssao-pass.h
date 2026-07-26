@@ -2,6 +2,7 @@
 #include <nitro-rhi/rhi.h>
 #include <glm/glm.hpp>
 #include <nitro-renderer/per-frame.h>
+#include <nitro-renderer/render-graph.h>
 
 namespace nitro::renderer
 {
@@ -27,23 +28,25 @@ namespace nitro::renderer
         float depthSigma = 1.0f;
         float _pads;
     };
+    struct SSAOPassTextureIDs
+    {
+        RGTextureID gDepth;
+        RGTextureID gNormal;
+        RGTextureID ssaoTex;
+    };
     class SSAOPass
     {
     public:
         SSAOPass(std::shared_ptr<rhi::RHIDevice> device,
                  uint32_t width,
                  uint32_t height,
-                 rhi::RHITexture *gDepth,
-                 rhi::RHITexture *gNormal,
                  std::string shaderDir,
                  bool isMetal);
         ~SSAOPass();
         void resize(uint32_t width,
-                    uint32_t height,
-                    rhi::RHITexture *gDepth,
-                    rhi::RHITexture *gNormal);
-        void execute(rhi::RHICommandBuffer *cmd, SSAOPushConstant pc, const std::vector<glm::vec4> &samples, float depthSigma = 0.3f);
-        rhi::RHITexture *getSSAOTexture() { return m_blurTexture; }
+                    uint32_t height);
+        void execute(rhi::RHICommandBuffer *cmd, SSAOPushConstant pc, const RGResources &resources, const RGResourceID blurredSSAO, const std::vector<glm::vec4> &samples, float depthSigma = 0.3f);
+        void bindResources(const RGResources &resources, const SSAOPassTextureIDs &textures);
 
     private:
         std::shared_ptr<rhi::RHIDevice> m_device;
@@ -57,7 +60,6 @@ namespace nitro::renderer
 
         rhi::RHITexture *m_ssaoTexture;
         rhi::RHITexture *m_noiseTexture;
-        rhi::RHITexture *m_blurTexture;
 
         PerFrame<SSAOResources> m_resources;
     };

@@ -1,45 +1,45 @@
-#pragma once
-#include <nitro-rhi/rhi.h>
-#include <nitro-renderer/passes/render-passes.h>
-#include <nitro-renderer/interface/renderer.h>
-#include <nitro-renderer/panels.h>
-#include <nitro-renderer/material-system.h>
-#include <nitro-renderer/post-process/post-process.h>
+// #pragma once
+// #include <nitro-rhi/rhi.h>
+// #include <nitro-renderer/passes/render-passes.h>
+// #include <nitro-renderer/interface/renderer.h>
+// #include <nitro-renderer/panels.h>
+// #include <nitro-renderer/material-system.h>
+// #include <nitro-renderer/post-process/post-process.h>
 
-namespace nitro::renderer
-{
+// namespace nitro::renderer
+// {
 
-    class DeferredRenderer : public IRenderer
-    {
-    public:
-        DeferredRenderer(std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<rhi::RHISwapchain> swapchain, std::string shaderDir, bool isMetal, std::shared_ptr<MaterialSystem> materialSystem);
-        void execute(rhi::RHICommandBuffer *cmd, const RenderContext &ctx, RendererSettings &settings) override;
-        void resize(uint32_t width, uint32_t height) override;
+//     class DeferredRenderer : public IRenderer
+//     {
+//     public:
+//         DeferredRenderer(std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<rhi::RHISwapchain> swapchain, std::string shaderDir, bool isMetal, std::shared_ptr<MaterialSystem> materialSystem);
+//         void execute(rhi::RHICommandBuffer *cmd, const RenderContext &ctx, RendererSettings &settings) override;
+//         void resize(uint32_t width, uint32_t height) override;
 
-    private:
-        std::shared_ptr<rhi::RHIDevice> m_device;
-        std::shared_ptr<rhi::RHISwapchain> m_swapchain;
-        std::shared_ptr<GeometryPass> m_geometryPass;
-        std::shared_ptr<CascadeShadowMapPass> m_csmPass;
-        std::shared_ptr<DeferredLightingPass> m_deferredLightingPass;
-        std::shared_ptr<DepthPrepass> m_depthPrepass;
-        std::shared_ptr<LightingStencilPass> m_lightStencilPass;
-        std::shared_ptr<SkyboxPass> m_skyboxPass;
-        std::shared_ptr<ToneMapPass> m_toneMapPass;
-        std::shared_ptr<MainScenePass> m_mainScenePass;
-        std::unique_ptr<BloomEffect> m_bloomEffect;
-        std::unique_ptr<AutoExposurePass> m_autoExposurePass;
-        std::unique_ptr<SSAOPass> m_ssaoPass;
-        bool m_isMetal;
-        ShadowPanel m_shadowPanel;
-        LightPanel m_lightPanel;
-        RendererPanel m_rendererPanel;
-        StatPanel m_statsPanel;
-        rhi::RHITexture *m_cubemapTexture;
-        rhi::RHITexture *m_irradianceTexture;
-        rhi::RHITexture *m_prefilterMap;
-        rhi::RHITexture *m_brdfLUT;
+//     private:
+//         std::shared_ptr<rhi::RHIDevice> m_device;
+//         std::shared_ptr<rhi::RHISwapchain> m_swapchain;
+//         std::shared_ptr<GeometryPass> m_geometryPass;
+//         std::shared_ptr<CascadeShadowMapPass> m_csmPass;
+//         std::shared_ptr<DeferredLightingPass> m_deferredLightingPass;
+//         std::shared_ptr<DepthPrepass> m_depthPrepass;
+//         std::shared_ptr<LightingStencilPass> m_lightStencilPass;
+//         std::shared_ptr<SkyboxPass> m_skyboxPass;
+//         std::shared_ptr<ToneMapPass> m_toneMapPass;
+//         std::shared_ptr<MainScenePass> m_mainScenePass;
+//         std::unique_ptr<BloomEffect> m_bloomEffect;
+//         std::unique_ptr<AutoExposurePass> m_autoExposurePass;
+//         std::unique_ptr<SSAOPass> m_ssaoPass;
+//         bool m_isMetal;
+//         ShadowPanel m_shadowPanel;
+//         LightPanel m_lightPanel;
+//         RendererPanel m_rendererPanel;
+//         StatPanel m_statsPanel;
+//         rhi::RHITexture *m_cubemapTexture;
+//         rhi::RHITexture *m_irradianceTexture;
+//         rhi::RHITexture *m_prefilterMap;
+//         rhi::RHITexture *m_brdfLUT;
 
-        std::shared_ptr<MaterialSystem> m_materialSystem;
-    };
-} // namespace nitro::renderer
+//         std::shared_ptr<MaterialSystem> m_materialSystem;
+//     };
+// } // namespace nitro::renderer

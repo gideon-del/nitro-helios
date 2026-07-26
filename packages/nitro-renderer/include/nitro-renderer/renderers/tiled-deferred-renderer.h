@@ -4,6 +4,7 @@
 #include <nitro-renderer/interface/renderer.h>
 #include <nitro-renderer/post-process/post-process.h>
 #include <nitro-renderer/panels.h>
+#include <nitro-renderer/render-graph.h>
 namespace nitro::renderer
 {
     class TiledDeferredRenderer : IRenderer
@@ -12,8 +13,11 @@ namespace nitro::renderer
         TiledDeferredRenderer(std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<rhi::RHISwapchain> swapchain, std::string shaderDir, bool isMetal, std::shared_ptr<MaterialSystem> materialSystem);
         void execute(rhi::RHICommandBuffer *cmd, const RenderContext &ctx, RendererSettings &settings) override;
         void resize(uint32_t width, uint32_t height) override;
+        ~TiledDeferredRenderer();
 
     private:
+        RenderGraph m_renderGraph;
+        RGTextureID m_currentSceneTextureID;
         std::shared_ptr<rhi::RHIDevice> m_device;
         std::shared_ptr<rhi::RHISwapchain> m_swapchain;
         std::shared_ptr<GeometryPass> m_geometryPass;
@@ -41,5 +45,7 @@ namespace nitro::renderer
         RendererPanel m_rendererPanel;
         StatPanel m_statsPanel;
         std::shared_ptr<MaterialSystem> m_materialSystem;
+
+        void buildRenderGraph();
     };
 } // namespace nitro::renderer

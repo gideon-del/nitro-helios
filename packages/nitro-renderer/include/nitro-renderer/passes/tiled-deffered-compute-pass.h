@@ -3,6 +3,7 @@
 #include <nitro-renderer/passes/geometry-pass.h>
 #include <nitro-renderer/per-frame.h>
 #include <nitro-renderer/settings.h>
+#include <nitro-renderer/render-graph.h>
 #include <glm/glm.hpp>
 
 namespace nitro::renderer
@@ -47,13 +48,13 @@ namespace nitro::renderer
                                  uint32_t width,
                                  uint32_t height,
                                  uint32_t maxPointLights,
-                                 GBuffer &gBuffer,
                                  std::string shader,
                                  bool isMetal);
         ~TiledLightingComputePass();
-        void resize(uint32_t width, uint32_t height, GBuffer &gBuffer);
+        void resize(uint32_t width, uint32_t height);
         void execute(rhi::RHICommandBuffer *cmd, LightingSettings &settings, TiledCameraUBO cameraUBO);
         PerFrame<TileLightingComputeResource> &getFrameResources() { return m_resources; };
+        void bindResource(const RGResources &resources, const RGTextureID depth);
         static constexpr uint32_t c_MAX_LIGHT_PER_TILE = 256;
         static constexpr uint32_t c_TILE_GROUP_SIZE = 16;
 

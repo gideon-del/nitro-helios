@@ -43,70 +43,40 @@ namespace nitro::renderer
 
         m_computePipeline = m_device->createComputePipeline(computePipelineDesc);
 
-        rhi::TextureDesc textureDesc;
-        textureDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA16;
-        textureDesc.size = {m_width, m_height};
-        textureDesc.usage = rhi::TextureDesc::Usage::ShaderRead | rhi::TextureDesc::Usage::ShaderRead;
-
-        m_colorGradedTexture = m_device->createTexture(textureDesc);
-
         m_descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
-
-        rhi::RHICommandBuffer *cmd = m_device->createCommandBuffer();
-        rhi::TextureBarrier textureBarrier;
-        textureBarrier.before = rhi::ResourceState::Undefined;
-        textureBarrier.after = rhi::ResourceState::ShaderRead;
-        textureBarrier.texture = m_colorGradedTexture;
-        cmd->textureBarrier(textureBarrier);
-        m_device->endCommandBuffer(cmd);
     }
 
     ColorGradingPass::~ColorGradingPass()
     {
         m_device->destroyDescriptorSet(m_descriptorSet);
         m_device->destroyComputePipeline(m_computePipeline);
-        m_device->destroyTexture(m_colorGradedTexture);
+
         m_device->destroyDescriptorLayout(m_descriptorLayout);
     }
 
     void ColorGradingPass::resize(uint32_t width, uint32_t height)
     {
-        m_device->destroyTexture(m_colorGradedTexture);
+
         m_lastHdrTexture = nullptr;
         m_width = width;
         m_height = height;
-
-        rhi::TextureDesc textureDesc;
-        textureDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA16;
-        textureDesc.size = {m_width, m_height};
-        textureDesc.usage = rhi::TextureDesc::Usage::ShaderRead | rhi::TextureDesc::Usage::ShaderRead;
-
-        m_colorGradedTexture = m_device->createTexture(textureDesc);
-
-        rhi::RHICommandBuffer *cmd = m_device->createCommandBuffer();
-        rhi::TextureBarrier textureBarrier;
-        textureBarrier.before = rhi::ResourceState::Undefined;
-        textureBarrier.after = rhi::ResourceState::ShaderRead;
-        textureBarrier.texture = m_colorGradedTexture;
-        cmd->textureBarrier(textureBarrier);
-        m_device->endCommandBuffer(cmd);
     };
 
-    rhi::RHITexture *ColorGradingPass::execute(rhi::RHICommandBuffer *cmd, ColorGradingPushConstant pc, rhi::RHITexture *hdrTexture)
+    void ColorGradingPass::execute(rhi::RHICommandBuffer *cmd, ColorGradingPushConstant pc, ColorGradingTextures textures)
     {
-        if (m_lastHdrTexture != hdrTexture)
+        if (m_lastHdrTexture != textures.sceneTexture)
         {
-            m_lastHdrTexture = hdrTexture;
+            m_lastHdrTexture = textures.sceneTexture;
             rhi::TextureBinding textureBinding;
             textureBinding.texture = m_lastHdrTexture;
             textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
             m_descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
-            m_descriptorSet->writeStorageImage(m_colorGradedTexture, 3, rhi::ImageLayout::General, rhi::TextureSubresource{});
+            m_descriptorSet->writeStorageImage(textures.output, 3, rhi::ImageLayout::General, rhi::TextureSubresource{});
             m_descriptorSet->commit();
         }
 
         rhi::TextureBarrier initialBarrier;
-        initialBarrier.texture = m_colorGradedTexture;
+        initialBarrier.texture = textures.output;
         initialBarrier.before = rhi::ResourceState::ShaderRead;
         initialBarrier.after = rhi::ResourceState::ShaderWrite;
 
@@ -121,7 +91,5 @@ namespace nitro::renderer
         initialBarrier.before = rhi::ResourceState::ShaderWrite;
         initialBarrier.after = rhi::ResourceState::ShaderRead;
         cmd->textureBarrier(initialBarrier);
-
-        return m_colorGradedTexture;
     }
 } // namespace nitro::renderer

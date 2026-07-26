@@ -3,54 +3,12 @@
 #include <nitro-geometry/vertex.h>
 namespace nitro::renderer
 {
-    GeometryPass::GeometryPass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, rhi::RHITexture *depthTexture, std::string shaderDir, bool isMetal, std::shared_ptr<MaterialSystem> materialSystem)
+    GeometryPass::GeometryPass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, std::string shaderDir, bool isMetal, std::shared_ptr<MaterialSystem> materialSystem)
         : m_width(width),
           m_height(height),
           m_device(device),
           m_materialSystem(materialSystem)
     {
-        rhi::TextureDesc colorAttachmentDesc;
-        colorAttachmentDesc.size = {width, height};
-        colorAttachmentDesc.usage = rhi::TextureDesc::Usage::RenderTarget |
-                                    rhi::TextureDesc::Usage::ShaderRead;
-        colorAttachmentDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA8;
-        gBuffer.albedo = m_device->createTexture(colorAttachmentDesc);
-        colorAttachmentDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA16;
-        gBuffer.normal = m_device->createTexture(colorAttachmentDesc);
-        colorAttachmentDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA8;
-        gBuffer.material = m_device->createTexture(colorAttachmentDesc);
-        colorAttachmentDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA16;
-        gBuffer.emissive = m_device->createTexture(colorAttachmentDesc);
-
-        gBuffer.depth = depthTexture;
-
-        rhi::RenderPassDesc renderPassDesc;
-        renderPassDesc.width = width;
-        renderPassDesc.height = height;
-        rhi::RenderPassDesc::Attachment colorAttachment;
-        colorAttachment.load = rhi::RenderPassDesc::LoadOp::Clear;
-        colorAttachment.store = rhi::RenderPassDesc::StoreOp::Store;
-        colorAttachment.texture = gBuffer.albedo;
-        renderPassDesc.colorAttachments.push_back(colorAttachment);
-        colorAttachment.texture = gBuffer.normal;
-        renderPassDesc.colorAttachments.push_back(colorAttachment);
-        colorAttachment.texture = gBuffer.material;
-        renderPassDesc.colorAttachments.push_back(colorAttachment);
-        colorAttachment.texture = gBuffer.emissive;
-        renderPassDesc.colorAttachments.push_back(colorAttachment);
-
-        rhi::RenderPassDesc::Attachment depthAttachment;
-        depthAttachment.load = rhi::RenderPassDesc::LoadOp::Load;
-        depthAttachment.store = rhi::RenderPassDesc::StoreOp::DontCare;
-        depthAttachment.hasStencil = true;
-        depthAttachment.stencilLoad = rhi::RenderPassDesc::LoadOp::Clear;
-        depthAttachment.stencilStore = rhi::RenderPassDesc::StoreOp::Store;
-        depthAttachment.clearStencil = 0;
-        depthAttachment.texture = depthTexture;
-
-        renderPassDesc.depthAttachment = &depthAttachment;
-
-        m_renderPass = m_device->createRenderPass(renderPassDesc);
 
         std::vector<rhi::RHIDescriptorBinding> bindings = {
             {RHIDescriptorBinding::Type::UniformBuffer, RHIDescriptorBinding::ShaderStage::Vertex, 2}};
@@ -138,37 +96,15 @@ namespace nitro::renderer
         }
 
         m_device->destroyPipeline(m_pipeline);
-        m_device->destroyTexture(gBuffer.albedo);
-        m_device->destroyTexture(gBuffer.normal);
-        m_device->destroyTexture(gBuffer.material);
-        m_device->destroyTexture(gBuffer.emissive);
         m_device->destroyDescriptorLayout(m_descriptorLayout);
     }
 
-    void GeometryPass::resize(uint32_t width, uint32_t height, rhi::RHITexture *depthTexture)
+    void GeometryPass::bindResources(const RGResources &resources, const GBuffer &gBuffer)
     {
-
-        m_width = width;
-        m_height = height;
-        m_device->destroyTexture(gBuffer.albedo);
-        m_device->destroyTexture(gBuffer.normal);
-        m_device->destroyTexture(gBuffer.material);
-        m_device->destroyTexture(gBuffer.emissive);
-
-        rhi::TextureDesc colorAttachmentDesc;
-        colorAttachmentDesc.size = {width, height};
-        colorAttachmentDesc.usage = rhi::TextureDesc::Usage::RenderTarget |
-                                    rhi::TextureDesc::Usage::ShaderRead;
-        colorAttachmentDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA8;
-        gBuffer.albedo = m_device->createTexture(colorAttachmentDesc);
-        colorAttachmentDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA16;
-        gBuffer.normal = m_device->createTexture(colorAttachmentDesc);
-        colorAttachmentDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA8;
-        gBuffer.material = m_device->createTexture(colorAttachmentDesc);
-        colorAttachmentDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA16;
-        gBuffer.emissive = m_device->createTexture(colorAttachmentDesc);
-
-        gBuffer.depth = depthTexture;
+        if (m_renderPass)
+        {
+            m_device->destroyRenderPass(m_renderPass);
+        }
 
         rhi::RenderPassDesc renderPassDesc;
         renderPassDesc.width = m_width;
@@ -176,13 +112,13 @@ namespace nitro::renderer
         rhi::RenderPassDesc::Attachment colorAttachment;
         colorAttachment.load = rhi::RenderPassDesc::LoadOp::Clear;
         colorAttachment.store = rhi::RenderPassDesc::StoreOp::Store;
-        colorAttachment.texture = gBuffer.albedo;
+        colorAttachment.texture = resources.getTexture(gBuffer.albedo);
         renderPassDesc.colorAttachments.push_back(colorAttachment);
-        colorAttachment.texture = gBuffer.normal;
+        colorAttachment.texture = resources.getTexture(gBuffer.normal);
         renderPassDesc.colorAttachments.push_back(colorAttachment);
-        colorAttachment.texture = gBuffer.material;
+        colorAttachment.texture = resources.getTexture(gBuffer.material);
         renderPassDesc.colorAttachments.push_back(colorAttachment);
-        colorAttachment.texture = gBuffer.emissive;
+        colorAttachment.texture = resources.getTexture(gBuffer.emissive);
         renderPassDesc.colorAttachments.push_back(colorAttachment);
 
         rhi::RenderPassDesc::Attachment depthAttachment;
@@ -192,10 +128,17 @@ namespace nitro::renderer
         depthAttachment.stencilLoad = rhi::RenderPassDesc::LoadOp::Clear;
         depthAttachment.stencilStore = rhi::RenderPassDesc::StoreOp::Store;
         depthAttachment.clearStencil = 0;
-        depthAttachment.texture = gBuffer.depth;
+        depthAttachment.texture = resources.getTexture(gBuffer.depth);
 
         renderPassDesc.depthAttachment = &depthAttachment;
 
         m_renderPass = m_device->createRenderPass(renderPassDesc);
+    };
+
+    void GeometryPass::resize(uint32_t width, uint32_t height)
+    {
+
+        m_width = width;
+        m_height = height;
     }
 }

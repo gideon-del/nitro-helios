@@ -2,7 +2,7 @@
 
 namespace nitro::renderer
 {
-    DeferredLightingPass::DeferredLightingPass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, std::vector<rhi::RHITexture *> &cascades, GBuffer &gBuffer, rhi::RHITexture *cubeTexture, rhi::RHITexture *lightTexture, rhi::RHITexture *skybox, rhi::RHITexture *brdfLut, rhi::RHITexture *prefilteredEnv, rhi::RHITexture *ssaoTexture, std::string shaderDir, bool isMetal) : m_device(device), m_width(width), m_height(height)
+    DeferredLightingPass::DeferredLightingPass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, std::string shaderDir, bool isMetal) : m_device(device), m_width(width), m_height(height)
     {
         std::vector<rhi::RHIDescriptorBinding> mainBindings = {
             {rhi::RHIDescriptorBinding::Type::UniformBuffer,
@@ -46,7 +46,7 @@ namespace nitro::renderer
 
         std::vector<rhi::RHIDescriptorBinding> cascadeBindings;
 
-        for (uint32_t i = 0; i < cascades.size(); i++)
+        for (uint32_t i = 0; i < CascadeShadowMapPass::CASCADE_COUNT; i++)
         {
             cascadeBindings.push_back({rhi::RHIDescriptorBinding::Type::Sampler,
                                        rhi::RHIDescriptorBinding::ShaderStage::Fragment,
@@ -78,27 +78,9 @@ namespace nitro::renderer
 
         m_pipeline = m_device->createPipeline(pipelineDesc);
 
-        rhi::TextureDesc textureDesc;
-        textureDesc.size = {m_width, m_height};
-        textureDesc.usage = rhi::TextureDesc::Usage::RenderTarget | rhi::TextureDesc::Usage::ShaderRead;
-        textureDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA16;
-
-        m_lightTexture = m_device->createTexture(textureDesc);
-
-        rhi::RenderPassDesc renderPassDesc;
-        rhi::RenderPassDesc::Attachment colorAttachment;
-        colorAttachment.texture = m_lightTexture;
-        colorAttachment.load = rhi::RenderPassDesc::LoadOp::Clear;
-        colorAttachment.store = rhi::RenderPassDesc::StoreOp::Store;
-
-        renderPassDesc.colorAttachments = {colorAttachment};
-        renderPassDesc.height = m_height;
-        renderPassDesc.width = m_width;
-        m_renderPass = m_device->createRenderPass(renderPassDesc);
-
         m_resources.create(
             g_MAX_FRAMES_IN_FLIGHT,
-            [&, gBuffer, cascades, lightTexture, cubeTexture](uint32_t frame)
+            [&](uint32_t frame)
             {
                 DeferredLightingResource resource;
                 rhi::BufferDesc uboDesc;
@@ -112,51 +94,73 @@ namespace nitro::renderer
                 resource.mainDescriptorSet->commit();
 
                 resource.gBufferDescriptorSet = m_device->createDescriptorSet(m_gBufferDescriptorLayout);
-
-                rhi::TextureBinding textureBinding;
-                textureBinding.texture = gBuffer.albedo;
-                textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
-                resource.gBufferDescriptorSet->writeTexture(textureBinding, 0, ImageLayout::ShaderReadOnly);
-                textureBinding.texture = gBuffer.normal;
-                resource.gBufferDescriptorSet->writeTexture(textureBinding, 1, ImageLayout::ShaderReadOnly);
-                textureBinding.texture = gBuffer.material;
-
-                resource.gBufferDescriptorSet->writeTexture(textureBinding, 2, ImageLayout::ShaderReadOnly);
-                textureBinding.texture = gBuffer.emissive;
-
-                resource.gBufferDescriptorSet->writeTexture(textureBinding, 3, ImageLayout::ShaderReadOnly);
-                textureBinding.texture = gBuffer.depth;
-                resource.gBufferDescriptorSet->writeTexture(textureBinding, 4, ImageLayout::ShaderReadOnly);
-                textureBinding.texture = lightTexture;
-                resource.gBufferDescriptorSet->writeTexture(textureBinding, 5, ImageLayout::ShaderReadOnly);
-                textureBinding.texture = cubeTexture;
-                resource.gBufferDescriptorSet->writeTexture(textureBinding, 6, ImageLayout::ShaderReadOnly);
-                textureBinding.texture = skybox;
-                resource.gBufferDescriptorSet->writeTexture(textureBinding, 7, ImageLayout::ShaderReadOnly);
-                textureBinding.texture = prefilteredEnv;
-                resource.gBufferDescriptorSet->writeTexture(textureBinding, 8, ImageLayout::ShaderReadOnly);
-                textureBinding.texture = brdfLut;
-                resource.gBufferDescriptorSet->writeTexture(textureBinding, 9, ImageLayout::ShaderReadOnly);
-                textureBinding.texture = ssaoTexture;
-                resource.gBufferDescriptorSet->writeTexture(textureBinding, 10, ImageLayout::ShaderReadOnly);
-                resource.gBufferDescriptorSet->commit();
-
                 resource.shadowDescriptorSet = m_device->createDescriptorSet(m_shadowDescriptorLayout);
-
-                for (uint32_t i = 0; i < cascades.size(); i++)
-                {
-                    rhi::TextureBinding shadowTextureBinding;
-                    shadowTextureBinding.texture = cascades[i];
-                    shadowTextureBinding.sampler = m_device->defaultSamplers().shadow;
-                    resource.shadowDescriptorSet->writeTexture(shadowTextureBinding, i, ImageLayout::ShaderReadOnly);
-                }
-
-                resource.shadowDescriptorSet->commit();
 
                 return resource;
             });
     };
 
+    void DeferredLightingPass::bindResources(const RGResources &resources, const DeferredLightingTextureIDs textures)
+    {
+        for (auto &resource : m_resources)
+        {
+
+            rhi::TextureBinding textureBinding;
+            textureBinding.texture = resources.getTexture(textures.gBufferIds.albedo);
+            textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+            resource.gBufferDescriptorSet->writeTexture(textureBinding, 0, ImageLayout::ShaderReadOnly);
+            textureBinding.texture = resources.getTexture(textures.gBufferIds.normal);
+            resource.gBufferDescriptorSet->writeTexture(textureBinding, 1, ImageLayout::ShaderReadOnly);
+            textureBinding.texture = resources.getTexture(textures.gBufferIds.material);
+
+            resource.gBufferDescriptorSet->writeTexture(textureBinding, 2, ImageLayout::ShaderReadOnly);
+            textureBinding.texture = resources.getTexture(textures.gBufferIds.emissive);
+
+            resource.gBufferDescriptorSet->writeTexture(textureBinding, 3, ImageLayout::ShaderReadOnly);
+            textureBinding.texture = resources.getTexture(textures.gBufferIds.depth);
+            resource.gBufferDescriptorSet->writeTexture(textureBinding, 4, ImageLayout::ShaderReadOnly);
+            textureBinding.texture = resources.getTexture(textures.pointLightTextureId);
+            resource.gBufferDescriptorSet->writeTexture(textureBinding, 5, ImageLayout::ShaderReadOnly);
+            textureBinding.texture = textures.cubeTexture;
+            resource.gBufferDescriptorSet->writeTexture(textureBinding, 6, ImageLayout::ShaderReadOnly);
+            textureBinding.texture = resources.getTexture(textures.skybox);
+            resource.gBufferDescriptorSet->writeTexture(textureBinding, 7, ImageLayout::ShaderReadOnly);
+            textureBinding.texture = textures.prefilteredEnv;
+            resource.gBufferDescriptorSet->writeTexture(textureBinding, 8, ImageLayout::ShaderReadOnly);
+            textureBinding.texture = textures.brdfLut;
+            resource.gBufferDescriptorSet->writeTexture(textureBinding, 9, ImageLayout::ShaderReadOnly);
+            textureBinding.texture = resources.getTexture(textures.ssaoTexture);
+            resource.gBufferDescriptorSet->writeTexture(textureBinding, 10, ImageLayout::ShaderReadOnly);
+            resource.gBufferDescriptorSet->commit();
+
+            resource.shadowDescriptorSet = m_device->createDescriptorSet(m_shadowDescriptorLayout);
+
+            for (uint32_t i = 0; i < textures.cascades.size(); i++)
+            {
+                rhi::TextureBinding shadowTextureBinding;
+                shadowTextureBinding.texture = resources.getTexture(textures.cascades[i]);
+                shadowTextureBinding.sampler = m_device->defaultSamplers().shadow;
+                resource.shadowDescriptorSet->writeTexture(shadowTextureBinding, i, ImageLayout::ShaderReadOnly);
+            }
+
+            resource.shadowDescriptorSet->commit();
+        }
+
+        if (m_renderPass)
+        {
+            m_device->destroyRenderPass(m_renderPass);
+        }
+        rhi::RenderPassDesc renderPassDesc;
+        rhi::RenderPassDesc::Attachment colorAttachment;
+        colorAttachment.texture = resources.getTexture(textures.output);
+        colorAttachment.load = rhi::RenderPassDesc::LoadOp::Clear;
+        colorAttachment.store = rhi::RenderPassDesc::StoreOp::Store;
+
+        renderPassDesc.colorAttachments = {colorAttachment};
+        renderPassDesc.height = m_height;
+        renderPassDesc.width = m_width;
+        m_renderPass = m_device->createRenderPass(renderPassDesc);
+    };
     DeferredLightingPass::~DeferredLightingPass()
     {
         for (auto &resource : m_resources)
@@ -191,60 +195,10 @@ namespace nitro::renderer
         cmd->endRenderPass();
     }
 
-    void DeferredLightingPass::recreate(uint32_t width, uint32_t height, GBuffer &gBuffer, rhi::RHITexture *cubeTexture, rhi::RHITexture *lightTexture, rhi::RHITexture *skybox, rhi::RHITexture *brdfLut, rhi::RHITexture *prefilteredEnv, rhi::RHITexture *ssaoTexture)
+    void DeferredLightingPass::recreate(uint32_t width, uint32_t height)
     {
         m_width = width;
         m_height = height;
-        m_device->destroyTexture(m_lightTexture);
-        m_device->destroyRenderPass(m_renderPass);
-
-        rhi::TextureDesc textureDesc;
-        textureDesc.size = {m_width, m_height};
-        textureDesc.usage = rhi::TextureDesc::Usage::RenderTarget | rhi::TextureDesc::Usage::ShaderRead;
-        textureDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA16;
-
-        m_lightTexture = m_device->createTexture(textureDesc);
-
-        rhi::RenderPassDesc renderPassDesc;
-        rhi::RenderPassDesc::Attachment colorAttachment;
-        colorAttachment.texture = m_lightTexture;
-        colorAttachment.load = rhi::RenderPassDesc::LoadOp::Clear;
-        colorAttachment.store = rhi::RenderPassDesc::StoreOp::Store;
-
-        renderPassDesc.colorAttachments = {colorAttachment};
-        renderPassDesc.height = m_height;
-        renderPassDesc.width = m_width;
-        m_renderPass = m_device->createRenderPass(renderPassDesc);
-        for (auto &resource : m_resources)
-        {
-            rhi::TextureBinding textureBinding;
-            textureBinding.texture = gBuffer.albedo;
-            textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
-            resource.gBufferDescriptorSet->writeTexture(textureBinding, 0, ImageLayout::ShaderReadOnly);
-            textureBinding.texture = gBuffer.normal;
-            resource.gBufferDescriptorSet->writeTexture(textureBinding, 1, ImageLayout::ShaderReadOnly);
-            textureBinding.texture = gBuffer.material;
-
-            resource.gBufferDescriptorSet->writeTexture(textureBinding, 2, ImageLayout::ShaderReadOnly);
-            textureBinding.texture = gBuffer.emissive;
-
-            resource.gBufferDescriptorSet->writeTexture(textureBinding, 3, ImageLayout::ShaderReadOnly);
-            textureBinding.texture = gBuffer.depth;
-            resource.gBufferDescriptorSet->writeTexture(textureBinding, 4, ImageLayout::ShaderReadOnly);
-            textureBinding.texture = lightTexture;
-            resource.gBufferDescriptorSet->writeTexture(textureBinding, 5, ImageLayout::ShaderReadOnly);
-            textureBinding.texture = cubeTexture;
-            resource.gBufferDescriptorSet->writeTexture(textureBinding, 6, ImageLayout::ShaderReadOnly);
-            textureBinding.texture = skybox;
-            resource.gBufferDescriptorSet->writeTexture(textureBinding, 7, ImageLayout::ShaderReadOnly);
-            textureBinding.texture = prefilteredEnv;
-            resource.gBufferDescriptorSet->writeTexture(textureBinding, 8, ImageLayout::ShaderReadOnly);
-            textureBinding.texture = brdfLut;
-            resource.gBufferDescriptorSet->writeTexture(textureBinding, 9, ImageLayout::ShaderReadOnly);
-            textureBinding.texture = ssaoTexture;
-            resource.gBufferDescriptorSet->writeTexture(textureBinding, 10, ImageLayout::ShaderReadOnly);
-            resource.gBufferDescriptorSet->commit();
-        }
     };
 
 } // namespace nitro::renderer

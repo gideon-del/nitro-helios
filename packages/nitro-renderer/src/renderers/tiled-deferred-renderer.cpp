@@ -147,26 +147,21 @@ namespace nitro::renderer
         m_irradianceTexture = generateIrradianceMap(m_device, m_cubemapTexture, 64, shaderDir, isMetal);
         m_prefilterMap = generatePrefliteredMap(m_device, m_cubemapTexture, 512, shaderDir, isMetal);
         m_brdfLUT = generateBrdfLUT(m_device, 512, shaderDir, isMetal);
-        m_skyboxPass = std::make_shared<SkyboxPass>(m_device, m_cubemapTexture, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
-        m_depthPrepass = std::make_shared<DepthPrepass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal, m_materialSystem);
-        m_geometryPass = std::make_shared<GeometryPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), m_depthPrepass->getDepthTexture(), shaderDir, isMetal, m_materialSystem);
 
-        m_ssaoPass = std::make_unique<SSAOPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), m_geometryPass->gBuffer.depth, m_geometryPass->gBuffer.normal, shaderDir, isMetal);
+        m_device->destroyTexture(hdrTexture);
+
+        m_skyboxPass = std::make_shared<SkyboxPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
+        m_depthPrepass = std::make_shared<DepthPrepass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal, m_materialSystem);
+        m_geometryPass = std::make_shared<GeometryPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal, m_materialSystem);
+
+        m_ssaoPass = std::make_unique<SSAOPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
         m_csmPass = std::make_shared<CascadeShadowMapPass>(m_device, shaderDir, isMetal);
-        m_tileComputePass = std::make_shared<TiledLightingComputePass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), 1000, m_geometryPass->gBuffer, shaderDir, m_isMetal);
-        m_tileLightPass = std::make_shared<TileLightShadingPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), m_geometryPass->gBuffer, m_tileComputePass->getFrameResources(), shaderDir, isMetal);
+        m_tileComputePass = std::make_shared<TiledLightingComputePass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), 1000, shaderDir, m_isMetal);
+        m_tileLightPass = std::make_shared<TileLightShadingPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
         m_deferredLightingPass = std::make_shared<DeferredLightingPass>(
             m_device,
             m_swapchain->getWidth(),
             m_swapchain->getHeight(),
-            m_csmPass->getCascadeTextures(),
-            m_geometryPass->gBuffer,
-            m_irradianceTexture,
-            m_tileLightPass->getLightTexture(),
-            m_skyboxPass->getSkyboxTexture(),
-            m_brdfLUT,
-            m_prefilterMap,
-            m_ssaoPass->getSSAOTexture(),
             shaderDir,
             isMetal);
         m_debugDrawPass = std::make_shared<DebugDrawPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, m_isMetal);
@@ -177,157 +172,493 @@ namespace nitro::renderer
         m_colorGradingPass = std::make_unique<ColorGradingPass>(m_device, m_swapchain->getWidth(),
                                                                 m_swapchain->getHeight(), shaderDir, isMetal);
         m_toneMapPass = std::make_shared<ToneMapPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
-        m_fxaaPass = std::make_unique<FXAAPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), m_toneMapPass->getToneMappedTexture(), shaderDir, isMetal);
+        m_fxaaPass = std::make_unique<FXAAPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
 
-        m_mainScenePass = std::make_shared<MainScenePass>(m_device, m_swapchain, m_fxaaPass->getFXAATexture(), shaderDir, isMetal);
+        m_mainScenePass = std::make_shared<MainScenePass>(m_device, m_swapchain, shaderDir, isMetal);
+
+        buildRenderGraph();
     }
+
     void TiledDeferredRenderer::resize(uint32_t width, uint32_t height)
     {
         m_depthPrepass->resize(width, height);
-        m_geometryPass->resize(width, height, m_depthPrepass->getDepthTexture());
-        m_tileComputePass->resize(width, height, m_geometryPass->gBuffer);
-        m_ssaoPass->resize(width, height, m_geometryPass->gBuffer.depth, m_geometryPass->gBuffer.normal);
-        m_tileLightPass->resize(width, height, m_geometryPass->gBuffer, m_tileComputePass->getFrameResources());
-        m_skyboxPass->resize(width, height, m_cubemapTexture);
-        m_deferredLightingPass->recreate(width, height, m_geometryPass->gBuffer, m_irradianceTexture, m_tileLightPass->getLightTexture(), m_skyboxPass->getSkyboxTexture(), m_brdfLUT,
-                                         m_prefilterMap, m_ssaoPass->getSSAOTexture());
+        m_geometryPass->resize(width, height);
+        m_tileComputePass->resize(width, height);
+        m_ssaoPass->resize(width, height);
+        m_tileLightPass->resize(width, height);
+        m_skyboxPass->resize(width, height);
+        m_deferredLightingPass->recreate(width, height);
         m_bloomEffect->resize(width, height);
         m_toneMapPass->resize(width, height);
-        m_fxaaPass->resize(width, height, m_toneMapPass->getToneMappedTexture());
+        m_fxaaPass->resize(width, height);
         m_autoExposurePass->resize(width, height);
         m_colorGradingPass->resize(width, height);
-        m_mainScenePass->resize(m_fxaaPass->getFXAATexture());
+
+        m_renderGraph.reallocateFrameTextures(m_device, width, height);
+        m_renderGraph.bindPassResources(m_renderGraph.buildResources());
     };
 
     void TiledDeferredRenderer::execute(rhi::RHICommandBuffer *cmd, const RenderContext &ctx, RendererSettings &settings)
     {
+        auto resources = m_renderGraph.buildResources();
+        m_renderGraph.execute(cmd, ctx, settings, resources);
+    }
 
-        CascadeShadowContext shadowCtx;
-        shadowCtx.aspect = (float)m_swapchain->getWidth() / (float)m_swapchain->getHeight();
-        shadowCtx.cameraFar = ctx.CAMERA_FAR;
-        shadowCtx.cameraNear = ctx.CAMERA_NEAR;
-        shadowCtx.fov = glm::radians(60.0f);
-        shadowCtx.lambda = settings.shadow.lambda;
-        shadowCtx.cameraView = ctx.camera->getView();
-        shadowCtx.lightView = settings.light.lightCamera.getView();
+    TiledDeferredRenderer::~TiledDeferredRenderer()
+    {
+        m_renderGraph.deleteBuffers(m_device);
+        m_renderGraph.deleteTextures(m_device);
+        m_device->destroyTexture(m_cubemapTexture);
+        m_device->destroyTexture(m_irradianceTexture);
+        m_device->destroyTexture(m_prefilterMap);
+        m_device->destroyTexture(m_brdfLUT);
+    };
 
-        m_csmPass->execute(cmd, *ctx.scene, shadowCtx);
+    void TiledDeferredRenderer::buildRenderGraph()
+    {
+        auto depth = m_renderGraph.declareTexture({"GBuffer Depth",
+                                                   rhi::TextureDesc::ImageFormat::Depth32FloatStencil8});
+        auto albedo = m_renderGraph.declareTexture({"GBuffer Albedo",
+                                                    rhi::TextureDesc::ImageFormat::ColorRGBA8});
+        auto normal = m_renderGraph.declareTexture({"GBuffer Normal",
+                                                    rhi::TextureDesc::ImageFormat::ColorRGBA16});
+        auto metallicRoughness = m_renderGraph.declareTexture({"GBuffer Metallic Roughness",
+                                                               rhi::TextureDesc::ImageFormat::ColorRGBA8});
+        auto emissive = m_renderGraph.declareTexture({"GBuffer Emissive",
+                                                      rhi::TextureDesc::ImageFormat::ColorRGBA16});
 
-        GeometryCameraBuffer geometryCamera{};
-        geometryCamera.view = ctx.camera->getView();
-        geometryCamera.proj = glm::perspectiveRH_ZO(shadowCtx.fov, shadowCtx.aspect, shadowCtx.cameraNear, shadowCtx.cameraFar);
-        if (!m_isMetal)
-        {
-            geometryCamera.proj[1][1] *= -1.0f;
-        }
-        DepthPrePassCamera depthCamera;
-        depthCamera.view = geometryCamera.view;
-        depthCamera.proj = geometryCamera.proj;
-        SkyboxPassUBO skyboxUbo;
-        glm::mat4 viewNoTranslation = glm::mat4(glm::mat3(geometryCamera.view));
-        skyboxUbo.viewProj = glm::inverse(geometryCamera.proj * viewNoTranslation);
-        skyboxUbo.screenSize = {float(m_swapchain->getWidth()), float(m_swapchain->getHeight())};
-        m_skyboxPass->execute(cmd, skyboxUbo);
-        m_depthPrepass->execute(cmd, *ctx.scene, depthCamera);
-        m_geometryPass->execute(cmd, geometryCamera, *ctx.scene, settings.light);
-        SSAOPushConstant ssaoPc;
-        ssaoPc.invProj = glm::inverse(geometryCamera.proj);
-        ssaoPc.view = geometryCamera.view;
-        ssaoPc.proj = geometryCamera.proj;
-        ssaoPc.textureSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
-        ssaoPc.totalSamples = static_cast<uint>(ctx.ssaoSamples.samples.size());
-        ssaoPc.radius = settings.ssao.radius;
+        m_renderGraph.addPass({
+            "Depth Prepass",
+            {},
+            {depth},
+            {},
+            {},
+            [depth, this](const RGResources &resources)
+            {
+                m_depthPrepass->bindResources(resources, depth);
+            },
+            [depth, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            {
+                DepthPrePassCamera depthCamera;
+                depthCamera.view = ctx.camera->getView();
+                depthCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), (float)m_swapchain->getWidth() / (float)m_swapchain->getHeight(), ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
 
-        m_ssaoPass->execute(cmd, ssaoPc, ctx.ssaoSamples.samples, settings.ssao.depthSigma);
-        TiledCameraUBO computeUBO;
-        computeUBO.farPlane = ctx.CAMERA_FAR;
-        computeUBO.nearPlane = ctx.CAMERA_NEAR;
-        computeUBO.screenSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
-        computeUBO.invProj = glm::inverse(geometryCamera.proj);
-        computeUBO.view = geometryCamera.view;
-        computeUBO.totalLightCount = static_cast<uint>(settings.light.pointLights.size());
+                if (!m_isMetal)
+                {
+                    depthCamera.proj[1][1] *= -1.0f;
+                }
+                m_depthPrepass->execute(cmd, *ctx.scene, depthCamera);
+            },
+        });
 
-        m_tileComputePass->execute(cmd, settings.light, computeUBO);
+        GBuffer gBufferIds{albedo, normal, metallicRoughness, emissive, depth};
 
-        TiledLightPassUBO lightPassUBO;
+        m_renderGraph.addPass({
+            "GBuffer",
+            {depth},
+            {albedo, normal, metallicRoughness, emissive},
+            {},
+            {},
+            [gBufferIds, this](const RGResources &resources)
+            {
+                m_geometryPass->bindResources(resources, gBufferIds);
+            },
+            [gBufferIds, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            {
+                GeometryCameraBuffer geometryCamera;
+                geometryCamera.view = ctx.camera->getView();
+                geometryCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), (float)m_swapchain->getWidth() / (float)m_swapchain->getHeight(), ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
 
-        lightPassUBO.invViewProj = glm::inverse(geometryCamera.proj * geometryCamera.view);
-        lightPassUBO.view = geometryCamera.view;
-        lightPassUBO.numTilesX = static_cast<uint32_t>(
-            std::ceil(float(m_swapchain->getWidth()) / 16.0f));
-        lightPassUBO.screenSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
-        lightPassUBO.showHeatMap = settings.selectedDebugMode == DebugMode::HeatMap ? 1 : 0;
-        m_tileLightPass->execute(cmd, lightPassUBO);
-        DeferredLightingFrameData frameData;
-        frameData.ambient = settings.light.ambient;
-        frameData.Ka = settings.light.Ka;
-        frameData.Ks = settings.light.Ks;
-        frameData.Kd = settings.light.Kd;
-        frameData.shininess = settings.light.shininess;
-        frameData.cascadeSplit = m_csmPass->cascadeSplit;
+                if (!m_isMetal)
+                {
+                    geometryCamera.proj[1][1] *= -1.0f;
+                }
+                m_geometryPass->execute(cmd, geometryCamera, *ctx.scene, settings.light);
+            },
+        });
+
+        auto ssaoTex = m_renderGraph.declareTexture({"SSAO Texture",
+                                                     rhi::TextureDesc::ImageFormat::ColorRGBA16});
+
+        SSAOPassTextureIDs ssaoTextures{depth, normal, ssaoTex};
+        m_renderGraph.addPass({
+            "SSAO Pass",
+            {depth, normal},
+            {ssaoTex},
+            {},
+            {},
+            [ssaoTextures, this](const RGResources &resources)
+            {
+                m_ssaoPass->bindResources(resources, ssaoTextures);
+            },
+            [ssaoTextures, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            {
+                GeometryCameraBuffer geometryCamera;
+                geometryCamera.view = ctx.camera->getView();
+                geometryCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), (float)m_swapchain->getWidth() / (float)m_swapchain->getHeight(), ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
+
+                if (!m_isMetal)
+                {
+                    geometryCamera.proj[1][1] *= -1.0f;
+                }
+
+                SSAOPushConstant ssaoPc;
+                ssaoPc.invProj = glm::inverse(geometryCamera.proj);
+                ssaoPc.view = geometryCamera.view;
+                ssaoPc.proj = geometryCamera.proj;
+                ssaoPc.textureSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
+                ssaoPc.totalSamples = static_cast<uint>(ctx.ssaoSamples.samples.size());
+                ssaoPc.radius = settings.ssao.radius;
+                m_ssaoPass->execute(cmd, ssaoPc, resources, ssaoTextures.ssaoTex, ctx.ssaoSamples.samples, settings.ssao.depthSigma);
+            },
+        });
+
+        auto pointLightTex = m_renderGraph.declareTexture({"Tile Light Texture",
+                                                           rhi::TextureDesc::ImageFormat::ColorRGBA16});
+
+        TileLightShadingTextureIDs tileLightTextures{depth, normal, pointLightTex};
+        m_renderGraph.addPass({
+            "Tile Light Pass",
+            {depth, normal},
+            {pointLightTex},
+            {},
+            {},
+            [tileLightTextures, this](const RGResources &resources)
+            {
+                m_tileComputePass->bindResource(resources, tileLightTextures.gDepth);
+                m_tileLightPass->bindResources(resources, tileLightTextures, m_tileComputePass->getFrameResources());
+            },
+            [tileLightTextures, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            {
+                GeometryCameraBuffer geometryCamera;
+                geometryCamera.view = ctx.camera->getView();
+                geometryCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), (float)m_swapchain->getWidth() / (float)m_swapchain->getHeight(), ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
+
+                if (!m_isMetal)
+                {
+                    geometryCamera.proj[1][1] *= -1.0f;
+                }
+
+                TiledCameraUBO computeUBO;
+                computeUBO.farPlane = ctx.CAMERA_FAR;
+                computeUBO.nearPlane = ctx.CAMERA_NEAR;
+                computeUBO.screenSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
+                computeUBO.invProj = glm::inverse(geometryCamera.proj);
+                computeUBO.view = geometryCamera.view;
+                computeUBO.totalLightCount = static_cast<uint>(settings.light.pointLights.size());
+
+                m_tileComputePass->execute(cmd, settings.light, computeUBO);
+
+                TiledLightPassUBO lightPassUBO;
+
+                lightPassUBO.invViewProj = glm::inverse(geometryCamera.proj * geometryCamera.view);
+                lightPassUBO.view = geometryCamera.view;
+                lightPassUBO.numTilesX = static_cast<uint32_t>(
+                    std::ceil(float(m_swapchain->getWidth()) / 16.0f));
+                lightPassUBO.screenSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
+                lightPassUBO.showHeatMap = settings.selectedDebugMode == DebugMode::HeatMap ? 1 : 0;
+                m_tileLightPass->execute(cmd, lightPassUBO);
+            },
+        });
+
+        auto skyboxTex = m_renderGraph.declareTexture({"Skybox",
+                                                       rhi::TextureDesc::ImageFormat::ColorRGBA16});
+
+        SkyboxTextures skyboxTextures{m_cubemapTexture, skyboxTex};
+        m_renderGraph.addPass({
+            "Skybox",
+            {},
+            {skyboxTex},
+            {},
+            {},
+            [skyboxTextures, this](const RGResources &resources)
+            {
+                m_skyboxPass->bindResources(resources, skyboxTextures);
+            },
+            [this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            {
+                GeometryCameraBuffer geometryCamera;
+                geometryCamera.view = ctx.camera->getView();
+                geometryCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), (float)m_swapchain->getWidth() / (float)m_swapchain->getHeight(), ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
+
+                if (!m_isMetal)
+                {
+                    geometryCamera.proj[1][1] *= -1.0f;
+                }
+
+                SkyboxPassUBO skyboxUbo;
+                glm::mat4 viewNoTranslation = glm::mat4(glm::mat3(geometryCamera.view));
+                skyboxUbo.viewProj = glm::inverse(geometryCamera.proj * viewNoTranslation);
+                skyboxUbo.screenSize = {float(m_swapchain->getWidth()), float(m_swapchain->getHeight())};
+                m_skyboxPass->execute(cmd, skyboxUbo);
+            },
+        });
+
+        std::vector<RGTextureID> cascadeTextures;
         for (int i = 0; i < CascadeShadowMapPass::CASCADE_COUNT; i++)
         {
-            frameData.lightViewProj[i] = m_csmPass->lightViewProj[i];
-        }
-        frameData.invViewProj = glm::inverse(geometryCamera.proj * geometryCamera.view);
-        frameData.view = geometryCamera.view;
-        frameData.cameraPosition = glm::vec4(ctx.camera->getEye(), 1.0f);
-
-        frameData.lightPosition = glm::vec4(settings.light.lightCamera.getEye(), 1.0f);
-        frameData.lightColor = glm::vec4(settings.light.lightColor, 1.0f);
-        frameData.shadowBias = settings.shadow.bias;
-        frameData.shadowNormalBias = settings.shadow.normalBias;
-        frameData.showCascadeColors = settings.shadow.showCascadeColors ? 1.0f : 0.0f;
-        frameData.debugMode = static_cast<float>(settings.selectedDebugMode);
-        frameData.lightMode = static_cast<float>(settings.selectedLightMode);
-        frameData.roughness = settings.light.roughness;
-        for (int i = 0; i < settings.light.pointLights.size(); i++)
-        {
-            frameData.pointLights[i] = settings.light.pointLights[i];
+            cascadeTextures.push_back(m_renderGraph.declareTexture({
+                "Shadow map" + std::to_string(i + 1),
+                rhi::TextureDesc::ImageFormat::Depth32Float,
+                ShadowPass::c_ShadowResolution,
+                ShadowPass::c_ShadowResolution,
+            }));
         }
 
-        m_deferredLightingPass->execute(cmd, frameData);
+        m_renderGraph.addPass({
+            "Shadow map",
+            {},
+            cascadeTextures,
+            {},
+            {},
+            [cascadeTextures, this](const RGResources &resources)
+            {
+                m_csmPass->bindResources(resources, cascadeTextures);
+            },
+            [this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            {
+                CascadeShadowContext shadowCtx;
+                shadowCtx.aspect = (float)m_swapchain->getWidth() / (float)m_swapchain->getHeight();
+                shadowCtx.cameraFar = ctx.CAMERA_FAR;
+                shadowCtx.cameraNear = ctx.CAMERA_NEAR;
+                shadowCtx.fov = glm::radians(60.0f);
+                shadowCtx.lambda = settings.shadow.lambda;
+                shadowCtx.cameraView = ctx.camera->getView();
+                shadowCtx.lightView = settings.light.lightCamera.getView();
 
-        rhi::RHITexture *hdrTexture = m_deferredLightingPass->getLightTexture();
-        rhi::RHITexture *sceneTexture = hdrTexture;
-        if (settings.tonemap.autoExposure)
+                m_csmPass->execute(cmd, *ctx.scene, shadowCtx);
+            },
+        });
+
+        auto lightShadedTex = m_renderGraph.declareTexture({"HDR Light Output",
+                                                            rhi::TextureDesc::ImageFormat::ColorRGBA16});
+
+        DeferredLightingTextureIDs deferredLightIds{
+            gBufferIds,
+            pointLightTex,
+            skyboxTex,
+            cascadeTextures,
+            ssaoTex,
+            m_irradianceTexture,
+            m_brdfLUT,
+            m_prefilterMap,
+            lightShadedTex};
+
+        std::vector<RGTextureID> deferredLightingReads{
+            gBufferIds.albedo,
+            gBufferIds.depth,
+            gBufferIds.normal,
+            gBufferIds.material,
+            gBufferIds.emissive,
+            skyboxTex,
+            pointLightTex,
+            ssaoTex};
+        for (int i = 0; i < cascadeTextures.size(); i++)
         {
-            AutoExposurePushConstant autoExposurePc;
-            autoExposurePc.inputTextureSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
-
-            settings.tonemap.exposure = m_autoExposurePass->execute(cmd, autoExposurePc, hdrTexture, settings.tonemap, ctx.deltaTime);
+            deferredLightingReads.push_back(cascadeTextures[i]);
         }
 
-        if (settings.colorGrading.enable)
-        {
-            ColorGradingPushConstant pc;
-            pc.gain = glm::vec4(settings.colorGrading.gain, 1.0);
-            pc.lift = glm::vec4(settings.colorGrading.lift, 1.0);
-            pc.gamma = glm::vec4(settings.colorGrading.gamma, 1.0);
-            pc.textureSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
-            sceneTexture = m_colorGradingPass->execute(cmd, pc, sceneTexture);
-        };
+        m_renderGraph.addPass({
+            "Deferred Lighting",
+            deferredLightingReads,
+            {lightShadedTex},
+            {},
+            {},
+            [deferredLightIds, this](const RGResources &resources)
+            {
+                m_deferredLightingPass->bindResources(resources, deferredLightIds);
+            },
+            [this, lightShadedTex](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            {
+                GeometryCameraBuffer geometryCamera;
+                geometryCamera.view = ctx.camera->getView();
+                geometryCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), (float)m_swapchain->getWidth() / (float)m_swapchain->getHeight(), ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
 
-        if (settings.bloom.enable)
-        {
-            sceneTexture = m_bloomEffect->execute(cmd, sceneTexture, settings.bloom);
-        }
-        ToneMapPassUBO toneMapUBO;
-        toneMapUBO.exposure = settings.tonemap.exposure;
-        toneMapUBO.mode = static_cast<uint>(settings.tonemap.mode);
-        m_toneMapPass->execute(cmd, toneMapUBO, sceneTexture);
+                if (!m_isMetal)
+                {
+                    geometryCamera.proj[1][1] *= -1.0f;
+                }
 
-        FXAAPushConstant fxaaPc;
-        fxaaPc.textureSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
+                DeferredLightingFrameData frameData;
+                frameData.ambient = settings.light.ambient;
+                frameData.Ka = settings.light.Ka;
+                frameData.Ks = settings.light.Ks;
+                frameData.Kd = settings.light.Kd;
+                frameData.shininess = settings.light.shininess;
+                frameData.cascadeSplit = m_csmPass->cascadeSplit;
+                for (int i = 0; i < CascadeShadowMapPass::CASCADE_COUNT; i++)
+                {
+                    frameData.lightViewProj[i] = m_csmPass->lightViewProj[i];
+                }
+                frameData.invViewProj = glm::inverse(geometryCamera.proj * geometryCamera.view);
+                frameData.view = geometryCamera.view;
+                frameData.cameraPosition = glm::vec4(ctx.camera->getEye(), 1.0f);
 
-        m_fxaaPass->execute(cmd, fxaaPc);
-        rhi::RHIRenderPassDesc rpDesc{};
-        rpDesc.clearColor[0] = 0.3f;
-        rpDesc.clearColor[1] = 0.3f;
-        rpDesc.clearColor[2] = 0.3f;
-        rpDesc.clearColor[3] = 1.0f;
-        rpDesc.clearDepth = 1.0f;
-        rpDesc.hasDepth = true;
-        m_mainScenePass->execute(cmd, rpDesc, settings);
+                frameData.lightPosition = glm::vec4(settings.light.lightCamera.getEye(), 1.0f);
+                frameData.lightColor = glm::vec4(settings.light.lightColor, 1.0f);
+                frameData.shadowBias = settings.shadow.bias;
+                frameData.shadowNormalBias = settings.shadow.normalBias;
+                frameData.showCascadeColors = settings.shadow.showCascadeColors ? 1.0f : 0.0f;
+                frameData.debugMode = static_cast<float>(settings.selectedDebugMode);
+                frameData.lightMode = static_cast<float>(settings.selectedLightMode);
+                frameData.roughness = settings.light.roughness;
+                for (int i = 0; i < settings.light.pointLights.size(); i++)
+                {
+                    frameData.pointLights[i] = settings.light.pointLights[i];
+                }
+
+                m_deferredLightingPass->execute(cmd, frameData);
+                m_currentSceneTextureID = lightShadedTex;
+            },
+        });
+
+        auto bloomTexture = m_renderGraph.declareTexture({"Bloom Texture",
+                                                          rhi::TextureDesc::ImageFormat::ColorRGBA16});
+
+        m_renderGraph.addPass({
+            "Bloom",
+            {lightShadedTex},
+            {bloomTexture},
+            {},
+            {},
+            [](const RGResources &resources) {},
+            [bloomTexture, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            {
+                GeometryCameraBuffer geometryCamera;
+                geometryCamera.view = ctx.camera->getView();
+                geometryCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), (float)m_swapchain->getWidth() / (float)m_swapchain->getHeight(), ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
+
+                if (!m_isMetal)
+                {
+                    geometryCamera.proj[1][1] *= -1.0f;
+                }
+
+                if (!settings.bloom.enable)
+                    return;
+
+                m_bloomEffect->execute(cmd, {resources.getTexture(m_currentSceneTextureID), resources.getTexture(bloomTexture)}, settings.bloom);
+                m_currentSceneTextureID = bloomTexture;
+            },
+        });
+
+        auto readbackBuffer = m_renderGraph.declareBuffer({
+            "Auto Exposure Readback buffer",
+            16,
+            rhi::BufferDesc::Usage::TransferDst,
+        });
+
+        m_renderGraph.addPass({
+            "Auto exposure pass",
+            {bloomTexture},
+            {},
+            {},
+            {readbackBuffer},
+            [](const RGResources &resources) {},
+            [this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            {
+                if (!settings.tonemap.autoExposure)
+                    return;
+
+                AutoExposurePushConstant autoExposurePc;
+                autoExposurePc.inputTextureSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
+
+                settings.tonemap.exposure = m_autoExposurePass->execute(cmd, autoExposurePc, resources.getTexture(m_currentSceneTextureID), settings.tonemap, ctx.deltaTime);
+            },
+        });
+
+        auto colorGradedTexture = m_renderGraph.declareTexture({"Color Grade",
+                                                                rhi::TextureDesc::ImageFormat::ColorRGBA16});
+
+        m_renderGraph.addPass({
+            "Color Grading",
+            {},
+            {colorGradedTexture},
+            {readbackBuffer},
+            {},
+            [](const RGResources &resources) {},
+            [colorGradedTexture, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            {
+                if (!settings.colorGrading.enable)
+                    return;
+                ColorGradingPushConstant pc;
+                pc.gain = glm::vec4(settings.colorGrading.gain, 1.0);
+                pc.lift = glm::vec4(settings.colorGrading.lift, 1.0);
+                pc.gamma = glm::vec4(settings.colorGrading.gamma, 1.0);
+                pc.textureSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
+                m_colorGradingPass->execute(cmd, pc, {resources.getTexture(m_currentSceneTextureID), resources.getTexture(colorGradedTexture)});
+                m_currentSceneTextureID = colorGradedTexture;
+            },
+        });
+
+        auto tonemapTexture = m_renderGraph.declareTexture({"ToneMap",
+                                                            rhi::TextureDesc::ImageFormat::ColorRGBA8});
+
+        m_renderGraph.addPass({
+            "Tone Map",
+            {colorGradedTexture},
+            {tonemapTexture},
+            {},
+            {},
+            [tonemapTexture, this](const RGResources &resources)
+            {
+                m_toneMapPass->bindResource(resources, tonemapTexture);
+            },
+            [tonemapTexture, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            {
+                ToneMapPassUBO toneMapUBO;
+                toneMapUBO.exposure = settings.tonemap.exposure;
+                toneMapUBO.mode = static_cast<uint>(settings.tonemap.mode);
+                m_toneMapPass->execute(cmd, toneMapUBO, resources.getTexture(m_currentSceneTextureID));
+                m_currentSceneTextureID = tonemapTexture;
+            },
+        });
+
+        auto fxaaTexture = m_renderGraph.declareTexture({"FXAA",
+                                                         rhi::TextureDesc::ImageFormat::ColorRGBA8});
+
+        m_renderGraph.addPass({
+            "FXAA",
+            {tonemapTexture},
+            {fxaaTexture},
+            {},
+            {},
+            [](const RGResources &resources) {
+
+            },
+            [fxaaTexture, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            {
+                FXAAPushConstant fxaaPc;
+                fxaaPc.textureSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
+
+                m_fxaaPass->execute(cmd, fxaaPc, {resources.getTexture(m_currentSceneTextureID), resources.getTexture(fxaaTexture)});
+                m_currentSceneTextureID = fxaaTexture;
+            },
+        });
+        m_renderGraph.addPass({
+            "Final Scene",
+            {fxaaTexture},
+            {},
+            {},
+            {},
+            [](const RGResources &resources) {
+
+            },
+            [this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            {
+                rhi::RHIRenderPassDesc rpDesc{};
+                rpDesc.clearColor[0] = 0.3f;
+                rpDesc.clearColor[1] = 0.3f;
+                rpDesc.clearColor[2] = 0.3f;
+                rpDesc.clearColor[3] = 1.0f;
+                rpDesc.clearDepth = 1.0f;
+                rpDesc.hasDepth = true;
+                m_mainScenePass->execute(cmd, rpDesc, settings, resources.getTexture(m_currentSceneTextureID));
+            },
+        });
+
+        m_renderGraph.compile();
+        m_renderGraph.allocateTextures(m_device, m_swapchain->getWidth(), m_swapchain->getHeight());
+        m_renderGraph.allocateBuffers(m_device);
+        m_renderGraph.bindPassResources(m_renderGraph.buildResources());
     }
 } // namespace nitro::renderer

@@ -6,8 +6,6 @@ namespace nitro::renderer
     SSAOPass::SSAOPass(std::shared_ptr<rhi::RHIDevice> device,
                        uint32_t width,
                        uint32_t height,
-                       rhi::RHITexture *gDepth,
-                       rhi::RHITexture *gNormal,
                        std::string shaderDir,
                        bool isMetal)
         : m_device(device),
@@ -90,7 +88,6 @@ namespace nitro::renderer
         textureDesc.usage = rhi::TextureDesc::Usage::Storage | rhi::TextureDesc::Usage::ShaderRead;
 
         m_ssaoTexture = m_device->createTexture(textureDesc);
-        m_blurTexture = m_device->createTexture(textureDesc);
 
         m_resources.create(
             g_MAX_FRAMES_IN_FLIGHT,
@@ -107,33 +104,10 @@ namespace nitro::renderer
 
                 resource.descriptorSet = m_device->createDescriptorSet(m_ssaoDescriptorLayout);
 
-                rhi::TextureBinding textureBinding;
-                textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
-                textureBinding.texture = gDepth;
-
-                resource.descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
-                textureBinding.texture = gNormal;
-                resource.descriptorSet->writeTexture(textureBinding, 3, rhi::ImageLayout::ShaderReadOnly);
-                textureBinding.texture = m_noiseTexture;
-                textureBinding.sampler = m_device->defaultSamplers().nearestRepeat;
-                resource.descriptorSet->writeTexture(textureBinding, 6, rhi::ImageLayout::ShaderReadOnly);
-                resource.descriptorSet->writeStorageImage(m_ssaoTexture, 4, rhi::ImageLayout::General, rhi::TextureSubresource{});
-                resource.descriptorSet->writeBuffer(resource.randomSampleBuffer, 5);
-                resource.descriptorSet->commit();
-
                 return resource;
             });
 
         m_blurDescriptorSet = m_device->createDescriptorSet(m_blurDescriptorLayout);
-
-        rhi::TextureBinding blurTextureBinding;
-        blurTextureBinding.texture = gDepth;
-        blurTextureBinding.sampler = m_device->defaultSamplers().linearRepeat;
-        m_blurDescriptorSet->writeTexture(blurTextureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
-        blurTextureBinding.texture = m_ssaoTexture;
-        m_blurDescriptorSet->writeTexture(blurTextureBinding, 3, rhi::ImageLayout::ShaderReadOnly);
-        m_blurDescriptorSet->writeStorageImage(m_blurTexture, 4, rhi::ImageLayout::General, rhi::TextureSubresource{});
-        m_blurDescriptorSet->commit();
 
         rhi::RHICommandBuffer *cmd = m_device->createCommandBuffer();
 
@@ -142,8 +116,6 @@ namespace nitro::renderer
         textureBarrier.before = rhi::ResourceState::Undefined;
         textureBarrier.after = rhi::ResourceState::ShaderRead;
 
-        cmd->textureBarrier(textureBarrier);
-        textureBarrier.texture = m_blurTexture;
         cmd->textureBarrier(textureBarrier);
 
         m_device->endCommandBuffer(cmd);
@@ -164,49 +136,19 @@ namespace nitro::renderer
         m_device->destroyDescriptorSet(m_blurDescriptorSet);
 
         m_device->destroyTexture(m_ssaoTexture);
-        m_device->destroyTexture(m_blurTexture);
         m_device->destroyTexture(m_noiseTexture);
     }
 
-    void SSAOPass::resize(uint32_t width,
-                          uint32_t height,
-                          rhi::RHITexture *gDepth,
-                          rhi::RHITexture *gNormal)
+    void SSAOPass::bindResources(const RGResources &resources, const SSAOPassTextureIDs &textures)
     {
-        m_width = width;
-        m_height = height;
-
-        m_device->destroyTexture(m_ssaoTexture);
-        m_device->destroyTexture(m_blurTexture);
-
-        rhi::TextureDesc textureDesc;
-        textureDesc.size = {m_width, m_height};
-        textureDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA16;
-        textureDesc.usage = rhi::TextureDesc::Usage::Storage | rhi::TextureDesc::Usage::ShaderRead;
-
-        m_ssaoTexture = m_device->createTexture(textureDesc);
-        m_blurTexture = m_device->createTexture(textureDesc);
-
-        rhi::RHICommandBuffer *cmd = m_device->createCommandBuffer();
-        rhi::TextureBarrier textureBarrier;
-        textureBarrier.texture = m_ssaoTexture;
-        textureBarrier.before = rhi::ResourceState::Undefined;
-        textureBarrier.after = rhi::ResourceState::ShaderRead;
-
-        cmd->textureBarrier(textureBarrier);
-
-        textureBarrier.texture = m_blurTexture;
-        cmd->textureBarrier(textureBarrier);
-        m_device->endCommandBuffer(cmd);
-
         for (auto &resource : m_resources)
         {
             rhi::TextureBinding textureBinding;
             textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
-            textureBinding.texture = gDepth;
+            textureBinding.texture = resources.getTexture(textures.gDepth);
 
             resource.descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
-            textureBinding.texture = gNormal;
+            textureBinding.texture = resources.getTexture(textures.gNormal);
             resource.descriptorSet->writeTexture(textureBinding, 3, rhi::ImageLayout::ShaderReadOnly);
             resource.descriptorSet->writeStorageImage(m_ssaoTexture, 4, rhi::ImageLayout::General, rhi::TextureSubresource{});
             textureBinding.texture = m_noiseTexture;
@@ -217,16 +159,42 @@ namespace nitro::renderer
         }
 
         rhi::TextureBinding blurTextureBinding;
-        blurTextureBinding.texture = gDepth;
+        blurTextureBinding.texture = resources.getTexture(textures.gDepth);
         blurTextureBinding.sampler = m_device->defaultSamplers().linearRepeat;
         m_blurDescriptorSet->writeTexture(blurTextureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
         blurTextureBinding.texture = m_ssaoTexture;
         m_blurDescriptorSet->writeTexture(blurTextureBinding, 3, rhi::ImageLayout::ShaderReadOnly);
-        m_blurDescriptorSet->writeStorageImage(m_blurTexture, 4, rhi::ImageLayout::General, rhi::TextureSubresource{});
+        m_blurDescriptorSet->writeStorageImage(resources.getTexture(textures.ssaoTex), 4, rhi::ImageLayout::General, rhi::TextureSubresource{});
         m_blurDescriptorSet->commit();
+    };
+
+    void SSAOPass::resize(uint32_t width,
+                          uint32_t height)
+    {
+        m_width = width;
+        m_height = height;
+
+        m_device->destroyTexture(m_ssaoTexture);
+
+        rhi::TextureDesc textureDesc;
+        textureDesc.size = {m_width, m_height};
+        textureDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA16;
+        textureDesc.usage = rhi::TextureDesc::Usage::Storage | rhi::TextureDesc::Usage::ShaderRead;
+
+        m_ssaoTexture = m_device->createTexture(textureDesc);
+
+        rhi::RHICommandBuffer *cmd = m_device->createCommandBuffer();
+        rhi::TextureBarrier textureBarrier;
+        textureBarrier.texture = m_ssaoTexture;
+        textureBarrier.before = rhi::ResourceState::Undefined;
+        textureBarrier.after = rhi::ResourceState::ShaderRead;
+
+        cmd->textureBarrier(textureBarrier);
+
+        m_device->endCommandBuffer(cmd);
     }
 
-    void SSAOPass::execute(rhi::RHICommandBuffer *cmd, SSAOPushConstant pc, const std::vector<glm::vec4> &samples, float depthSigma)
+    void SSAOPass::execute(rhi::RHICommandBuffer *cmd, SSAOPushConstant pc, const RGResources &resources, const RGResourceID blurredSSAO, const std::vector<glm::vec4> &samples, float depthSigma)
     {
 
         auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
@@ -251,7 +219,7 @@ namespace nitro::renderer
 
         cmd->textureBarrier(textureBarrier);
 
-        textureBarrier.texture = m_blurTexture;
+        textureBarrier.texture = resources.getTexture(blurredSSAO);
         textureBarrier.before = rhi::ResourceState::ShaderRead;
         textureBarrier.after = rhi::ResourceState::ShaderWrite;
 

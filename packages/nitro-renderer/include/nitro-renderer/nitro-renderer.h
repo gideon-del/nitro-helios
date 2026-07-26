@@ -7,3 +7,4 @@
 #include "renderers/forward-renderer.h"
 #include "renderers/deferred-renderer.h"
 #include "renderers/tiled-deferred-renderer.h"
+#include "render-graph.h"

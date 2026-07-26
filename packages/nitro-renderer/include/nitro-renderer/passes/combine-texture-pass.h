@@ -10,13 +10,20 @@ namespace nitro::renderer
         float intensity = 0.3;
         float _pad;
     };
+
+    struct CombineTexturePassTextures
+    {
+        rhi::RHITexture *hdrTexture;
+        rhi::RHITexture *blurredTexture;
+        rhi::RHITexture *output;
+    };
     class CombineTexturePass
     {
     public:
         CombineTexturePass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, std::string shaderDir, bool isMetal);
         ~CombineTexturePass();
         void resize(uint32_t width, uint32_t height);
-        rhi::RHITexture *execute(rhi::RHICommandBuffer *cmd, CombineTexturePushConstant pc, rhi::RHITexture *textureA, rhi::RHITexture *textureB);
+        void execute(rhi::RHICommandBuffer *cmd, CombineTexturePushConstant pc, CombineTexturePassTextures textures);
 
     private:
         std::shared_ptr<rhi::RHIDevice> m_device;
@@ -24,6 +31,5 @@ namespace nitro::renderer
         rhi::RHIComputePipeline *m_computePipeline;
         rhi::RHIDescriptorLayout *m_descriptorLayout;
         rhi::RHIDescriptorSet *m_descriptorSet;
-        rhi::RHITexture *m_combinedTexture;
     };
 } // namespace nitro::renderer

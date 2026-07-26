@@ -5,6 +5,7 @@
 #include <nitro-rhi/rhi-device.h>
 #include <nitro-rhi/rhi-command-buffer.h>
 #include <nitro-renderer/scene.h>
+#include <nitro-renderer/render-graph.h>
 #include <glm/glm.hpp>
 
 namespace nitro::renderer
@@ -21,10 +22,10 @@ namespace nitro::renderer
     {
     public:
         ShadowPass(rhi::RHIDevice *device, int cascadeIndex);
-        rhi::RHITexture *shadowTexture;
         int cascadeIndex;
 
         void execute(rhi::RHICommandBuffer *cmd, rhi::RHIPipeline *pipeline, rhi::RHIDescriptorSet *descriptorSet, Scene &scene);
+        void bindResource(const RGResources &resources, const RGTextureID shadowTexture);
         static float s_getUniformSplit(
             float near,
             float far,
@@ -52,6 +53,7 @@ namespace nitro::renderer
         static constexpr uint32_t c_ShadowResolution = 2048;
 
     private:
-        rhi::RHIRenderPass *m_renderPass;
+        rhi::RHIRenderPass *m_renderPass = nullptr;
+        rhi::RHIDevice *m_device;
     };
 } // namespace nitro::renderer

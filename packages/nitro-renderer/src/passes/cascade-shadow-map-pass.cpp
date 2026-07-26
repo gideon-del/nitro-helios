@@ -36,7 +36,6 @@ namespace nitro::renderer
         for (int i = 0; i < CascadeShadowMapPass::CASCADE_COUNT; i++)
         {
             m_shadowPasses.push_back(ShadowPass(m_device.get(), i));
-            m_cascades.push_back(m_shadowPasses[i].shadowTexture);
         }
 
         rhi::BufferDesc uboDesc;
@@ -68,6 +67,14 @@ namespace nitro::renderer
             m_device->destroyBuffer(frameResource.uniformBuffer);
         }
         m_device->destroyPipeline(m_pipeline);
+    };
+
+    void CascadeShadowMapPass::bindResources(const RGResources &resources, const std::vector<RGTextureID> textures)
+    {
+        for (int i = 0; i < textures.size(); i++)
+        {
+            m_shadowPasses[i].bindResource(resources, textures[i]);
+        }
     };
     void CascadeShadowMapPass::execute(rhi::RHICommandBuffer *cmd, Scene &scene, CascadeShadowContext ctx)
     {

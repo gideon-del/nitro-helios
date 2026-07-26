@@ -4,7 +4,6 @@ namespace nitro::renderer
 {
     MainScenePass::MainScenePass(std::shared_ptr<rhi::RHIDevice> device,
                                  std::shared_ptr<rhi::RHISwapchain> swapchain,
-                                 rhi::RHITexture *finalTexture,
                                  std::string shaderDir,
                                  bool isMetal)
         : m_device(device),
@@ -30,13 +29,6 @@ namespace nitro::renderer
         }
 
         m_pipeline = m_device->createPipeline(pipelineDesc);
-
-        m_descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
-        rhi::TextureBinding textureBinding;
-        textureBinding.texture = finalTexture;
-        textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
-        m_descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
-        m_descriptorSet->commit();
     }
 
     MainScenePass::~MainScenePass()
@@ -45,16 +37,20 @@ namespace nitro::renderer
         m_device->destroyDescriptorSet(m_descriptorSet);
         m_device->destroyDescriptorLayout(m_descriptorLayout);
     }
-    void MainScenePass::resize(rhi::RHITexture *finalTexture)
+
+    void MainScenePass::execute(rhi::RHICommandBuffer *cmd, rhi::RHIRenderPassDesc &desc, RendererSettings &settings, rhi::RHITexture *inputTexture)
     {
-        rhi::TextureBinding textureBinding;
-        textureBinding.texture = finalTexture;
-        textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
-        m_descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
-        m_descriptorSet->commit();
-    }
-    void MainScenePass::execute(rhi::RHICommandBuffer *cmd, rhi::RHIRenderPassDesc &desc, RendererSettings &settings)
-    {
+
+        if (m_lastInputTexture != inputTexture)
+        {
+            m_lastInputTexture = inputTexture;
+            m_descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
+            rhi::TextureBinding textureBinding;
+            textureBinding.texture = m_lastInputTexture;
+            textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+            m_descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
+            m_descriptorSet->commit();
+        }
         cmd->beginRenderPass(desc);
         cmd->bindPipeline(m_pipeline);
         cmd->bindDescriptorSet(m_descriptorSet, 0);

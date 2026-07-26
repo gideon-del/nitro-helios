@@ -7,7 +7,6 @@ namespace nitro::renderer
         uint32_t width,
         uint32_t height,
         uint32_t maxPointLights,
-        GBuffer &gBuffer,
         std::string shaderDir,
         bool isMetal) : m_device(device), m_width(width), m_height(height), m_maxPointLights(maxPointLights)
     {
@@ -64,26 +63,33 @@ namespace nitro::renderer
         renderPassDesc.height = m_height;
 
         m_resources.create(g_MAX_FRAMES_IN_FLIGHT,
-                           [&, gBuffer](uint32_t frameIdx)
+                           [&](uint32_t frameIdx)
                            {
                                TileLightingComputeResource resource;
                                m_createBuffers(resource);
 
                                resource.descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
-                               resource.descriptorSet->writeBuffer(resource.cameraUniformBuffer, 2);
-                               rhi::TextureBinding textureBinding;
-                               textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
-                               textureBinding.texture = gBuffer.depth;
-                               resource.descriptorSet->writeTexture(textureBinding, 3, rhi::ImageLayout::ShaderReadOnly);
-                               resource.descriptorSet->writeBuffer(resource.pointLightBuffer, 4);
-                               resource.descriptorSet->writeBuffer(resource.tileLightCountBuffer, 5);
-                               resource.descriptorSet->writeBuffer(resource.tileLightIndicesBuffer, 6);
-                               resource.descriptorSet->writeBuffer(resource.tileLightDebugBuffer, 7);
-
-                               resource.descriptorSet->commit();
 
                                return resource;
                            });
+    }
+
+    void TiledLightingComputePass::bindResource(const RGResources &resources, const RGTextureID depth)
+    {
+        for (auto &resource : m_resources)
+        {
+            resource.descriptorSet->writeBuffer(resource.cameraUniformBuffer, 2);
+            rhi::TextureBinding textureBinding;
+            textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+            textureBinding.texture = resources.getTexture(depth);
+            resource.descriptorSet->writeTexture(textureBinding, 3, rhi::ImageLayout::ShaderReadOnly);
+            resource.descriptorSet->writeBuffer(resource.pointLightBuffer, 4);
+            resource.descriptorSet->writeBuffer(resource.tileLightCountBuffer, 5);
+            resource.descriptorSet->writeBuffer(resource.tileLightIndicesBuffer, 6);
+            resource.descriptorSet->writeBuffer(resource.tileLightDebugBuffer, 7);
+
+            resource.descriptorSet->commit();
+        }
     }
 
     void TiledLightingComputePass::m_destroyBuffers()
@@ -156,7 +162,7 @@ namespace nitro::renderer
         resource.tileLightIndicesBuffer = m_device->createBuffer(lightIndicesDesc);
     };
 
-    void TiledLightingComputePass::resize(uint32_t width, uint32_t height, GBuffer &gBuffer)
+    void TiledLightingComputePass::resize(uint32_t width, uint32_t height)
     {
         m_width = width;
         m_height = height;
@@ -168,19 +174,6 @@ namespace nitro::renderer
         {
 
             m_createBuffers(resource);
-
-            resource.descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
-            resource.descriptorSet->writeBuffer(resource.cameraUniformBuffer, 2);
-            rhi::TextureBinding textureBinding;
-            textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
-            textureBinding.texture = gBuffer.depth;
-            resource.descriptorSet->writeTexture(textureBinding, 3, rhi::ImageLayout::ShaderReadOnly);
-            resource.descriptorSet->writeBuffer(resource.pointLightBuffer, 4);
-            resource.descriptorSet->writeBuffer(resource.tileLightCountBuffer, 5);
-            resource.descriptorSet->writeBuffer(resource.tileLightIndicesBuffer, 6);
-            resource.descriptorSet->writeBuffer(resource.tileLightDebugBuffer, 7);
-
-            resource.descriptorSet->commit();
         }
     }
 

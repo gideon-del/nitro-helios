@@ -5,8 +5,6 @@ namespace nitro::renderer
     TileLightShadingPass::TileLightShadingPass(std::shared_ptr<rhi::RHIDevice> device,
                                                uint32_t width,
                                                uint32_t height,
-                                               GBuffer &gBuffer,
-                                               const PerFrame<TileLightingComputeResource> &tiledResources,
                                                std::string shaderDir,
                                                bool isMetal)
         : m_device(device),
@@ -38,8 +36,6 @@ namespace nitro::renderer
         };
 
         m_descriptorLayout = m_device->createDescriptorLayout(bindings);
-
-        m_createLightTextureAndRenderPass();
 
         rhi::PipelineDesc pipelineDesc;
 
@@ -78,10 +74,9 @@ namespace nitro::renderer
 
         m_resources.create(
             g_MAX_FRAMES_IN_FLIGHT,
-            [&, gBuffer, tiledResources](uint32_t frameIdx)
+            [&](uint32_t frameIdx)
             {
                 TiledLightPassResource resource;
-                auto &tileResource = tiledResources.current(frameIdx);
                 rhi::BufferDesc uboDesc;
                 uboDesc.storage = rhi::BufferDesc::StorageMode::Shared;
                 uboDesc.size = sizeof(TiledLightPassUBO);
@@ -91,28 +86,48 @@ namespace nitro::renderer
 
                 resource.descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
 
-                m_linkDescriptorSet(resource, gBuffer, tileResource);
                 return resource;
             });
     }
 
-    void TileLightShadingPass::m_linkDescriptorSet(TiledLightPassResource &resource, const GBuffer &gBuffer, const TileLightingComputeResource &tileResource)
+    void TileLightShadingPass::bindResources(const RGResources &resources, const TileLightShadingTextureIDs textures, const PerFrame<TileLightingComputeResource> &tileResources)
     {
-        resource.descriptorSet->writeBuffer(resource.uniformBuffer, 2);
+        for (int i = 0; i < g_MAX_FRAMES_IN_FLIGHT; i++)
+        {
 
-        rhi::TextureBinding textureBinding;
-        textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
-        textureBinding.texture = gBuffer.depth;
-        resource.descriptorSet->writeTexture(textureBinding, 3, rhi::ImageLayout::ShaderReadOnly);
-        resource.descriptorSet->writeTexture(textureBinding, 3, ImageLayout::ShaderReadOnly);
-        textureBinding.texture = gBuffer.normal;
-        resource.descriptorSet->writeTexture(textureBinding, 4, ImageLayout::ShaderReadOnly);
-        resource.descriptorSet->writeBuffer(tileResource.pointLightBuffer, 5);
-        resource.descriptorSet->writeBuffer(tileResource.tileLightCountBuffer, 6);
-        resource.descriptorSet->writeBuffer(tileResource.tileLightIndicesBuffer, 7);
-        resource.descriptorSet->writeBuffer(tileResource.tileLightDebugBuffer, 8);
-        resource.descriptorSet->commit();
-    }
+            auto &resource = m_resources.current(i);
+            auto tileResource = tileResources.current(i);
+            resource.descriptorSet->writeBuffer(resource.uniformBuffer, 2);
+
+            rhi::TextureBinding textureBinding;
+            textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+            textureBinding.texture = resources.getTexture(textures.gDepth);
+            resource.descriptorSet->writeTexture(textureBinding, 3, rhi::ImageLayout::ShaderReadOnly);
+            resource.descriptorSet->writeTexture(textureBinding, 3, ImageLayout::ShaderReadOnly);
+            textureBinding.texture = resources.getTexture(textures.gNormal);
+            resource.descriptorSet->writeTexture(textureBinding, 4, ImageLayout::ShaderReadOnly);
+            resource.descriptorSet->writeBuffer(tileResource.pointLightBuffer, 5);
+            resource.descriptorSet->writeBuffer(tileResource.tileLightCountBuffer, 6);
+            resource.descriptorSet->writeBuffer(tileResource.tileLightIndicesBuffer, 7);
+            resource.descriptorSet->writeBuffer(tileResource.tileLightDebugBuffer, 8);
+            resource.descriptorSet->commit();
+        }
+
+        if (m_renderPass)
+        {
+            m_device->destroyRenderPass(m_renderPass);
+        }
+        rhi::RenderPassDesc renderPassDesc;
+        rhi::RenderPassDesc::Attachment colorAttachment;
+        colorAttachment.texture = resources.getTexture(textures.tileLightTex);
+        colorAttachment.load = rhi::RenderPassDesc::LoadOp::Clear;
+        colorAttachment.store = rhi::RenderPassDesc::StoreOp::Store;
+        renderPassDesc.colorAttachments = {colorAttachment};
+        renderPassDesc.width = m_width;
+        renderPassDesc.height = m_height;
+
+        m_renderPass = m_device->createRenderPass(renderPassDesc);
+    };
 
     TileLightShadingPass::~TileLightShadingPass()
     {
@@ -126,45 +141,12 @@ namespace nitro::renderer
         m_device->destroyPipeline(m_pipeline);
         m_device->destroyDescriptorLayout(m_descriptorLayout);
     }
-    void TileLightShadingPass::m_createLightTextureAndRenderPass()
-    {
-        rhi::TextureDesc textureDesc;
-        textureDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA16;
-        textureDesc.size = {m_width, m_height};
-        textureDesc.usage = rhi::TextureDesc::Usage::RenderTarget | rhi::TextureDesc::Usage::ShaderRead;
 
-        m_lightTexture = m_device->createTexture(textureDesc);
-
-        rhi::RenderPassDesc renderPassDesc;
-        rhi::RenderPassDesc::Attachment colorAttachment;
-        colorAttachment.texture = m_lightTexture;
-        colorAttachment.load = rhi::RenderPassDesc::LoadOp::Clear;
-        colorAttachment.store = rhi::RenderPassDesc::StoreOp::Store;
-        renderPassDesc.colorAttachments = {colorAttachment};
-
-        renderPassDesc.width = m_width;
-        renderPassDesc.height = m_height;
-
-        m_renderPass = m_device->createRenderPass(renderPassDesc);
-    }
-
-    void TileLightShadingPass::resize(uint32_t width, uint32_t height, const GBuffer &gBuffer, const PerFrame<TileLightingComputeResource> &tileResources)
+    void TileLightShadingPass::resize(uint32_t width, uint32_t height)
     {
 
         m_width = width;
         m_height = height;
-        m_device->destroyTexture(m_lightTexture);
-        m_device->destroyRenderPass(m_renderPass);
-
-        m_createLightTextureAndRenderPass();
-
-        for (uint32_t i = 0; i < g_MAX_FRAMES_IN_FLIGHT; i++)
-        {
-            auto &tileResource = tileResources.current(i);
-            auto &resource = m_resources.current(i);
-
-            m_linkDescriptorSet(resource, gBuffer, tileResource);
-        }
     }
 
     void TileLightShadingPass::execute(rhi::RHICommandBuffer *cmd, TiledLightPassUBO ubo)

@@ -4,6 +4,7 @@
 #include <nitro-renderer/passes/tiled-deffered-compute-pass.h>
 #include <nitro-renderer/per-frame.h>
 #include <nitro-renderer/settings.h>
+#include <nitro-renderer/render-graph.h>
 #include <glm/glm.hpp>
 
 namespace nitro::renderer
@@ -24,6 +25,13 @@ namespace nitro::renderer
         uint showHeatMap = 0;
         float pad[3];
     };
+
+    struct TileLightShadingTextureIDs
+    {
+        RGTextureID gDepth;
+        RGTextureID gNormal;
+        RGTextureID tileLightTex;
+    };
     class TileLightShadingPass
     {
 
@@ -31,13 +39,11 @@ namespace nitro::renderer
         TileLightShadingPass(std::shared_ptr<rhi::RHIDevice> device,
                              uint32_t width,
                              uint32_t height,
-                             GBuffer &gBuffer,
-                             const PerFrame<TileLightingComputeResource> &tiledResources,
                              std::string shaderDir,
                              bool isMetal);
         ~TileLightShadingPass();
-        void resize(uint32_t width, uint32_t height, const GBuffer &gBuffer, const PerFrame<TileLightingComputeResource> &tileResources);
-        rhi::RHITexture *getLightTexture() { return m_lightTexture; };
+        void resize(uint32_t width, uint32_t height);
+        void bindResources(const RGResources &resources, const TileLightShadingTextureIDs textures, const PerFrame<TileLightingComputeResource> &tileResources);
 
         void execute(rhi::RHICommandBuffer *cmd, TiledLightPassUBO ubo);
 
@@ -49,8 +55,5 @@ namespace nitro::renderer
         rhi::RHIRenderPass *m_renderPass;
         PerFrame<TiledLightPassResource> m_resources;
         uint32_t m_width, m_height;
-
-        void m_linkDescriptorSet(TiledLightPassResource &resource, const GBuffer &gBuffer, const TileLightingComputeResource &tileResource);
-        void m_createLightTextureAndRenderPass();
     };
 } // namespace nitro::renderer

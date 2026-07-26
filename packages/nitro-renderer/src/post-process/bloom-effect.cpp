@@ -38,15 +38,14 @@ namespace nitro::renderer
         m_compositePass->resize(m_width, m_height);
     }
 
-    rhi::RHITexture *BloomEffect::execute(rhi::RHICommandBuffer *cmd,
-                                          rhi::RHITexture *inputTexture,
-                                          const BloomSettings &settings)
+    void BloomEffect::execute(rhi::RHICommandBuffer *cmd,
+                              BloomTextures textures, const BloomSettings &settings)
     {
         BrightnessPassPushConstant brightnessPc;
 
         brightnessPc.screenSize = glm::vec2(float(m_width), float(m_height));
         brightnessPc.threshold = settings.threshold;
-        rhi::RHITexture *brightTexture = m_brightnessPass->execute(cmd, brightnessPc, inputTexture);
+        rhi::RHITexture *brightTexture = m_brightnessPass->execute(cmd, brightnessPc, textures.hdrTexture);
 
         GaussianBlurPushConstant gaussianPc;
 
@@ -58,9 +57,7 @@ namespace nitro::renderer
         combineTexturePc.textureSize = brightnessPc.screenSize;
         combineTexturePc.intensity = settings.intensity;
 
-        rhi::RHITexture *bloomTexture = m_compositePass->execute(cmd, combineTexturePc, inputTexture, blurredTexture);
-
-        return bloomTexture;
+        m_compositePass->execute(cmd, combineTexturePc, {textures.hdrTexture, blurredTexture, textures.bloomTexture});
     };
 
 } // namespace nitro::renderer

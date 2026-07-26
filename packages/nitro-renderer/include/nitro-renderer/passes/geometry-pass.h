@@ -4,17 +4,18 @@
 #include <nitro-renderer/per-frame.h>
 #include <nitro-renderer/settings.h>
 #include <nitro-renderer/material-system.h>
+#include <nitro-renderer/render-graph.h>
 #include <glm/glm.hpp>
 namespace nitro::renderer
 {
     struct GBuffer
     {
-        rhi::RHITexture *albedo;
-        rhi::RHITexture *normal;
-        rhi::RHITexture *material;
-        rhi::RHITexture *emissive;
+        RGTextureID albedo;
+        RGTextureID normal;
+        RGTextureID material;
+        RGTextureID emissive;
 
-        rhi::RHITexture *depth;
+        RGTextureID depth;
     };
 
     struct GeometryPassResource
@@ -37,21 +38,22 @@ namespace nitro::renderer
         rhi::RHITexture *ao;
         rhi::RHITexture *emissive;
     };
+
     class GeometryPass
     {
     public:
-        GeometryPass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, rhi::RHITexture *depthTexture, std::string shaderDir, bool isMetal, std::shared_ptr<MaterialSystem> materialSystem);
+        GeometryPass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, std::string shaderDir, bool isMetal, std::shared_ptr<MaterialSystem> materialSystem);
 
         ~GeometryPass();
         void execute(rhi::RHICommandBuffer *cmd, GeometryCameraBuffer geometryCamera, Scene &scene, LightingSettings &settings);
-        void resize(uint32_t width, uint32_t height, rhi::RHITexture *depthTexture);
-        GBuffer gBuffer;
+        void resize(uint32_t width, uint32_t height);
+        void bindResources(const RGResources &resources, const GBuffer &gBuffer);
 
     private:
         uint32_t m_width;
         uint32_t m_height;
         std::shared_ptr<rhi::RHIDevice> m_device;
-        rhi::RHIRenderPass *m_renderPass;
+        rhi::RHIRenderPass *m_renderPass = nullptr;
         rhi::RHIPipeline *m_pipeline;
         rhi::RHIDescriptorLayout *m_descriptorLayout;
         PerFrame<GeometryPassResource> m_resources;

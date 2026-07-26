@@ -10,12 +10,11 @@ namespace nitro::renderer
     public:
         MainScenePass(std::shared_ptr<rhi::RHIDevice> device,
                       std::shared_ptr<rhi::RHISwapchain> swapchain,
-                      rhi::RHITexture *finalTexture,
                       std::string shaderDir,
                       bool isMetal);
         ~MainScenePass();
-        void resize(rhi::RHITexture *finalTexture);
-        void execute(rhi::RHICommandBuffer *cmd, rhi::RHIRenderPassDesc &desc, RendererSettings &settings);
+
+        void execute(rhi::RHICommandBuffer *cmd, rhi::RHIRenderPassDesc &desc, RendererSettings &settings, rhi::RHITexture *inputTexture);
 
     private:
         ShadowPanel m_shadowPanel;
@@ -31,5 +30,6 @@ namespace nitro::renderer
         rhi::RHIPipeline *m_pipeline;
         rhi::RHIDescriptorLayout *m_descriptorLayout;
         rhi::RHIDescriptorSet *m_descriptorSet;
+        rhi::RHITexture *m_lastInputTexture = nullptr;
     };
 } // namespace nitro::renderer

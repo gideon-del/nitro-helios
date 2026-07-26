@@ -4,6 +4,13 @@
 
 namespace nitro::renderer
 {
+
+    struct BloomTextures
+    {
+        rhi::RHITexture *hdrTexture;
+        rhi::RHITexture *bloomTexture;
+    };
+
     class BloomEffect
     {
     public:
@@ -12,9 +19,9 @@ namespace nitro::renderer
                     std::string shaderDir, bool isMetal);
 
         void resize(uint32_t width, uint32_t height);
-        rhi::RHITexture *execute(rhi::RHICommandBuffer *cmd,
-                                 rhi::RHITexture *inputTexture,
-                                 const BloomSettings &settings);
+        void execute(rhi::RHICommandBuffer *cmd,
+                     BloomTextures textures,
+                     const BloomSettings &settings);
 
     private:
         uint32_t m_width, m_height;

@@ -43,27 +43,6 @@ namespace nitro::renderer
 
         m_pipeline = m_device->createPipeline(pipelineDesc);
 
-        rhi::TextureDesc textureDesc;
-
-        textureDesc.size = {m_width, m_height};
-        textureDesc.usage = rhi::TextureDesc::Usage::RenderTarget | rhi::TextureDesc::Usage::ShaderRead;
-        textureDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA8;
-
-        m_toneMappedTexture = m_device->createTexture(textureDesc);
-
-        rhi::RenderPassDesc renderPassDesc;
-
-        rhi::RenderPassDesc::Attachment colorAttachment;
-        colorAttachment.texture = m_toneMappedTexture;
-        colorAttachment.load = rhi::RenderPassDesc::LoadOp::Clear;
-        colorAttachment.store = rhi::RenderPassDesc::StoreOp::Store;
-
-        renderPassDesc.colorAttachments = {colorAttachment};
-        renderPassDesc.height = m_height;
-        renderPassDesc.width = m_width;
-
-        m_renderPass = m_device->createRenderPass(renderPassDesc);
-
         m_descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
     };
 
@@ -72,7 +51,6 @@ namespace nitro::renderer
         m_device->destroyDescriptorSet(m_descriptorSet);
         m_device->destroyPipeline(m_pipeline);
         m_device->destroyDescriptorLayout(m_descriptorLayout);
-        m_device->destroyTexture(m_toneMappedTexture);
         m_device->destroyRenderPass(m_renderPass);
     }
 
@@ -80,22 +58,21 @@ namespace nitro::renderer
         uint32_t width,
         uint32_t height)
     {
-        m_device->destroyTexture(m_toneMappedTexture);
-        m_device->destroyRenderPass(m_renderPass);
+
         m_width = width;
         m_height = height;
-        rhi::TextureDesc textureDesc;
-
-        textureDesc.size = {m_width, m_height};
-        textureDesc.usage = rhi::TextureDesc::Usage::RenderTarget | rhi::TextureDesc::Usage::ShaderRead;
-        textureDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA8;
-
-        m_toneMappedTexture = m_device->createTexture(textureDesc);
+    }
+    void ToneMapPass::bindResource(const RGResources &resource, const RGTextureID tonemapID)
+    {
+        if (m_renderPass)
+        {
+            m_device->destroyRenderPass(m_renderPass);
+        }
 
         rhi::RenderPassDesc renderPassDesc;
 
         rhi::RenderPassDesc::Attachment colorAttachment;
-        colorAttachment.texture = m_toneMappedTexture;
+        colorAttachment.texture = resource.getTexture(tonemapID);
         colorAttachment.load = rhi::RenderPassDesc::LoadOp::Clear;
         colorAttachment.store = rhi::RenderPassDesc::StoreOp::Store;
 

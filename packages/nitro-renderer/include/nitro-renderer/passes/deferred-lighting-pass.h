@@ -10,6 +10,8 @@
 #include <nitro-renderer/per-frame.h>
 #include <glm/glm.hpp>
 #include <nitro-renderer/settings.h>
+#include <nitro-renderer/render-graph.h>
+#include <nitro-renderer/passes/cascade-shadow-map-pass.h>
 namespace nitro::renderer
 {
     struct DeferredLightingFrameData
@@ -48,14 +50,27 @@ namespace nitro::renderer
         rhi::RHIDescriptorSet *shadowDescriptorSet;
     };
 
+    struct DeferredLightingTextureIDs
+    {
+        GBuffer gBufferIds;
+        RGTextureID pointLightTextureId;
+        RGTextureID skybox;
+        std::vector<RGTextureID> cascades;
+        RGTextureID ssaoTexture;
+        rhi::RHITexture *cubeTexture;
+        rhi::RHITexture *brdfLut;
+        rhi::RHITexture *prefilteredEnv;
+        RGTextureID output;
+    };
+
     class DeferredLightingPass
     {
     public:
-        DeferredLightingPass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, std::vector<rhi::RHITexture *> &cascades, GBuffer &gBuffer, rhi::RHITexture *cubeTexture, rhi::RHITexture *lightTexture, rhi::RHITexture *skybox, rhi::RHITexture *brdfLut, rhi::RHITexture *prefilteredEnv, rhi::RHITexture *ssaoTexture, std::string shaderDir, bool isMetal);
+        DeferredLightingPass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, std::string shaderDir, bool isMetal);
         ~DeferredLightingPass();
         void execute(rhi::RHICommandBuffer *cmd, DeferredLightingFrameData frameData);
-        void recreate(uint32_t width, uint32_t height, GBuffer &gBuffer, rhi::RHITexture *cubeTexture, rhi::RHITexture *lightTexture, rhi::RHITexture *skybox, rhi::RHITexture *brdfLut, rhi::RHITexture *prefilteredEnv, rhi::RHITexture *ssaoTexture);
-        rhi::RHITexture *getLightTexture() { return m_lightTexture; }
+        void recreate(uint32_t width, uint32_t height);
+        void bindResources(const RGResources &resources, const DeferredLightingTextureIDs textures);
 
     private:
         std::shared_ptr<rhi::RHIDevice> m_device;
@@ -65,7 +80,6 @@ namespace nitro::renderer
         rhi::RHIDescriptorLayout *m_gBufferDescriptorLayout;
         rhi::RHIDescriptorLayout *m_shadowDescriptorLayout;
         PerFrame<DeferredLightingResource> m_resources;
-        rhi::RHITexture *m_lightTexture;
         rhi::RHIRenderPass *m_renderPass;
     };
 } // namespace nitro::renderer

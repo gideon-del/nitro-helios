@@ -38,6 +38,7 @@ add_library(nitro-renderer STATIC
  src/passes/color-grading-pass.cpp
  src/passes/ssao-pass.cpp
  src/passes/fxaa-pass.cpp
+ src/render-graph.cpp
 )
 
 find_package(glm REQUIRED)

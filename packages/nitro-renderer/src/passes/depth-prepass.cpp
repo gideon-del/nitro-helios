@@ -11,13 +11,6 @@ namespace nitro::renderer
                                std::shared_ptr<MaterialSystem> materialSystem) : m_device(device), m_width(width), m_height(height), m_materialSystem(materialSystem)
     {
 
-        rhi::TextureDesc textureDesc;
-        textureDesc.format = rhi::TextureDesc::ImageFormat::Depth32FloatStencil8;
-        textureDesc.usage = rhi::TextureDesc::Usage::DepthStencil | rhi::TextureDesc::Usage::ShaderRead;
-        textureDesc.size = {m_width, m_height};
-
-        m_depthTexture = m_device->createTexture(textureDesc);
-
         std::vector<rhi::RHIDescriptorBinding> binding{{rhi::RHIDescriptorBinding::Type::UniformBuffer,
                                                         rhi::RHIDescriptorBinding::ShaderStage::Vertex,
                                                         2}};
@@ -48,20 +41,6 @@ namespace nitro::renderer
 
         rhi::RenderPassDesc renderPassDesc;
 
-        rhi::RenderPassDesc::Attachment depthAttachment;
-        depthAttachment.texture = m_depthTexture;
-        depthAttachment.load = rhi::RenderPassDesc::LoadOp::Clear;
-        depthAttachment.store = rhi::RenderPassDesc::StoreOp::Store;
-        depthAttachment.hasStencil = true;
-        depthAttachment.stencilLoad = rhi::RenderPassDesc::LoadOp::Clear;
-        depthAttachment.stencilStore = rhi::RenderPassDesc::StoreOp::Store;
-        depthAttachment.clearStencil = 0;
-        renderPassDesc.depthAttachment = &depthAttachment;
-        renderPassDesc.width = m_width;
-        renderPassDesc.height = m_height;
-
-        m_renderPass = m_device->createRenderPass(renderPassDesc);
-
         m_resources.create(
             g_MAX_FRAMES_IN_FLIGHT,
             [&](uint32_t frame)
@@ -91,26 +70,26 @@ namespace nitro::renderer
         }
 
         m_device->destroyPipeline(m_pipeline);
-        m_device->destroyTexture(m_depthTexture);
     }
     void DepthPrepass::resize(uint32_t width, uint32_t height)
     {
         m_width = width;
         m_height = height;
+    }
 
-        m_device->destroyTexture(m_depthTexture);
+    void DepthPrepass::bindResources(const RGResources &resource, RGTextureID depth)
+    {
+        auto depthTexture = resource.getTexture(depth);
 
-        rhi::TextureDesc textureDesc;
-        textureDesc.format = rhi::TextureDesc::ImageFormat::Depth32FloatStencil8;
-        textureDesc.usage = rhi::TextureDesc::Usage::DepthStencil | rhi::TextureDesc::Usage::ShaderRead;
-        textureDesc.size = {m_width, m_height};
-
-        m_depthTexture = m_device->createTexture(textureDesc);
+        if (m_renderPass != nullptr)
+        {
+            m_device->destroyRenderPass(m_renderPass);
+        }
 
         rhi::RenderPassDesc renderPassDesc;
 
         rhi::RenderPassDesc::Attachment depthAttachment;
-        depthAttachment.texture = m_depthTexture;
+        depthAttachment.texture = depthTexture;
         depthAttachment.load = rhi::RenderPassDesc::LoadOp::Clear;
         depthAttachment.store = rhi::RenderPassDesc::StoreOp::Store;
         depthAttachment.hasStencil = true;

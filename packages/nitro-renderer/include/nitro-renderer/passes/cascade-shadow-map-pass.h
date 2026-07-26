@@ -2,6 +2,7 @@
 #include <nitro-rhi/rhi.h>
 #include <nitro-renderer/scene.h>
 #include <nitro-renderer/per-frame.h>
+#include <nitro-renderer/render-graph.h>
 #include <glm/glm.hpp>
 #include "shadow-pass.h"
 
@@ -36,14 +37,13 @@ namespace nitro::renderer
         ~CascadeShadowMapPass();
 
         void execute(rhi::RHICommandBuffer *cmd, Scene &scene, CascadeShadowContext ctx);
-        std::vector<rhi::RHITexture *> &getCascadeTextures() { return m_cascades; };
+        void bindResources(const RGResources &resources, const std::vector<RGTextureID> textures);
         glm::mat4 lightViewProj[4];
         glm::vec4 cascadeSplit;
         static constexpr uint32_t CASCADE_COUNT = 4;
 
     private:
         std::shared_ptr<rhi::RHIDevice> m_device;
-        std::vector<rhi::RHITexture *> m_cascades;
         std::vector<ShadowPass> m_shadowPasses;
         rhi::RHIPipeline *m_pipeline;
         rhi::RHIDescriptorLayout *m_descriptorLayout;

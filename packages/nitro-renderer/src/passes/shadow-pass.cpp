@@ -2,7 +2,7 @@
 
 namespace nitro::renderer
 {
-    ShadowPass::ShadowPass(rhi::RHIDevice *device, int cascadeIndex) : cascadeIndex(cascadeIndex)
+    ShadowPass::ShadowPass(rhi::RHIDevice *device, int cascadeIndex) : cascadeIndex(cascadeIndex), m_device(device)
     {
         rhi::TextureDesc shadowDesc{};
         shadowDesc.size.width = ShadowPass::c_ShadowResolution;
@@ -10,18 +10,23 @@ namespace nitro::renderer
         shadowDesc.format = rhi::TextureDesc::ImageFormat::Depth32Float;
         shadowDesc.usage = rhi::TextureDesc::Usage::DepthStencil | rhi::TextureDesc::Usage::ShaderRead;
         shadowDesc.sampler = rhi::TextureDesc::Sampler::Depth;
+    }
 
-        shadowTexture = device->createTexture(shadowDesc);
-
+    void ShadowPass::bindResource(const RGResources &resources, const RGTextureID shadowTexture)
+    {
+        if (m_renderPass)
+        {
+            m_device->destroyRenderPass(m_renderPass);
+        }
         rhi::RenderPassDesc shadowRenderPassDesc;
         rhi::RenderPassDesc::Attachment shadowDepthAttachment;
-        shadowDepthAttachment.texture = shadowTexture;
+        shadowDepthAttachment.texture = resources.getTexture(shadowTexture);
         shadowDepthAttachment.store = rhi::RenderPassDesc::StoreOp::Store;
         shadowRenderPassDesc.depthAttachment = &shadowDepthAttachment;
         shadowRenderPassDesc.width = ShadowPass::c_ShadowResolution;
         shadowRenderPassDesc.height = ShadowPass::c_ShadowResolution;
 
-        m_renderPass = device->createRenderPass(shadowRenderPassDesc);
+        m_renderPass = m_device->createRenderPass(shadowRenderPassDesc);
     }
     void ShadowPass::execute(rhi::RHICommandBuffer *cmd, rhi::RHIPipeline *pipeline, rhi::RHIDescriptorSet *descriptorSet, Scene &scene)
     {
