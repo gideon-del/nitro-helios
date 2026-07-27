@@ -619,7 +619,7 @@ namespace nitro::renderer
         m_renderGraph.addPass({
             "FXAA",
             {tonemapTexture},
-            {fxaaTexture},
+            {fxaaTexture, albedo},
             {},
             {},
             [](const RGResources &resources) {

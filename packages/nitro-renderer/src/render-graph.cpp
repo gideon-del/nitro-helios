@@ -84,6 +84,17 @@ namespace nitro::renderer
         }
 
         m_executionOrder = m_depGraph.topoSort();
+
+        auto errors = validate();
+
+        if (!errors.empty())
+        {
+            for (auto &e : errors)
+                std::cerr << "[RenderGraph] " << e.passName
+                          << " / " << e.textureName
+                          << ": " << e.message << "\n";
+            throw std::runtime_error("Render graph validation failed");
+        }
     }
 
     void RenderGraph::dryRun()
@@ -304,5 +315,67 @@ namespace nitro::renderer
         {
             m_passes[idx].execute(cmd, resources, ctx, settings);
         }
+    }
+
+    std::vector<RGValidationError> RenderGraph::validate()
+    {
+        std::vector<RGValidationError> errors;
+        auto cycles = m_depGraph.findCycles();
+
+        for (auto &cycle : cycles)
+        {
+            std::string path = "";
+            for (auto &idx : cycle)
+            {
+                path += m_passes[idx].name + " → ";
+            }
+
+            errors.push_back({"", "", "Cycle Detected " + path});
+        }
+
+        std::unordered_map<RGTextureID, std::string> writerOf;
+
+        for (auto &pass : m_passes)
+        {
+            for (auto &tid : pass.writes)
+            {
+                writerOf[tid] = pass.name;
+            }
+        }
+        for (auto &pass : m_passes)
+        {
+            for (auto &tid : pass.reads)
+            {
+                if (!writerOf.count(tid))
+                {
+                    errors.push_back({pass.name,
+                                      m_textures.at(tid).name,
+                                      "reads texture with no writer"});
+                }
+            }
+        }
+
+        std::unordered_map<RGTextureID, std::string> firstWriter;
+
+        for (int idx : m_executionOrder)
+        {
+            auto &pass = m_passes[idx];
+            for (auto &tid : pass.reads)
+            {
+                if (!m_textures.at(tid).transient)
+                    continue;
+
+                if (firstWriter.count(tid))
+                {
+                    errors.push_back(
+                        {pass.name,
+                         m_textures.at(tid).name,
+                         "write-after-write: also written by " + firstWriter.at(tid)});
+                }
+                firstWriter[tid] = pass.name;
+            }
+        };
+
+        return errors;
     }
 } // namespace nitro::renderer

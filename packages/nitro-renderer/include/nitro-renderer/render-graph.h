@@ -26,7 +26,12 @@ namespace nitro::renderer
         rhi::BufferDesc::Usage usage;
         bool transient = true;
     };
-
+    struct RGValidationError
+    {
+        std::string passName;
+        std::string textureName;
+        std::string message;
+    };
     struct RGResources
     {
         std::unordered_map<RGResourceID, rhi::RHITexture *> allocatedTextures;
@@ -80,6 +85,7 @@ namespace nitro::renderer
         const RGResources buildResources();
         void bindPassResources(const RGResources &resources);
         void execute(rhi::RHICommandBuffer *cmd, const RenderContext &ctx, RendererSettings &settings, const RGResources &resources);
+        std::vector<RGValidationError> validate();
 
     private:
         bool isDepthFormat(rhi::TextureDesc::ImageFormat format);
