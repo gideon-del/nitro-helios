@@ -118,6 +118,7 @@ namespace nitro::rhi::vulkan
         }
         renderingInfo.layerCount = 1;
         renderingInfo.renderArea.offset = {0, 0};
+        renderingInfo.renderArea.extent = {width, height};
     }
 
     VulkanRenderPass::~VulkanRenderPass()

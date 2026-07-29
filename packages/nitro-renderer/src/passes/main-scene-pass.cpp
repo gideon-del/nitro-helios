@@ -1,4 +1,5 @@
 #include <nitro-renderer/passes/main-scene-pass.h>
+#include <imgui.h>
 
 namespace nitro::renderer
 {
@@ -29,6 +30,7 @@ namespace nitro::renderer
         }
 
         m_pipeline = m_device->createPipeline(pipelineDesc);
+        m_descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
     }
 
     MainScenePass::~MainScenePass()
@@ -38,19 +40,14 @@ namespace nitro::renderer
         m_device->destroyDescriptorLayout(m_descriptorLayout);
     }
 
-    void MainScenePass::execute(rhi::RHICommandBuffer *cmd, rhi::RHIRenderPassDesc &desc, RendererSettings &settings, rhi::RHITexture *inputTexture)
+    void MainScenePass::execute(rhi::RHICommandBuffer *cmd, rhi::RHIRenderPassDesc &desc, RendererSettings &settings, rhi::RHITexture *inputTexture, RenderGraph &renderGraph)
     {
 
-        if (m_lastInputTexture != inputTexture)
-        {
-            m_lastInputTexture = inputTexture;
-            m_descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
-            rhi::TextureBinding textureBinding;
-            textureBinding.texture = m_lastInputTexture;
-            textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
-            m_descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
-            m_descriptorSet->commit();
-        }
+        rhi::TextureBinding textureBinding;
+        textureBinding.texture = inputTexture;
+        textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+        m_descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
+        m_descriptorSet->commit();
         cmd->beginRenderPass(desc);
         cmd->bindPipeline(m_pipeline);
         cmd->bindDescriptorSet(m_descriptorSet, 0);
@@ -66,8 +63,8 @@ namespace nitro::renderer
         scissor.height = m_swapchain->getHeight() * swapchainViewScale.y;
         cmd->setScissor(scissor);
         cmd->draw(3);
-
         m_device->beginImGuiFrame();
+        // ImGui::DockSpaceOverViewport();
         m_lightPanel.draw(settings.light);
         m_shadowPanel.draw(settings.shadow);
         m_rendererPanel.draw(settings);
@@ -76,6 +73,28 @@ namespace nitro::renderer
         m_bloomPanel.draw(settings.bloom);
         m_colorGradePanel.draw(settings.colorGrading);
         m_ssaoPanel.draw(settings.ssao);
+        renderGraph.drawImGui();
+        // ImGui::Begin("Viewport");
+
+        // ImGuiViewport *vp = ImGui::GetWindowViewport();
+
+        // ImVec2 size = ImGui::GetContentRegionAvail();
+
+        // size.x *= vp->DpiScale;
+        // size.y *= vp->DpiScale;
+
+        // if (size.x < 100 || size.y < 100)
+        // {
+        //     size.x = settings.viewportSize.x;
+        //     size.y = settings.viewportSize.y;
+        // }
+        // else
+        // {
+        //     settings.viewportSize = {size.x, size.y};
+        // }
+
+        // ImGui::Image((ImTextureID)m_device->getImGuiTextureRef(inputTexture), size);
+        // ImGui::End();
         m_device->endImGuiFrame();
         m_device->drawImGui(cmd);
         cmd->endRenderPass();

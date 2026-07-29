@@ -32,6 +32,12 @@ namespace nitro::renderer
         std::string textureName;
         std::string message;
     };
+
+    struct RGLifetime
+    {
+        int createdAt = -1;
+        int lastUsedAt = -1;
+    };
     struct RGResources
     {
         std::unordered_map<RGResourceID, rhi::RHITexture *> allocatedTextures;
@@ -86,10 +92,15 @@ namespace nitro::renderer
         void bindPassResources(const RGResources &resources);
         void execute(rhi::RHICommandBuffer *cmd, const RenderContext &ctx, RendererSettings &settings, const RGResources &resources);
         std::vector<RGValidationError> validate();
+        void drawImGui();
+        std::unordered_map<RGResourceID, RGLifetime> computeLifetimes();
 
     private:
+        void drawLifetimeTimeline();
         bool isDepthFormat(rhi::TextureDesc::ImageFormat format);
         bool isWrittenByAnyPass(RGResourceID id);
         bool isSharedStorageBuffer(RGResourceID id);
+        int writerOutputIndex(int passIdx, RGTextureID tid);
+        int readerInputIndex(int passIdx, RGTextureID tid);
     };
 } // namespace nitro::renderer

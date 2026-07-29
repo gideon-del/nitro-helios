@@ -12,3 +12,5 @@ find_package(glm REQUIRED)
 target_include_directories(nitro-rhi
 INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
+
+target_link_libraries(nitro-rhi INTERFACE glm::glm imgui-core)

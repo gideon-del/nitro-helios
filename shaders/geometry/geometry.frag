@@ -50,12 +50,12 @@ void main() {
     gNormal = vec4(encodeNormal(worldNormal), 0.0,1.0);
     float ao = texture(aoTexture, fragUV).r;
     gMaterial = vec4(ao,metallicRoughness.b,metallicRoughness.g,1.0);
-    gEmissive = vec4(1.0,1.0,1.0,1.0);
+    gEmissive = vec4(texture(emissiveTexture, fragUV).rgb,1.0);
     }else {
     gAlbedo = pc.baseColor;
     gNormal = vec4(encodeNormal(fragNormal), 0.0,1.0);
     gMaterial = vec4(1.0,pc.metallic,pc.roughness,1.0);
-    gEmissive = vec4(1.0,1.0,1.0,1.0);
+    gEmissive = vec4(vec3(0.0),1.0);
     }
   
 }

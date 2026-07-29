@@ -2,6 +2,7 @@
 #include <nitro-rhi/rhi.h>
 #include <nitro-renderer/panels.h>
 #include <nitro-renderer/settings.h>
+#include <nitro-renderer/render-graph.h>
 
 namespace nitro::renderer
 {
@@ -14,7 +15,7 @@ namespace nitro::renderer
                       bool isMetal);
         ~MainScenePass();
 
-        void execute(rhi::RHICommandBuffer *cmd, rhi::RHIRenderPassDesc &desc, RendererSettings &settings, rhi::RHITexture *inputTexture);
+        void execute(rhi::RHICommandBuffer *cmd, rhi::RHIRenderPassDesc &desc, RendererSettings &settings, rhi::RHITexture *inputTexture, RenderGraph &renderGraph);
 
     private:
         ShadowPanel m_shadowPanel;

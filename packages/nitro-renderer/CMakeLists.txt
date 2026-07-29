@@ -52,5 +52,6 @@ target_link_libraries(nitro-renderer
 PUBLIC nitro-rhi
 PUBLIC nitro-geometry
 PUBLIC glm::glm
-PRIVATE nitro-rhi-backends
+PRIVATE imgui-core
+PRIVATE imnodes
 )

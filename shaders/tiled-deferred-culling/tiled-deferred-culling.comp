@@ -155,7 +155,7 @@ void main() {
     uint groupSizeX = 16u;
     uint groupSizeY = 16u;
     uint totalThreadsInGroup = groupSizeX*groupSizeY;
-    uint totalLightCount = pointLights.length();
+    uint totalLightCount = camera.totalLightCount;
      
     uint lightsPerThread = uint(ceil(float(totalLightCount) / float(totalThreadsInGroup)));;
      if(gl_LocalInvocationIndex == 0) {

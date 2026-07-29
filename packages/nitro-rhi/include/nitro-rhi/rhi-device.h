@@ -12,6 +12,7 @@
 #include "rhi-compute-pipeline.h"
 #include "rhi-handle.h"
 #include "rhi-sampler.h"
+#include <imgui.h>
 namespace nitro::rhi
 {
 
@@ -61,7 +62,7 @@ namespace nitro::rhi
         virtual uint32_t getCurrentFrameIndex() const = 0;
         virtual RHICommandBuffer *beginFrame() = 0;
         virtual RHICommandBuffer *createCommandBuffer() = 0;
-
+        virtual void *getImGuiTextureRef(RHITexture *texture) = 0;
         virtual void endFrame(RHICommandBuffer *cmd) = 0;
         virtual void endCommandBuffer(RHICommandBuffer *cmd) = 0;
         virtual void beginImGuiFrame() = 0;

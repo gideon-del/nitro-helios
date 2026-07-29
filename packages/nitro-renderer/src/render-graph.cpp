@@ -1,4 +1,6 @@
 #include <nitro-renderer/render-graph.h>
+#include <imnodes.h>
+#include <imgui.h>
 
 namespace nitro::renderer
 {
@@ -172,6 +174,7 @@ namespace nitro::renderer
 
             if (!m_allocatedTextures.count(tid))
             {
+                std::cerr << "[RenderGraph] allocating texture '" << desc.name << "' " << textureDesc.size.width << "x" << textureDesc.size.height << "\n";
                 m_allocatedTextures[tid] = device->createTexture(textureDesc);
                 rhi::TextureBarrier textureBarrier;
                 textureBarrier.texture = m_allocatedTextures[tid];
@@ -184,7 +187,7 @@ namespace nitro::renderer
     }
     void RenderGraph::reallocateFrameTextures(std::shared_ptr<rhi::RHIDevice> device, uint32_t frameWidth, uint32_t frameHeight)
     {
-
+        device->waitIdle();
         rhi::RHICommandBuffer *cmd = device->createCommandBuffer();
         for (auto &[tid, desc] : m_textures)
         {
@@ -214,7 +217,7 @@ namespace nitro::renderer
             {
                 device->destroyTexture(m_allocatedTextures[tid]);
             }
-
+            std::cerr << "[RenderGraph] reallocating texture '" << desc.name << "' " << textureDesc.size.width << "x" << textureDesc.size.height << "\n";
             m_allocatedTextures[tid] = device->createTexture(textureDesc);
 
             rhi::TextureBarrier textureBarrier;
@@ -360,7 +363,7 @@ namespace nitro::renderer
         for (int idx : m_executionOrder)
         {
             auto &pass = m_passes[idx];
-            for (auto &tid : pass.reads)
+            for (auto &tid : pass.writes)
             {
                 if (!m_textures.at(tid).transient)
                     continue;
@@ -377,5 +380,137 @@ namespace nitro::renderer
         };
 
         return errors;
+    }
+
+    void RenderGraph::drawImGui()
+    {
+        ImGui::Begin("Render Graph");
+        ImNodes::BeginNodeEditor();
+
+        std::unordered_map<RGTextureID, int> writerOf;
+        std::unordered_map<RGTextureID, std::vector<int>> readersOf;
+        for (int passIdx = 0; passIdx < m_passes.size(); passIdx++)
+        {
+            auto &pass = m_passes[passIdx];
+
+            ImNodes::BeginNode(passIdx);
+            ImNodes::BeginNodeTitleBar();
+
+            ImGui::TextUnformatted(pass.name.c_str());
+
+            ImNodes::EndNodeTitleBar();
+            for (int i = 0; i < (int)pass.reads.size(); i++)
+            {
+                int pinId = passIdx * 100 + i;
+                ImNodes::BeginInputAttribute(pinId);
+                ImGui::Text("%s", m_textures.at(pass.reads[i]).name.c_str());
+                ImNodes::EndInputAttribute();
+
+                readersOf[pass.reads[i]].push_back(passIdx);
+            }
+
+            for (int i = 0; i < (int)pass.writes.size(); i++)
+            {
+                int pinId = passIdx * 100 + 50 + i;
+                ImNodes::BeginOutputAttribute(pinId);
+                ImGui::Text("%s", m_textures.at(pass.writes[i]).name.c_str());
+                ImNodes::EndOutputAttribute();
+
+                writerOf[pass.writes[i]] = passIdx;
+            }
+            ImNodes::EndNode();
+        }
+
+        int edgeId = 0;
+        for (auto &[tid, writerPassIdx] : writerOf)
+        {
+            int outputPin = writerPassIdx * 100 + 50 + writerOutputIndex(writerPassIdx, tid);
+            for (int readerPassIdx : readersOf[tid])
+            {
+                int inputPin = readerPassIdx * 100 + readerInputIndex(readerPassIdx, tid);
+                ImNodes::Link(edgeId++, outputPin, inputPin);
+            }
+        }
+
+        ImNodes::EndNodeEditor();
+        ImGui::End();
+
+        drawLifetimeTimeline();
+    }
+    int RenderGraph::writerOutputIndex(int passIdx, RGTextureID tid)
+    {
+        auto &writes = m_passes[passIdx].writes;
+        for (int i = 0; i < (int)writes.size(); i++)
+            if (writes[i] == tid)
+                return i;
+        return -1;
+    }
+
+    int RenderGraph::readerInputIndex(int passIdx, RGTextureID tid)
+    {
+        auto &reads = m_passes[passIdx].reads;
+        for (int i = 0; i < (int)reads.size(); i++)
+            if (reads[i] == tid)
+                return i;
+        return -1;
+    }
+
+    std::unordered_map<RGResourceID, RGLifetime> RenderGraph::computeLifetimes()
+    {
+        std::unordered_map<RGResourceID, RGLifetime> lifetime;
+
+        for (int i = 0; i < m_executionOrder.size(); i++)
+        {
+            auto &pass = m_passes[m_executionOrder[i]];
+
+            for (auto &tid : pass.writes)
+            {
+                lifetime[tid].createdAt = i;
+                lifetime[tid].lastUsedAt = i;
+            };
+            for (auto &tid : pass.reads)
+            {
+
+                lifetime[tid].lastUsedAt = std::max(lifetime[tid].lastUsedAt, i);
+            };
+        }
+
+        return lifetime;
+    }
+    void RenderGraph::drawLifetimeTimeline()
+    {
+        auto lifetimes = computeLifetimes();
+
+        std::vector<RGResourceID> ids;
+        for (auto &[tid, lt] : lifetimes)
+            ids.push_back(tid);
+        std::sort(ids.begin(), ids.end(), [&](RGResourceID a, RGResourceID b)
+                  { return lifetimes[a].createdAt < lifetimes[b].createdAt; });
+
+        ImGui::Begin("Lifetimes");
+        if (ImGui::BeginTable("lifetimes_table", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+        {
+            ImGui::TableSetupColumn("Resource");
+            ImGui::TableSetupColumn("Created at");
+            ImGui::TableSetupColumn("Last used at");
+            ImGui::TableSetupColumn("Span");
+            ImGui::TableHeadersRow();
+
+            for (auto tid : ids)
+            {
+                auto &lt = lifetimes[tid];
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(m_textures.at(tid).name.c_str());
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(m_passes[m_executionOrder[lt.createdAt]].name.c_str());
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(m_passes[m_executionOrder[lt.lastUsedAt]].name.c_str());
+                ImGui::TableNextColumn();
+                ImGui::Text("%d", lt.lastUsedAt - lt.createdAt + 1);
+            }
+            ImGui::EndTable();
+        }
+        ImGui::End();
     }
 } // namespace nitro::renderer

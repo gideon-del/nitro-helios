@@ -116,6 +116,12 @@ namespace nitro::renderer
         float radius = 0.2f;
         float depthSigma = 1.0f;
     };
+
+    struct ViewportSize
+    {
+        float x;
+        float y;
+    };
     struct RendererSettings
     {
         ShadowSettings shadow;
@@ -129,6 +135,7 @@ namespace nitro::renderer
         DebugMode selectedDebugMode = DebugMode::Lit;
         LightMode selectedLightMode = LightMode::CookTorrenceStub;
         RendererScenes selectedScene = RendererScenes::DamageHelmet;
+        glm::vec2 viewportSize{0.0f, 0.0f};
     };
 
 } // namespace nitro::renderer

@@ -47,6 +47,7 @@ namespace nitro::rhi::metal
         void drawImGui(RHICommandBuffer *cmd) override;
         RHICommandBuffer *createCommandBuffer() override;
         void endCommandBuffer(RHICommandBuffer *cmd) override;
+        void *getImGuiTextureRef(RHITexture *texture) override;
         void waitIdle() override;
         MTL::Device *device;
         MTL::CommandQueue *commandQueue;

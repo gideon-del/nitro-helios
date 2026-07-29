@@ -131,9 +131,9 @@ namespace nitro::renderer
 
         m_device->destroyComputePipeline(m_blurComputePipeline);
         m_device->destroyComputePipeline(m_ssaoComputePipeline);
+        m_device->destroyDescriptorSet(m_blurDescriptorSet);
         m_device->destroyDescriptorLayout(m_blurDescriptorLayout);
         m_device->destroyDescriptorLayout(m_ssaoDescriptorLayout);
-        m_device->destroyDescriptorSet(m_blurDescriptorSet);
 
         m_device->destroyTexture(m_ssaoTexture);
         m_device->destroyTexture(m_noiseTexture);
@@ -183,15 +183,15 @@ namespace nitro::renderer
 
         m_ssaoTexture = m_device->createTexture(textureDesc);
 
-        rhi::RHICommandBuffer *cmd = m_device->createCommandBuffer();
-        rhi::TextureBarrier textureBarrier;
-        textureBarrier.texture = m_ssaoTexture;
-        textureBarrier.before = rhi::ResourceState::Undefined;
-        textureBarrier.after = rhi::ResourceState::ShaderRead;
+        // rhi::RHICommandBuffer *cmd = m_device->createCommandBuffer();
+        // rhi::TextureBarrier textureBarrier;
+        // textureBarrier.texture = m_ssaoTexture;
+        // textureBarrier.before = rhi::ResourceState::Undefined;
+        // textureBarrier.after = rhi::ResourceState::ShaderRead;
 
-        cmd->textureBarrier(textureBarrier);
+        // cmd->textureBarrier(textureBarrier);
 
-        m_device->endCommandBuffer(cmd);
+        // m_device->endCommandBuffer(cmd);
     }
 
     void SSAOPass::execute(rhi::RHICommandBuffer *cmd, SSAOPushConstant pc, const RGResources &resources, const RGResourceID blurredSSAO, const std::vector<glm::vec4> &samples, float depthSigma)

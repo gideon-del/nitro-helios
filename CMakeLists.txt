@@ -7,6 +7,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 find_package(Vulkan REQUIRED)
+find_package(glfw3 REQUIRED) 
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/bin/shaders")
 file(GLOB_RECURSE SHADER_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/shaders/*.vert"
@@ -90,6 +91,7 @@ if(APPLE)
     )
 
 endif()
+add_subdirectory(vendor)  
 add_subdirectory(packages/nitro-math)
 add_subdirectory(packages/nitro-rasterizer)
 add_subdirectory(packages/nitro-rhi)

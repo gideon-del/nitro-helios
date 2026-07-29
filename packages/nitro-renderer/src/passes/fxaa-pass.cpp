@@ -62,17 +62,18 @@ namespace nitro::renderer
     void FXAAPass::execute(rhi::RHICommandBuffer *cmd, FXAAPushConstant pc, FXAATextures textures)
     {
 
-        if (m_lastLDRTexture != textures.ldrTexture)
-        {
-            m_lastLDRTexture = textures.ldrTexture;
+        // if (m_lastLDRTexture != textures.ldrTexture)
+        // {
 
-            rhi::TextureBinding textureBinding;
-            textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
-            textureBinding.texture = m_lastLDRTexture;
-            m_descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
-            m_descriptorSet->writeStorageImage(textures.output, 3, rhi::ImageLayout::General, rhi::TextureSubresource{});
-            m_descriptorSet->commit();
-        }
+        // }
+        m_lastLDRTexture = textures.ldrTexture;
+
+        rhi::TextureBinding textureBinding;
+        textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+        textureBinding.texture = textures.ldrTexture;
+        m_descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
+        m_descriptorSet->writeStorageImage(textures.output, 3, rhi::ImageLayout::General, rhi::TextureSubresource{});
+        m_descriptorSet->commit();
 
         rhi::TextureBarrier textureBarrier;
         textureBarrier.texture = textures.output;

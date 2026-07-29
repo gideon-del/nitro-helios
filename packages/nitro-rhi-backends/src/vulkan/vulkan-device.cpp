@@ -14,6 +14,7 @@
 #include <imgui.h>
 #include <imgui_impl_vulkan.h>
 #include <imgui_impl_glfw.h>
+#include <imnodes.h>
 #include <vector>
 #include <set>
 namespace nitro::rhi::vulkan
@@ -418,6 +419,7 @@ namespace nitro::rhi::vulkan
         (void)io;
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+        // io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
         ImGui::StyleColorsDark();
 
@@ -435,7 +437,8 @@ namespace nitro::rhi::vulkan
         init_info.Queue = graphicsQueue;
         init_info.MinImageCount = VulkanDevice::MAX_FRAMES_IN_FLIGHT;
         init_info.ImageCount = VulkanDevice::MAX_FRAMES_IN_FLIGHT;
-        init_info.DescriptorPoolSize = 8;
+        init_info.DescriptorPoolSize = 512;
+        init_info.MinAllocationSize = 0;
 
         VkPipelineRenderingCreateInfo pipelineInfo{};
         pipelineInfo.sType =
@@ -450,15 +453,30 @@ namespace nitro::rhi::vulkan
             &colorFormat;
         init_info.UseDynamicRendering = true;
         init_info.PipelineInfoMain.PipelineRenderingCreateInfo = pipelineInfo;
-
+        init_info.CheckVkResultFn = [](VkResult err)
+        {
+            if (err != VK_SUCCESS)
+            {
+                std::cerr << "[ImGui Vulkan] VkResult = " << err << std::endl;
+                if (err < 0)
+                    std::abort();
+            }
+        };
         ImGui_ImplVulkan_Init(&init_info);
+        std::cout << "Init MinAllocationSize = "
+                  << init_info.MinAllocationSize
+                  << std::endl;
+        ImNodes::CreateContext();
     }
 
     VulkanDevice::~VulkanDevice()
     {
+
         vkQueueWaitIdle(graphicsQueue);
         vkQueueWaitIdle(presentQueue);
         vkDestroyCommandPool(device, commandPool, nullptr);
+        ImNodes::DestroyContext();
+        ImGui::DestroyContext();
         vmaDestroyAllocator(allocator);
         vkDestroyRenderPass(device, defaultRenderPass, nullptr);
         vkDestroyDevice(device, nullptr);
@@ -535,6 +553,12 @@ namespace nitro::rhi::vulkan
     }
     void VulkanDevice::destroyTexture(RHITexture *texture)
     {
+        auto *vkTex = static_cast<VulkanTexture *>(texture);
+        if (m_imguiTextureCache.count(vkTex))
+        {
+            ImGui_ImplVulkan_RemoveTexture(m_imguiTextureCache[vkTex]);
+            m_imguiTextureCache.erase(vkTex);
+        }
         delete texture;
     }
 
@@ -845,5 +869,18 @@ namespace nitro::rhi::vulkan
         if (is_minimized)
             return;
         ImGui_ImplVulkan_RenderDrawData(draw_data, vulkanCmd->cmd);
+    }
+    void *VulkanDevice::getImGuiTextureRef(RHITexture *texture)
+    {
+        auto *vkTex = static_cast<VulkanTexture *>(texture);
+
+        if (m_imguiTextureCache.count(vkTex))
+            return (void *)m_imguiTextureCache[vkTex];
+
+        VkDescriptorSet ds = ImGui_ImplVulkan_AddTexture(
+            vkTex->imageView,
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        m_imguiTextureCache[vkTex] = ds;
+        return (void *)ds;
     }
 }

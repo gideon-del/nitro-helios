@@ -20,13 +20,6 @@ src/vulkan/vulkan-descriptor-layout.cpp
 src/vulkan/vulkan-descriptor-set.cpp
 src/vulkan/vulkan-render-pass.cpp
 src/vulkan/vulkan-timer.cpp
-imgui/imgui_demo.cpp
-imgui/imgui_draw.cpp
-imgui/imgui_tables.cpp
-imgui/imgui_widgets.cpp
-imgui/imgui.cpp
-imgui/imgui_impl_glfw.cpp
-imgui/imgui_impl_vulkan.cpp
 src/vulkan/vulkan-compute-pipeline.cpp
 src/vulkan/vulkan-sampler.cpp
 )
@@ -35,7 +28,7 @@ src/vulkan/vulkan-sampler.cpp
 
 target_include_directories(nitro-rhi-backends
 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
-PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/imgui
+
 SYSTEM PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/vendor
 )
 
@@ -53,7 +46,6 @@ if(APPLE)
         src/metal/metal-render-pass.cpp
         src/metal/metal-cocoa-bridge.mm
         src/metal/metal-timer.cpp
-        imgui/imgui_impl_metal.mm
         src/metal/metal-compute-pipeline.cpp
 
     )
@@ -61,12 +53,15 @@ if(APPLE)
     target_include_directories(nitro-rhi-metal
         PUBLIC  ${CMAKE_CURRENT_SOURCE_DIR}/include
         PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/vendor/metal-cpp
-        PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/imgui
+        
+       
     )
 
     target_link_libraries(nitro-rhi-metal
         PUBLIC nitro-rhi
         PUBLIC glfw
+        PUBLIC imgui-backend-metal
+        PUBLIC imnodes
         "-framework Metal"
         "-framework Foundation"
         "-framework QuartzCore"
@@ -82,5 +77,9 @@ PUBLIC nitro-rhi
 PUBLIC Vulkan::Vulkan
 PUBLIC glfw
 PUBLIC glm::glm
+ PUBLIC imgui-core
+PUBLIC imgui-backend-glfw
+ PUBLIC imnodes
+ PUBLIC imgui-backend-vulkan
  $<$<PLATFORM_ID:Darwin>:nitro-rhi-metal>
 )

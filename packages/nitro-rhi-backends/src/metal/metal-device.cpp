@@ -15,6 +15,7 @@
 #define IMGUI_IMPL_METAL_CPP
 #endif
 #include <imgui_impl_metal.h>
+#include <imnodes.h>
 #include <GLFW/glfw3.h>
 namespace nitro::rhi::metal
 {
@@ -37,6 +38,7 @@ namespace nitro::rhi::metal
         (void)io;
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
         ImGui::StyleColorsDark();
 
@@ -47,10 +49,14 @@ namespace nitro::rhi::metal
         GLFWwindow *glfwWindow = reinterpret_cast<GLFWwindow *>(window);
         ImGui_ImplGlfw_InitForOther(glfwWindow, true);
         ImGui_ImplMetal_Init(device);
+        ImNodes::CreateContext();
     }
     MetalDevice::~MetalDevice()
     {
         commandQueue->release();
+
+        ImNodes::DestroyContext();
+        ImGui::DestroyContext();
         device->release();
     }
 
@@ -200,5 +206,11 @@ namespace nitro::rhi::metal
         MetalCommandBuffer *metalCmd = reinterpret_cast<MetalCommandBuffer *>(cmd);
 
         ImGui_ImplMetal_RenderDrawData(ImGui::GetDrawData(), metalCmd->commandBuffer, metalCmd->encoder);
+    }
+
+    void *MetalDevice::getImGuiTextureRef(RHITexture *texture)
+    {
+        auto *mtlTex = static_cast<MetalTexture *>(texture);
+        return (void *)mtlTex->texture;
     }
 } // namespace nitro::rhi::metal

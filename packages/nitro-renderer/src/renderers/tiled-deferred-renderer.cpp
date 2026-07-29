@@ -241,7 +241,7 @@ namespace nitro::renderer
             {
                 DepthPrePassCamera depthCamera;
                 depthCamera.view = ctx.camera->getView();
-                depthCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), (float)m_swapchain->getWidth() / (float)m_swapchain->getHeight(), ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
+                depthCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), settings.viewportSize.x / settings.viewportSize.y, ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
 
                 if (!m_isMetal)
                 {
@@ -267,7 +267,7 @@ namespace nitro::renderer
             {
                 GeometryCameraBuffer geometryCamera;
                 geometryCamera.view = ctx.camera->getView();
-                geometryCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), (float)m_swapchain->getWidth() / (float)m_swapchain->getHeight(), ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
+                geometryCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), settings.viewportSize.x / settings.viewportSize.y, ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
 
                 if (!m_isMetal)
                 {
@@ -295,7 +295,7 @@ namespace nitro::renderer
             {
                 GeometryCameraBuffer geometryCamera;
                 geometryCamera.view = ctx.camera->getView();
-                geometryCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), (float)m_swapchain->getWidth() / (float)m_swapchain->getHeight(), ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
+                geometryCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), settings.viewportSize.x / settings.viewportSize.y, ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
 
                 if (!m_isMetal)
                 {
@@ -306,7 +306,7 @@ namespace nitro::renderer
                 ssaoPc.invProj = glm::inverse(geometryCamera.proj);
                 ssaoPc.view = geometryCamera.view;
                 ssaoPc.proj = geometryCamera.proj;
-                ssaoPc.textureSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
+                ssaoPc.textureSize = settings.viewportSize;
                 ssaoPc.totalSamples = static_cast<uint>(ctx.ssaoSamples.samples.size());
                 ssaoPc.radius = settings.ssao.radius;
                 m_ssaoPass->execute(cmd, ssaoPc, resources, ssaoTextures.ssaoTex, ctx.ssaoSamples.samples, settings.ssao.depthSigma);
@@ -332,7 +332,7 @@ namespace nitro::renderer
             {
                 GeometryCameraBuffer geometryCamera;
                 geometryCamera.view = ctx.camera->getView();
-                geometryCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), (float)m_swapchain->getWidth() / (float)m_swapchain->getHeight(), ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
+                geometryCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), settings.viewportSize.x / settings.viewportSize.y, ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
 
                 if (!m_isMetal)
                 {
@@ -342,7 +342,7 @@ namespace nitro::renderer
                 TiledCameraUBO computeUBO;
                 computeUBO.farPlane = ctx.CAMERA_FAR;
                 computeUBO.nearPlane = ctx.CAMERA_NEAR;
-                computeUBO.screenSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
+                computeUBO.screenSize = settings.viewportSize;
                 computeUBO.invProj = glm::inverse(geometryCamera.proj);
                 computeUBO.view = geometryCamera.view;
                 computeUBO.totalLightCount = static_cast<uint>(settings.light.pointLights.size());
@@ -355,7 +355,7 @@ namespace nitro::renderer
                 lightPassUBO.view = geometryCamera.view;
                 lightPassUBO.numTilesX = static_cast<uint32_t>(
                     std::ceil(float(m_swapchain->getWidth()) / 16.0f));
-                lightPassUBO.screenSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
+                lightPassUBO.screenSize = settings.viewportSize;
                 lightPassUBO.showHeatMap = settings.selectedDebugMode == DebugMode::HeatMap ? 1 : 0;
                 m_tileLightPass->execute(cmd, lightPassUBO);
             },
@@ -389,7 +389,7 @@ namespace nitro::renderer
                 SkyboxPassUBO skyboxUbo;
                 glm::mat4 viewNoTranslation = glm::mat4(glm::mat3(geometryCamera.view));
                 skyboxUbo.viewProj = glm::inverse(geometryCamera.proj * viewNoTranslation);
-                skyboxUbo.screenSize = {float(m_swapchain->getWidth()), float(m_swapchain->getHeight())};
+                skyboxUbo.screenSize = settings.viewportSize;
                 m_skyboxPass->execute(cmd, skyboxUbo);
             },
         });
@@ -418,7 +418,7 @@ namespace nitro::renderer
             [this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
             {
                 CascadeShadowContext shadowCtx;
-                shadowCtx.aspect = (float)m_swapchain->getWidth() / (float)m_swapchain->getHeight();
+                shadowCtx.aspect = settings.viewportSize.x / settings.viewportSize.y;
                 shadowCtx.cameraFar = ctx.CAMERA_FAR;
                 shadowCtx.cameraNear = ctx.CAMERA_NEAR;
                 shadowCtx.fov = glm::radians(60.0f);
@@ -472,7 +472,7 @@ namespace nitro::renderer
             {
                 GeometryCameraBuffer geometryCamera;
                 geometryCamera.view = ctx.camera->getView();
-                geometryCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), (float)m_swapchain->getWidth() / (float)m_swapchain->getHeight(), ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
+                geometryCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), settings.viewportSize.x / settings.viewportSize.y, ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
 
                 if (!m_isMetal)
                 {
@@ -526,7 +526,7 @@ namespace nitro::renderer
             {
                 GeometryCameraBuffer geometryCamera;
                 geometryCamera.view = ctx.camera->getView();
-                geometryCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), (float)m_swapchain->getWidth() / (float)m_swapchain->getHeight(), ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
+                geometryCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), settings.viewportSize.x / settings.viewportSize.y, ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
 
                 if (!m_isMetal)
                 {
@@ -560,7 +560,7 @@ namespace nitro::renderer
                     return;
 
                 AutoExposurePushConstant autoExposurePc;
-                autoExposurePc.inputTextureSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
+                autoExposurePc.inputTextureSize = settings.viewportSize;
 
                 settings.tonemap.exposure = m_autoExposurePass->execute(cmd, autoExposurePc, resources.getTexture(m_currentSceneTextureID), settings.tonemap, ctx.deltaTime);
             },
@@ -584,7 +584,7 @@ namespace nitro::renderer
                 pc.gain = glm::vec4(settings.colorGrading.gain, 1.0);
                 pc.lift = glm::vec4(settings.colorGrading.lift, 1.0);
                 pc.gamma = glm::vec4(settings.colorGrading.gamma, 1.0);
-                pc.textureSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
+                pc.textureSize = settings.viewportSize;
                 m_colorGradingPass->execute(cmd, pc, {resources.getTexture(m_currentSceneTextureID), resources.getTexture(colorGradedTexture)});
                 m_currentSceneTextureID = colorGradedTexture;
             },
@@ -619,7 +619,7 @@ namespace nitro::renderer
         m_renderGraph.addPass({
             "FXAA",
             {tonemapTexture},
-            {fxaaTexture, albedo},
+            {fxaaTexture},
             {},
             {},
             [](const RGResources &resources) {
@@ -628,7 +628,7 @@ namespace nitro::renderer
             [fxaaTexture, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
             {
                 FXAAPushConstant fxaaPc;
-                fxaaPc.textureSize = glm::vec2(float(m_swapchain->getWidth()), float(m_swapchain->getHeight()));
+                fxaaPc.textureSize = settings.viewportSize;
 
                 m_fxaaPass->execute(cmd, fxaaPc, {resources.getTexture(m_currentSceneTextureID), resources.getTexture(fxaaTexture)});
                 m_currentSceneTextureID = fxaaTexture;
@@ -652,7 +652,8 @@ namespace nitro::renderer
                 rpDesc.clearColor[3] = 1.0f;
                 rpDesc.clearDepth = 1.0f;
                 rpDesc.hasDepth = true;
-                m_mainScenePass->execute(cmd, rpDesc, settings, resources.getTexture(m_currentSceneTextureID));
+
+                m_mainScenePass->execute(cmd, rpDesc, settings, resources.getTexture(m_currentSceneTextureID), m_renderGraph);
             },
         });
 

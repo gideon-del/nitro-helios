@@ -26,6 +26,7 @@ namespace nitro::rhi::vulkan
 
     class VulkanCommandBuffer;
     class VulkanSwapchain;
+    class VulkanTexture;
 
     class VulkanDevice : public RHIDevice
     {
@@ -60,6 +61,8 @@ namespace nitro::rhi::vulkan
 
         RHISamplerHandle create(const RHISamplerDesc &desc) override;
         void destroy(RHISamplerHandle &handle) override;
+
+        void *getImGuiTextureRef(RHITexture *texture) override;
 
         const DefaultSamplers &defaultSamplers() const override { return m_defaultSamplers; };
         const VulkanSampler &get(RHISamplerHandle handle) { return m_samplers.get(handle.id); }
@@ -113,5 +116,6 @@ namespace nitro::rhi::vulkan
         RHIPool<VulkanSampler> m_samplers;
         VulkanSamplerCache m_samplerCache;
         DefaultSamplers m_defaultSamplers;
+        std::unordered_map<VulkanTexture *, VkDescriptorSet> m_imguiTextureCache;
     };
 }

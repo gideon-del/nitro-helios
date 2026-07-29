@@ -243,8 +243,12 @@ int main()
     renderContext.scene = &helmetScene;
     renderContext.ssaoSamples.generate();
     // IRenderer *currentRenderer = &deferredRenderer;
-    int cachedWidth, cachedHeight;
-    glfwGetFramebufferSize(window, &cachedWidth, &cachedHeight);
+
+    int cachedWindowWidth, cachedWindowHeight;
+    glfwGetFramebufferSize(window, &cachedWindowWidth, &cachedWindowHeight);
+    uint32_t cachedViewportWidth = (uint32_t)rendererSettings.viewportSize.x;
+    uint32_t cachedViewportHeight = (uint32_t)rendererSettings.viewportSize.y;
+
     while (!glfwWindowShouldClose(window))
     {
         glfwPollEvents();
@@ -264,22 +268,18 @@ int main()
             handleMouse(window, appState, io);
         }
 
-        GlobalTransformation globalUbo{};
-        int width, height;
-
-        glfwGetFramebufferSize(window, &width, &height);
-        float aspect = (float)width / (float)height;
-
-        if ((cachedWidth != width || cachedHeight != height) && width > 0 && height > 0)
+        int windowWidth, windowHeight;
+        glfwGetFramebufferSize(window, &windowWidth, &windowHeight);
+        if ((windowWidth != cachedWindowWidth || windowHeight != cachedWindowHeight) && windowWidth > 0 && windowHeight > 0)
         {
             device->waitIdle();
-            swapchain->resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-            // forwardRenderer.resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-            // deferredRenderer.resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-            tileDeferredRenderer.resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-            cachedWidth = width;
-            cachedHeight = height;
-        };
+            swapchain->resize(windowWidth, windowHeight);
+            tileDeferredRenderer.resize(windowWidth, windowHeight);
+            cachedWindowWidth = windowWidth;
+            cachedWindowHeight = windowHeight;
+        }
+        rendererSettings.viewportSize = {(float)windowWidth, (float)windowHeight};
+
         RHICommandBuffer *cmd = device->beginFrame();
         cmd->resetFrameStats();
         timer->beginFrame(cmd);
