@@ -4,6 +4,47 @@
 #include <nitro-rhi-backends/vulkan/vulkan-buffer.h>
 namespace nitro::rhi::vulkan
 {
+    VkImageLayout convertResourceStateToImageLayout(ResourceState state)
+    {
+        switch (state)
+        {
+        case ResourceState::Undefined:
+            return VK_IMAGE_LAYOUT_UNDEFINED;
+            break;
+        case ResourceState::CopyDst:
+            return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            break;
+        case ResourceState::CopySrc:
+            return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+            break;
+        case ResourceState::DepthRead:
+            return VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL;
+            break;
+        case ResourceState::DepthWrite:
+            return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+            break;
+        case ResourceState::Present:
+            return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+            break;
+        case ResourceState::RenderTarget:
+            return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            break;
+        case ResourceState::ShaderRead:
+            return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            break;
+        case ResourceState::ShaderWrite:
+            return VK_IMAGE_LAYOUT_GENERAL;
+            break;
+        case ResourceState::DepthReadStencilWrite:
+            return VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
+            break;
+
+        default:
+            return VK_IMAGE_LAYOUT_UNDEFINED;
+            break;
+        }
+    }
+
     VkFormat convertToFormat(TextureDesc::ImageFormat format)
     {
         switch (format)
@@ -126,6 +167,7 @@ namespace nitro::rhi::vulkan
 
         return imageInfo;
     }
+
     VulkanTexture::VulkanTexture(VulkanDevice *device, const TextureDesc &desc) : m_device(device),
                                                                                   m_isAliased(desc.isAliased)
     {
@@ -253,7 +295,7 @@ namespace nitro::rhi::vulkan
                 faceViewInfo.image = image;
                 faceViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
                 faceViewInfo.format = format;
-                faceViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                faceViewInfo.subresourceRange.aspectMask = convertToAspectFlag(desc.usage);
                 faceViewInfo.subresourceRange.baseMipLevel = mip;
                 faceViewInfo.subresourceRange.levelCount = 1;
                 faceViewInfo.subresourceRange.baseArrayLayer = face;

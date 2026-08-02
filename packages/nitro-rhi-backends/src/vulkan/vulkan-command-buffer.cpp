@@ -603,43 +603,6 @@ namespace nitro::rhi::vulkan
         vulkanTexture->currentLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     }
 
-    VkImageLayout convertResourceStateToImageLayout(ResourceState state)
-    {
-        switch (state)
-        {
-        case ResourceState::Undefined:
-            return VK_IMAGE_LAYOUT_UNDEFINED;
-            break;
-        case ResourceState::CopyDst:
-            return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-            break;
-        case ResourceState::CopySrc:
-            return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-            break;
-        case ResourceState::DepthRead:
-            return VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL;
-            break;
-        case ResourceState::DepthWrite:
-            return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
-            break;
-        case ResourceState::Present:
-            return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-            break;
-        case ResourceState::RenderTarget:
-            return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-            break;
-        case ResourceState::ShaderRead:
-            return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            break;
-        case ResourceState::ShaderWrite:
-            return VK_IMAGE_LAYOUT_GENERAL;
-            break;
-
-        default:
-            return VK_IMAGE_LAYOUT_UNDEFINED;
-            break;
-        }
-    }
     VkAccessFlags convertResourceStateToAccessMask(ResourceState state)
     {
         switch (state)
@@ -746,7 +709,7 @@ namespace nitro::rhi::vulkan
         VulkanTexture *vulkanTexture = reinterpret_cast<VulkanTexture *>(texture);
 
         VkBufferImageCopy2 region{};
-        region.sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2;
+        region.sType = VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2;
         region.bufferImageHeight = vulkanTexture->height;
         region.bufferOffset = 0;
         region.bufferRowLength = 0;

@@ -1,6 +1,8 @@
 #pragma once
 #include <nitro-rhi/rhi.h>
 #include <glm/glm.hpp>
+#include <nitro-renderer/per-frame.h>
+#include <nitro-renderer/single-texture-pass-resource.h>
 
 namespace nitro::renderer
 {
@@ -31,10 +33,8 @@ namespace nitro::renderer
     private:
         std::shared_ptr<rhi::RHIDevice> m_device;
         uint32_t m_width, m_height;
-        rhi::RHITexture *m_lastHdrTexture = nullptr;
         rhi::RHIDescriptorLayout *m_descriptorLayout;
         rhi::RHIComputePipeline *m_computePipeline;
-        rhi::RHIDescriptorSet *m_descriptorSet;
-        // rhi::RHITexture *m_colorGradedTexture;
-    };
+        PerFrame<SingleInputPassResource> m_resources;
+        };
 } // namespace nitro::renderer

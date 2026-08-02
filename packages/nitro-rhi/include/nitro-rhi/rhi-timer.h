@@ -5,6 +5,8 @@
 
 namespace nitro::rhi
 {
+
+    using TimerResult = std::unordered_map<std::string, float>;
     class RHICommandBuffer;
 
     class RHITimer
@@ -20,5 +22,6 @@ namespace nitro::rhi
         virtual void endFrame() = 0;
 
         virtual float getResult(const std::string &name) const = 0;
+        virtual TimerResult getAllResults() const = 0;
     };
 }

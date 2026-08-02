@@ -20,12 +20,13 @@ namespace nitro::rhi::metal
         void end(RHICommandBuffer *cmd, const std::string &name) override;
         void endFrame() override;
         float getResult(const std::string &name) const override;
+        TimerResult getAllResults() const override { return m_results; };
 
     private:
         MetalDevice *m_device;
         std::unordered_map<std::string, double> m_startTimes;
         std::unordered_map<std::string, double> m_endTimes;
-        std::unordered_map<std::string, float> m_results;
+        TimerResult m_results;
     };
 
 } // namespace nitro::rhi::metal

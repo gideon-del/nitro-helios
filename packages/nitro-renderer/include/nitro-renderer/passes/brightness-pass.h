@@ -1,6 +1,8 @@
 #pragma once
 #include <nitro-rhi/rhi.h>
 #include <glm/glm.hpp>
+#include <nitro-renderer/per-frame.h>
+#include <nitro-renderer/single-texture-pass-resource.h>
 namespace nitro::renderer
 {
     struct BrightnessPassPushConstant
@@ -27,7 +29,7 @@ namespace nitro::renderer
         uint32_t m_width, m_height;
         rhi::RHIComputePipeline *m_computePipeline;
         rhi::RHIDescriptorLayout *m_descriptorLayout;
-        rhi::RHIDescriptorSet *m_descriptorSet;
+        PerFrame<SingleInputPassResource> m_resources;
         rhi::RHITexture *m_brightnessTexture;
     };
 } // namespace nitro::renderer

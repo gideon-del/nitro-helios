@@ -189,6 +189,18 @@ namespace nitro::renderer
             ImGui::Text("Draw Calls: %u", stats.drawCalls);
             ImGui::Text("Triangles: %u", stats.triangles);
             ImGui::Text("Vertices: %u", stats.vertices);
+
+            ImGui::Separator();
+
+            ImGui::Text("Render Passes");
+
+            for (auto &[passName, frameTime] : stats.perpassTimer)
+            {
+                if (passName == "frame-time")
+                    continue;
+
+                ImGui::Text("%s : %.2f ms", passName.c_str(), frameTime);
+            }
         }
         ImGui::End();
     }

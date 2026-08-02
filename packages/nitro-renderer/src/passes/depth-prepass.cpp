@@ -23,9 +23,9 @@ namespace nitro::renderer
         pipelineDesc.pushConstantSize = sizeof(RenderObjectPushConstant);
         pipelineDesc.layouts = {m_descriptorLayout, m_materialSystem->getMaterialLayout()};
         pipelineDesc.vertexLayout = geometry::Vertex::getVertexLayout();
-        pipelineDesc.depthAttachmentFormat = rhi::TextureDesc::ImageFormat::Depth32FloatStencil8;
+        pipelineDesc.depthAttachmentFormat = rhi::TextureDesc::ImageFormat::Depth32Float;
         pipelineDesc.hasDepth = true;
-        pipelineDesc.hasStencil = true;
+        pipelineDesc.hasStencil = false;
         std::string shaderPath = shaderDir + "/depth-prepass/depth-prepass";
 
         if (isMetal)
@@ -92,10 +92,7 @@ namespace nitro::renderer
         depthAttachment.texture = depthTexture;
         depthAttachment.load = rhi::RenderPassDesc::LoadOp::Clear;
         depthAttachment.store = rhi::RenderPassDesc::StoreOp::Store;
-        depthAttachment.hasStencil = true;
-        depthAttachment.stencilLoad = rhi::RenderPassDesc::LoadOp::Clear;
-        depthAttachment.stencilStore = rhi::RenderPassDesc::StoreOp::Store;
-        depthAttachment.clearStencil = 0;
+
         renderPassDesc.depthAttachment = &depthAttachment;
         renderPassDesc.width = m_width;
         renderPassDesc.height = m_height;

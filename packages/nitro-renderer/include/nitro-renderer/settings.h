@@ -80,7 +80,8 @@ namespace nitro::renderer
         float intensity = 0.5;
         bool enable = true;
     };
-    struct StatSettings
+
+      struct StatSettings
     {
         float fps;
         float frameTime;
@@ -89,6 +90,7 @@ namespace nitro::renderer
         uint32_t triangles;
         std::string renderer;
         std::string backend;
+        std::unordered_map<std::string, float> perpassTimer;
     };
 
     enum class ToneMapMode

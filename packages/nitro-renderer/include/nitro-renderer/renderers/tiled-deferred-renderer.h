@@ -11,7 +11,7 @@ namespace nitro::renderer
     {
     public:
         TiledDeferredRenderer(std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<rhi::RHISwapchain> swapchain, std::string shaderDir, bool isMetal, std::shared_ptr<MaterialSystem> materialSystem);
-        void execute(rhi::RHICommandBuffer *cmd, const RenderContext &ctx, RendererSettings &settings) override;
+        void execute(rhi::RHICommandBuffer *cmd, const RenderContext &ctx, RendererSettings &settings, rhi::RHITimer *timer) override;
         void resize(uint32_t width, uint32_t height) override;
         ~TiledDeferredRenderer();
 
@@ -45,6 +45,7 @@ namespace nitro::renderer
         RendererPanel m_rendererPanel;
         StatPanel m_statsPanel;
         std::shared_ptr<MaterialSystem> m_materialSystem;
+        RGCompiledFrameGraph m_compiledFrameGraph;
 
         void buildRenderGraph();
     };

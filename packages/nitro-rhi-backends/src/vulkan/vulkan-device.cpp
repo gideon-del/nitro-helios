@@ -671,7 +671,7 @@ namespace nitro::rhi::vulkan
 
     RHITimer *VulkanDevice::createTimer()
     {
-        return new VulkanTimer(this, 10);
+        return new VulkanTimer(this, 32);
     }
     void VulkanDevice::destroyPipeline(RHIPipeline *pipeline)
     {

@@ -36,21 +36,21 @@ namespace nitro::renderer
 
             for (auto &tid : m_passes[i].writes)
             {
-                if (textureProducerOf.count(tid))
+                if (textureProducerOf.count(tid.id))
                 {
-                    throw std::runtime_error("Texture " + m_textures[tid].name + " has two producers");
+                    throw std::runtime_error("Texture " + m_textures[tid.id].name + " has two producers");
                 }
 
-                textureProducerOf[tid] = i;
+                textureProducerOf[tid.id] = i;
             }
             for (auto &bid : m_passes[i].writeBufs)
             {
-                if (bufferProducerOf.count(bid))
+                if (bufferProducerOf.count(bid.id))
                 {
-                    throw std::runtime_error("Buffer " + m_buffers[bid].name + " has two producers");
+                    throw std::runtime_error("Buffer " + m_buffers[bid.id].name + " has two producers");
                 }
 
-                bufferProducerOf[bid] = i;
+                bufferProducerOf[bid.id] = i;
             }
         }
 
@@ -59,12 +59,12 @@ namespace nitro::renderer
 
             for (auto &tid : m_passes[i].reads)
             {
-                if (!textureProducerOf.count(tid))
+                if (!textureProducerOf.count(tid.id))
                 {
-                    throw std::runtime_error("Texture " + m_textures[tid].name + " has no producer");
+                    throw std::runtime_error("Texture " + m_textures[tid.id].name + " has no producer");
                 }
 
-                int producer = textureProducerOf[tid];
+                int producer = textureProducerOf[tid.id];
                 if (producer != i)
                 {
                     m_depGraph.addEdge(producer, i);
@@ -72,12 +72,12 @@ namespace nitro::renderer
             }
             for (auto &bid : m_passes[i].readBufs)
             {
-                if (!bufferProducerOf.count(bid))
+                if (!bufferProducerOf.count(bid.id))
                 {
-                    throw std::runtime_error("Buffer " + m_buffers[bid].name + " has no producer");
+                    throw std::runtime_error("Buffer " + m_buffers[bid.id].name + " has no producer");
                 }
 
-                int producer = bufferProducerOf[bid];
+                int producer = bufferProducerOf[bid.id];
                 if (producer != i)
                 {
                     m_depGraph.addEdge(producer, i);
@@ -116,29 +116,29 @@ namespace nitro::renderer
             if (!pass.reads.empty())
             {
                 std::cout << "  Texture Reads:  ";
-                for (auto id : pass.reads)
-                    std::cout << m_textures.at(id).name << " ";
+                for (auto &read : pass.reads)
+                    std::cout << m_textures.at(read.id).name << " ";
                 std::cout << "\n";
             }
             if (!pass.readBufs.empty())
             {
                 std::cout << "  Buffer Reads:  ";
-                for (auto id : pass.readBufs)
-                    std::cout << m_buffers.at(id).name << " ";
+                for (auto &read : pass.readBufs)
+                    std::cout << m_buffers.at(read.id).name << " ";
                 std::cout << "\n";
             }
             if (!pass.writes.empty())
             {
                 std::cout << "  Texture Writes:  ";
-                for (auto id : pass.writes)
-                    std::cout << m_textures.at(id).name << " ";
+                for (auto &write : pass.writes)
+                    std::cout << m_textures.at(write.id).name << " ";
                 std::cout << "\n";
             }
             if (!pass.writeBufs.empty())
             {
                 std::cout << "  Buffer Writes:  ";
-                for (auto id : pass.writeBufs)
-                    std::cout << m_buffers.at(id).name << " ";
+                for (auto &write : pass.writeBufs)
+                    std::cout << m_buffers.at(write.id).name << " ";
                 std::cout << "\n";
             }
         }
@@ -148,6 +148,7 @@ namespace nitro::renderer
     void RenderGraph::allocateTextures(std::shared_ptr<rhi::RHIDevice> device, uint32_t frameWidth, uint32_t frameHeight)
     {
 
+        device->waitIdle();
         deleteTextures(device);
         m_memoryBlocks.clear();
         m_aliasAssignments = computeAliases(frameWidth, frameHeight);
@@ -318,6 +319,15 @@ namespace nitro::renderer
         }
 
         m_allocatedTextures.clear();
+
+        for (auto &block : m_memoryBlocks)
+        {
+            if (block.heap)
+            {
+                device->destroyHeap(block.heap);
+                block.heap = nullptr;
+            }
+        }
     }
 
     void RenderGraph::deleteBuffers(std::shared_ptr<rhi::RHIDevice> device)
@@ -340,14 +350,14 @@ namespace nitro::renderer
         {
             for (auto &tid : pass.writes)
             {
-                if (tid == id)
+                if (tid.id == id)
                 {
                     return true;
                 }
             }
             for (auto &bid : pass.writeBufs)
             {
-                if (bid == id)
+                if (bid.id == id)
                 {
                     return true;
                 }
@@ -376,12 +386,33 @@ namespace nitro::renderer
             pass.bind(resources);
         }
     }
-    void RenderGraph::execute(rhi::RHICommandBuffer *cmd, const RenderContext &ctx, RendererSettings &settings, const RGResources &resources)
+    void RenderGraph::executeFrameGraph(const RGCompiledFrameGraph &compiledGraph, rhi::RHICommandBuffer *cmd, const RenderContext &ctx, RendererSettings &settings, rhi::RHITimer *timer)
     {
 
-        for (auto &idx : m_executionOrder)
+        auto resources = buildResources();
+        for (auto &step : compiledGraph.steps)
         {
-            m_passes[idx].execute(cmd, resources, ctx, settings);
+
+            std::visit(
+                overloaded{
+                    [&](const RGTextureBarrier &barrier)
+                    {
+                        // std::cout << "[RGTextureBarrier] " << m_textures[barrier.textureId].name << " From " << std::to_string((int)barrier.from) << " To " << std::to_string((int)barrier.to) << "\n";
+                        rhi::TextureBarrier textureBarrier;
+                        textureBarrier.texture = resources.getTexture(barrier.textureId);
+                        textureBarrier.before = barrier.from;
+                        textureBarrier.after = barrier.to;
+
+                        cmd->textureBarrier(textureBarrier);
+                    },
+                    [&](const int &passIdx)
+                    {
+                        auto &pass = m_passes[passIdx];
+                        timer->begin(cmd, pass.name);
+                        pass.execute(cmd, resources, ctx, settings);
+                        timer->end(cmd, pass.name);
+                    }},
+                step);
         }
     }
 
@@ -405,19 +436,19 @@ namespace nitro::renderer
 
         for (auto &pass : m_passes)
         {
-            for (auto &tid : pass.writes)
+            for (auto &write : pass.writes)
             {
-                writerOf[tid] = pass.name;
+                writerOf[write.id] = pass.name;
             }
         }
         for (auto &pass : m_passes)
         {
-            for (auto &tid : pass.reads)
+            for (auto &write : pass.reads)
             {
-                if (!writerOf.count(tid))
+                if (!writerOf.count(write.id))
                 {
                     errors.push_back({pass.name,
-                                      m_textures.at(tid).name,
+                                      m_textures.at(write.id).name,
                                       "reads texture with no writer"});
                 }
             }
@@ -428,19 +459,19 @@ namespace nitro::renderer
         for (int idx : m_executionOrder)
         {
             auto &pass = m_passes[idx];
-            for (auto &tid : pass.writes)
+            for (auto &write : pass.writes)
             {
-                if (!m_textures.at(tid).transient)
+                if (!m_textures.at(write.id).transient)
                     continue;
 
-                if (firstWriter.count(tid))
+                if (firstWriter.count(write.id))
                 {
                     errors.push_back(
                         {pass.name,
-                         m_textures.at(tid).name,
-                         "write-after-write: also written by " + firstWriter.at(tid)});
+                         m_textures.at(write.id).name,
+                         "write-after-write: also written by " + firstWriter.at(write.id)});
                 }
-                firstWriter[tid] = pass.name;
+                firstWriter[write.id] = pass.name;
             }
         };
 
@@ -468,20 +499,20 @@ namespace nitro::renderer
             {
                 int pinId = passIdx * 100 + i;
                 ImNodes::BeginInputAttribute(pinId);
-                ImGui::Text("%s", m_textures.at(pass.reads[i]).name.c_str());
+                ImGui::Text("%s", m_textures.at(pass.reads[i].id).name.c_str());
                 ImNodes::EndInputAttribute();
 
-                readersOf[pass.reads[i]].push_back(passIdx);
+                readersOf[pass.reads[i].id].push_back(passIdx);
             }
 
             for (int i = 0; i < (int)pass.writes.size(); i++)
             {
                 int pinId = passIdx * 100 + 50 + i;
                 ImNodes::BeginOutputAttribute(pinId);
-                ImGui::Text("%s", m_textures.at(pass.writes[i]).name.c_str());
+                ImGui::Text("%s", m_textures.at(pass.writes[i].id).name.c_str());
                 ImNodes::EndOutputAttribute();
 
-                writerOf[pass.writes[i]] = passIdx;
+                writerOf[pass.writes[i].id] = passIdx;
             }
             ImNodes::EndNode();
         }
@@ -506,7 +537,7 @@ namespace nitro::renderer
     {
         auto &writes = m_passes[passIdx].writes;
         for (int i = 0; i < (int)writes.size(); i++)
-            if (writes[i] == tid)
+            if (writes[i].id == tid)
                 return i;
         return -1;
     }
@@ -515,7 +546,7 @@ namespace nitro::renderer
     {
         auto &reads = m_passes[passIdx].reads;
         for (int i = 0; i < (int)reads.size(); i++)
-            if (reads[i] == tid)
+            if (reads[i].id == tid)
                 return i;
         return -1;
     }
@@ -530,15 +561,15 @@ namespace nitro::renderer
 
             for (auto &tid : pass.writes)
             {
-                lifetime[tid].createdAt = i;
-                lifetime[tid].lastUsedAt = i;
-                lifetime[tid].id = tid;
+                lifetime[tid.id].createdAt = i;
+                lifetime[tid.id].lastUsedAt = i;
+                lifetime[tid.id].id = tid.id;
             };
             for (auto &tid : pass.reads)
             {
 
-                lifetime[tid].lastUsedAt = std::max(lifetime[tid].lastUsedAt, i);
-                lifetime[tid].id = tid;
+                lifetime[tid.id].lastUsedAt = std::max(lifetime[tid.id].lastUsedAt, i);
+                lifetime[tid.id].id = tid.id;
             };
         }
 
@@ -639,4 +670,40 @@ namespace nitro::renderer
 
         return m_aliasAssignments;
     };
+
+    const RGCompiledFrameGraph RenderGraph::compileFrameGraph()
+    {
+        std::unordered_map<RGTextureID, rhi::ResourceState> currentLayout;
+        RGCompiledFrameGraph compiledGraph;
+
+        auto emitBarrierIfNeeded = [&](const RGResourceAccess &access)
+        {
+            auto it = currentLayout.find(access.id);
+            rhi::ResourceState previousState = (it != currentLayout.end())
+                                                   ? it->second
+                                                   : rhi::ResourceState::ShaderRead;
+
+            if (previousState != access.state)
+                compiledGraph.steps.push_back(RGTextureBarrier{access.id, previousState, access.state});
+
+            currentLayout[access.id] = access.state;
+        };
+        for (auto &passIdx : m_executionOrder)
+        {
+            auto &pass = m_passes[passIdx];
+            for (auto &read : pass.reads)
+            {
+                emitBarrierIfNeeded(read);
+            }
+            for (auto &write : pass.writes)
+            {
+
+                emitBarrierIfNeeded(write);
+            }
+
+            compiledGraph.steps.push_back((int)passIdx);
+        }
+
+        return compiledGraph;
+    }
 } // namespace nitro::renderer

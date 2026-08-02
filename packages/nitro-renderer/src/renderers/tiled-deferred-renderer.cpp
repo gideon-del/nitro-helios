@@ -194,14 +194,13 @@ namespace nitro::renderer
         m_autoExposurePass->resize(width, height);
         m_colorGradingPass->resize(width, height);
 
-        m_renderGraph.reallocateFrameTextures(m_device, width, height);
+        m_renderGraph.allocateTextures(m_device, width, height);
         m_renderGraph.bindPassResources(m_renderGraph.buildResources());
     };
 
-    void TiledDeferredRenderer::execute(rhi::RHICommandBuffer *cmd, const RenderContext &ctx, RendererSettings &settings)
+    void TiledDeferredRenderer::execute(rhi::RHICommandBuffer *cmd, const RenderContext &ctx, RendererSettings &settings, rhi::RHITimer *timer)
     {
-        auto resources = m_renderGraph.buildResources();
-        m_renderGraph.execute(cmd, ctx, settings, resources);
+        m_renderGraph.executeFrameGraph(m_compiledFrameGraph, cmd, ctx, settings, timer);
     }
 
     TiledDeferredRenderer::~TiledDeferredRenderer()
@@ -217,7 +216,7 @@ namespace nitro::renderer
     void TiledDeferredRenderer::buildRenderGraph()
     {
         auto depth = m_renderGraph.declareTexture({"GBuffer Depth",
-                                                   rhi::TextureDesc::ImageFormat::Depth32FloatStencil8});
+                                                   rhi::TextureDesc::ImageFormat::Depth32Float});
         auto albedo = m_renderGraph.declareTexture({"GBuffer Albedo",
                                                     rhi::TextureDesc::ImageFormat::ColorRGBA8});
         auto normal = m_renderGraph.declareTexture({"GBuffer Normal",
@@ -230,7 +229,7 @@ namespace nitro::renderer
         m_renderGraph.addPass({
             "Depth Prepass",
             {},
-            {depth},
+            {{depth, rhi::ResourceState::DepthWrite}},
             {},
             {},
             [depth, this](const RGResources &resources)
@@ -255,8 +254,8 @@ namespace nitro::renderer
 
         m_renderGraph.addPass({
             "GBuffer",
-            {depth},
-            {albedo, normal, metallicRoughness, emissive},
+            {{depth, rhi::ResourceState::DepthRead}},
+            {{albedo, rhi::ResourceState::RenderTarget}, {normal, rhi::ResourceState::RenderTarget}, {metallicRoughness, rhi::ResourceState::RenderTarget}, {emissive, rhi::ResourceState::RenderTarget}},
             {},
             {},
             [gBufferIds, this](const RGResources &resources)
@@ -278,13 +277,13 @@ namespace nitro::renderer
         });
 
         auto ssaoTex = m_renderGraph.declareTexture({"SSAO Texture",
-                                                     rhi::TextureDesc::ImageFormat::ColorRGBA16});
+                                                     rhi::TextureDesc::ImageFormat::ColorRGBA16, 0, 0, true});
 
         SSAOPassTextureIDs ssaoTextures{depth, normal, ssaoTex};
         m_renderGraph.addPass({
             "SSAO Pass",
-            {depth, normal},
-            {ssaoTex},
+            {{depth, rhi::ResourceState::ShaderRead}, {normal, rhi::ResourceState::ShaderRead}},
+            {{ssaoTex, rhi::ResourceState::ShaderWrite}},
             {},
             {},
             [ssaoTextures, this](const RGResources &resources)
@@ -319,8 +318,8 @@ namespace nitro::renderer
         TileLightShadingTextureIDs tileLightTextures{depth, normal, pointLightTex};
         m_renderGraph.addPass({
             "Tile Light Pass",
-            {depth, normal},
-            {pointLightTex},
+            {{depth, rhi::ResourceState::ShaderRead}, {normal, rhi::ResourceState::ShaderRead}},
+            {{pointLightTex, rhi::ResourceState::RenderTarget}},
             {},
             {},
             [tileLightTextures, this](const RGResources &resources)
@@ -368,7 +367,7 @@ namespace nitro::renderer
         m_renderGraph.addPass({
             "Skybox",
             {},
-            {skyboxTex},
+            {{skyboxTex, rhi::ResourceState::RenderTarget}},
             {},
             {},
             [skyboxTextures, this](const RGResources &resources)
@@ -405,10 +404,16 @@ namespace nitro::renderer
             }));
         }
 
+        std::vector<RGResourceAccess> shadowMapWrites;
+
+        for (auto &id : cascadeTextures)
+        {
+            shadowMapWrites.push_back({id, rhi::ResourceState::DepthWrite});
+        }
         m_renderGraph.addPass({
             "Shadow map",
             {},
-            cascadeTextures,
+            {shadowMapWrites},
             {},
             {},
             [cascadeTextures, this](const RGResources &resources)
@@ -444,24 +449,24 @@ namespace nitro::renderer
             m_prefilterMap,
             lightShadedTex};
 
-        std::vector<RGTextureID> deferredLightingReads{
-            gBufferIds.albedo,
-            gBufferIds.depth,
-            gBufferIds.normal,
-            gBufferIds.material,
-            gBufferIds.emissive,
-            skyboxTex,
-            pointLightTex,
-            ssaoTex};
+        std::vector<RGResourceAccess> deferredLightingReads{
+            {gBufferIds.albedo, rhi::ResourceState::ShaderRead},
+            {gBufferIds.depth, rhi::ResourceState::ShaderRead},
+            {gBufferIds.normal, rhi::ResourceState::ShaderRead},
+            {gBufferIds.material, rhi::ResourceState::ShaderRead},
+            {gBufferIds.emissive, rhi::ResourceState::ShaderRead},
+            {skyboxTex, rhi::ResourceState::ShaderRead},
+            {pointLightTex, rhi::ResourceState::ShaderRead},
+            {ssaoTex, rhi::ResourceState::ShaderRead}};
         for (int i = 0; i < cascadeTextures.size(); i++)
         {
-            deferredLightingReads.push_back(cascadeTextures[i]);
+            deferredLightingReads.push_back({cascadeTextures[i], rhi::ResourceState::ShaderRead});
         }
 
         m_renderGraph.addPass({
             "Deferred Lighting",
             deferredLightingReads,
-            {lightShadedTex},
+            {{lightShadedTex, rhi::ResourceState::RenderTarget}},
             {},
             {},
             [deferredLightIds, this](const RGResources &resources)
@@ -513,12 +518,12 @@ namespace nitro::renderer
         });
 
         auto bloomTexture = m_renderGraph.declareTexture({"Bloom Texture",
-                                                          rhi::TextureDesc::ImageFormat::ColorRGBA16});
+                                                          rhi::TextureDesc::ImageFormat::ColorRGBA16, 0, 0, true});
 
         m_renderGraph.addPass({
             "Bloom",
-            {lightShadedTex},
-            {bloomTexture},
+            {{lightShadedTex, rhi::ResourceState::ShaderRead}},
+            {{bloomTexture, rhi::ResourceState::ShaderWrite}},
             {},
             {},
             [](const RGResources &resources) {},
@@ -549,10 +554,10 @@ namespace nitro::renderer
 
         m_renderGraph.addPass({
             "Auto exposure pass",
-            {bloomTexture},
+            {{bloomTexture, rhi::ResourceState::ShaderRead}},
             {},
             {},
-            {readbackBuffer},
+            {{readbackBuffer, rhi::ResourceState::ShaderWrite}},
             [](const RGResources &resources) {},
             [this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
             {
@@ -567,13 +572,13 @@ namespace nitro::renderer
         });
 
         auto colorGradedTexture = m_renderGraph.declareTexture({"Color Grade",
-                                                                rhi::TextureDesc::ImageFormat::ColorRGBA16});
+                                                                rhi::TextureDesc::ImageFormat::ColorRGBA16, 0, 0, true});
 
         m_renderGraph.addPass({
             "Color Grading",
-            {bloomTexture},
-            {colorGradedTexture},
-            {readbackBuffer},
+            {{bloomTexture, rhi::ResourceState::ShaderRead}},
+            {{colorGradedTexture, rhi::ResourceState::ShaderWrite}},
+            {{readbackBuffer, rhi::ResourceState::ShaderRead}},
             {},
             [](const RGResources &resources) {},
             [colorGradedTexture, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
@@ -595,8 +600,8 @@ namespace nitro::renderer
 
         m_renderGraph.addPass({
             "Tone Map",
-            {colorGradedTexture},
-            {tonemapTexture},
+            {{colorGradedTexture, rhi::ResourceState::ShaderRead}},
+            {{tonemapTexture, rhi::ResourceState::RenderTarget}},
             {},
             {},
             [tonemapTexture, this](const RGResources &resources)
@@ -614,12 +619,12 @@ namespace nitro::renderer
         });
 
         auto fxaaTexture = m_renderGraph.declareTexture({"FXAA",
-                                                         rhi::TextureDesc::ImageFormat::ColorRGBA8});
+                                                         rhi::TextureDesc::ImageFormat::ColorRGBA8, 0, 0, true});
 
         m_renderGraph.addPass({
             "FXAA",
-            {tonemapTexture},
-            {fxaaTexture},
+            {{tonemapTexture, rhi::ResourceState::ShaderRead}},
+            {{fxaaTexture, rhi::ResourceState::ShaderWrite}},
             {},
             {},
             [](const RGResources &resources) {
@@ -636,7 +641,7 @@ namespace nitro::renderer
         });
         m_renderGraph.addPass({
             "Final Scene",
-            {fxaaTexture},
+            {{fxaaTexture, rhi::ResourceState::ShaderRead}},
             {},
             {},
             {},
@@ -661,5 +666,7 @@ namespace nitro::renderer
         m_renderGraph.allocateTextures(m_device, m_swapchain->getWidth(), m_swapchain->getHeight());
         m_renderGraph.allocateBuffers(m_device);
         m_renderGraph.bindPassResources(m_renderGraph.buildResources());
+
+        m_compiledFrameGraph = m_renderGraph.compileFrameGraph();
     }
 } // namespace nitro::renderer

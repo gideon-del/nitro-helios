@@ -42,12 +42,21 @@ namespace nitro::renderer
 
         m_computePipeline = m_device->createComputePipeline(computePipelineDesc);
 
-        m_descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
+        m_resources.create(g_MAX_FRAMES_IN_FLIGHT,
+                           [&](uint32_t frameIdx)
+                           {
+                               SingleInputPassResource resource;
+                               resource.descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
+                               return resource;
+                           });
     }
 
     FXAAPass::~FXAAPass()
     {
-        m_device->destroyDescriptorSet(m_descriptorSet);
+        for (auto &resource : m_resources)
+        {
+            m_device->destroyDescriptorSet(resource.descriptorSet);
+        }
         m_device->destroyComputePipeline(m_computePipeline);
         m_device->destroyDescriptorLayout(m_descriptorLayout);
     }
@@ -62,36 +71,26 @@ namespace nitro::renderer
     void FXAAPass::execute(rhi::RHICommandBuffer *cmd, FXAAPushConstant pc, FXAATextures textures)
     {
 
-        // if (m_lastLDRTexture != textures.ldrTexture)
-        // {
+        auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
+        if (resource.lastInputTexture != textures.ldrTexture)
+        {
+            resource.lastInputTexture = textures.ldrTexture;
 
-        // }
-        m_lastLDRTexture = textures.ldrTexture;
+            rhi::TextureBinding textureBinding;
+            textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+            textureBinding.texture = textures.ldrTexture;
+            resource.descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
+            resource.descriptorSet->writeStorageImage(textures.output, 3, rhi::ImageLayout::General, rhi::TextureSubresource{});
+            resource.descriptorSet->commit();
+        }
 
-        rhi::TextureBinding textureBinding;
-        textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
-        textureBinding.texture = textures.ldrTexture;
-        m_descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
-        m_descriptorSet->writeStorageImage(textures.output, 3, rhi::ImageLayout::General, rhi::TextureSubresource{});
-        m_descriptorSet->commit();
-
-        rhi::TextureBarrier textureBarrier;
-        textureBarrier.texture = textures.output;
-        textureBarrier.before = rhi::ResourceState::ShaderRead;
-        textureBarrier.after = rhi::ResourceState::ShaderWrite;
-        cmd->textureBarrier(textureBarrier);
         cmd->bindComputePipeline(m_computePipeline);
-        cmd->bindComputeDescriptorSet(m_descriptorSet, 0);
+        cmd->bindComputeDescriptorSet(resource.descriptorSet, 0);
         cmd->setPushConstant(&pc, sizeof(FXAAPushConstant), 1, true);
 
         uint32_t groupSizeX = (m_width + 15) / 16;
         uint32_t groupSizeY = (m_height + 15) / 16;
 
         cmd->dispatch(groupSizeX, groupSizeY, 1);
-
-        textureBarrier.before = rhi::ResourceState::ShaderWrite;
-        textureBarrier.after = rhi::ResourceState::ShaderRead;
-
-        cmd->textureBarrier(textureBarrier);
     }
 } // namespace nitro::renderer

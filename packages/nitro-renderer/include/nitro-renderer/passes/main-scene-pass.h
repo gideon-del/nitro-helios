@@ -3,6 +3,8 @@
 #include <nitro-renderer/panels.h>
 #include <nitro-renderer/settings.h>
 #include <nitro-renderer/render-graph.h>
+#include <nitro-renderer/per-frame.h>
+#include <nitro-renderer/single-texture-pass-resource.h>
 
 namespace nitro::renderer
 {
@@ -30,7 +32,6 @@ namespace nitro::renderer
         std::shared_ptr<rhi::RHISwapchain> m_swapchain;
         rhi::RHIPipeline *m_pipeline;
         rhi::RHIDescriptorLayout *m_descriptorLayout;
-        rhi::RHIDescriptorSet *m_descriptorSet;
-        rhi::RHITexture *m_lastInputTexture = nullptr;
+        PerFrame<SingleInputPassResource> m_resources;
     };
 } // namespace nitro::renderer

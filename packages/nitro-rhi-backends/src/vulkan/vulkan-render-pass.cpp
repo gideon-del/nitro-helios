@@ -5,6 +5,7 @@
 #include <vector>
 namespace nitro::rhi::vulkan
 {
+
     VkAttachmentLoadOp convertToLoadOp(RenderPassDesc::LoadOp loadOp)
     {
         switch (loadOp)
@@ -72,7 +73,9 @@ namespace nitro::rhi::vulkan
         if (desc.depthAttachment != nullptr)
         {
             depthTexture = reinterpret_cast<VulkanTexture *>(desc.depthAttachment->texture);
-            m_dsLayout = depthStencilLayout(desc.depthAttachment->depthWrite, desc.depthAttachment->stencilWrite);
+            m_dsLayout = desc.depthAttachment->depthWrite
+                             ? convertResourceStateToImageLayout(ResourceState::DepthWrite)
+                             : convertResourceStateToImageLayout(ResourceState::DepthRead);
             depthAttachment.sType =
                 VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
 
@@ -127,67 +130,67 @@ namespace nitro::rhi::vulkan
 
     void VulkanRenderPass::startTransition(VkCommandBuffer cmd)
     {
-        if (depthTexture != nullptr)
-        {
+        // if (depthTexture != nullptr)
+        // {
 
-            m_device->transitionImageLayout(
-                cmd,
-                depthTexture->image,
-                0,
-                m_dstAccess,
-                depthTexture->currentLayout,
-                m_dsLayout,
-                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-                depthTexture->imageAspect);
-            depthTexture->currentLayout = m_dsLayout;
-        }
-        for (auto &colorTexture : colorTextures)
-        {
-            m_device->transitionImageLayout(
-                cmd,
-                colorTexture->image,
-                0,
-                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                colorTexture->currentLayout,
-                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                VK_IMAGE_ASPECT_COLOR_BIT);
-            colorTexture->currentLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        }
+        //     m_device->transitionImageLayout(
+        //         cmd,
+        //         depthTexture->image,
+        //         0,
+        //         m_dstAccess,
+        //         depthTexture->currentLayout,
+        //         m_dsLayout,
+        //         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        //         VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+        //         depthTexture->imageAspect);
+        //     depthTexture->currentLayout = m_dsLayout;
+        // }
+        // for (auto &colorTexture : colorTextures)
+        // {
+        //     m_device->transitionImageLayout(
+        //         cmd,
+        //         colorTexture->image,
+        //         0,
+        //         VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        //         colorTexture->currentLayout,
+        //         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        //         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        //         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        //         VK_IMAGE_ASPECT_COLOR_BIT);
+        //     colorTexture->currentLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        // }
     }
     void VulkanRenderPass::endTransition(VkCommandBuffer cmd)
     {
 
-        if (depthTexture != nullptr)
-        {
-            m_device->transitionImageLayout(
-                cmd,
-                depthTexture->image,
-                0,
-                VK_ACCESS_SHADER_READ_BIT,
-                depthTexture->currentLayout,
-                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                depthTexture->imageAspect);
-            depthTexture->currentLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        }
+        // if (depthTexture != nullptr)
+        // {
+        //     m_device->transitionImageLayout(
+        //         cmd,
+        //         depthTexture->image,
+        //         0,
+        //         VK_ACCESS_SHADER_READ_BIT,
+        //         depthTexture->currentLayout,
+        //         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        //         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        //         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        //         depthTexture->imageAspect);
+        //     depthTexture->currentLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        // }
 
-        for (auto &colorTexture : colorTextures)
-        {
-            m_device->transitionImageLayout(
-                cmd,
-                colorTexture->image,
-                0,
-                VK_ACCESS_SHADER_READ_BIT,
-                colorTexture->currentLayout,
-                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                VK_IMAGE_ASPECT_COLOR_BIT);
-            colorTexture->currentLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        }
+        // for (auto &colorTexture : colorTextures)
+        // {
+        //     m_device->transitionImageLayout(
+        //         cmd,
+        //         colorTexture->image,
+        //         0,
+        //         VK_ACCESS_SHADER_READ_BIT,
+        //         colorTexture->currentLayout,
+        //         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        //         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        //         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        //         VK_IMAGE_ASPECT_COLOR_BIT);
+        //     colorTexture->currentLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        // }
     }
 } // namespace nitro::rhi::vulkan

@@ -298,7 +298,7 @@ int main()
             renderContext.scene = &helmetScene;
             break;
         }
-        tileDeferredRenderer.execute(cmd, renderContext, rendererSettings);
+        tileDeferredRenderer.execute(cmd, renderContext, rendererSettings, timer);
         // switch (rendererSettings.renderer)
         // {
         // case RendererType::Forward:
@@ -332,6 +332,7 @@ int main()
         rendererSettings.stats.drawCalls = frameStat.drawCalls;
         rendererSettings.stats.triangles = frameStat.triangles;
         rendererSettings.stats.vertices = frameStat.vertices;
+        rendererSettings.stats.perpassTimer = timer->getAllResults();
     }
 
     device->waitIdle();

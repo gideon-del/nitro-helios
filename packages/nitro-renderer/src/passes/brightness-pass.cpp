@@ -33,7 +33,13 @@ namespace nitro::renderer
 
         m_computePipeline = m_device->createComputePipeline(computePipelineDesc);
 
-        m_descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
+        m_resources.create(g_MAX_FRAMES_IN_FLIGHT,
+                           [&](uint32_t frameIdx)
+                           {
+                               SingleInputPassResource resource;
+                               resource.descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
+                               return resource;
+                           });
 
         rhi::TextureDesc textureDesc;
 
@@ -57,7 +63,11 @@ namespace nitro::renderer
     {
         m_device->destroyTexture(m_brightnessTexture);
         m_device->destroyComputePipeline(m_computePipeline);
-        m_device->destroyDescriptorSet(m_descriptorSet);
+        for (auto &resource : m_resources)
+        {
+
+            m_device->destroyDescriptorSet(resource.descriptorSet);
+        }
         m_device->destroyDescriptorLayout(m_descriptorLayout);
     }
 
@@ -68,6 +78,11 @@ namespace nitro::renderer
 
         m_device->destroyTexture(m_brightnessTexture);
 
+        for (auto &resource : m_resources)
+        {
+
+            resource.lastInputTexture = nullptr;
+        }
         rhi::TextureDesc textureDesc;
 
         textureDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA16;
@@ -94,16 +109,24 @@ namespace nitro::renderer
         textureBarrier.before = rhi::ResourceState::ShaderRead;
         textureBarrier.after = rhi::ResourceState::ShaderWrite;
         cmd->textureBarrier(textureBarrier);
+
+        auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
+
+        if (resource.lastInputTexture != hdrScene)
+        {
+            resource.lastInputTexture = hdrScene;
+
+            resource.descriptorSet->writeStorageImage(m_brightnessTexture, 3, rhi::ImageLayout::General, rhi::TextureSubresource{});
+            rhi::TextureBinding textureBinding;
+            textureBinding.texture = resource.lastInputTexture;
+            textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+            resource.descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
+            resource.descriptorSet->commit();
+        };
         cmd->bindComputePipeline(m_computePipeline);
 
-        rhi::TextureBinding textureBinding;
-        textureBinding.texture = hdrScene;
-        textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
-        m_descriptorSet->writeStorageImage(m_brightnessTexture, 3, rhi::ImageLayout::General, rhi::TextureSubresource{});
-        m_descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
-        m_descriptorSet->commit();
         cmd->setPushConstant(&pc, sizeof(BrightnessPassPushConstant), 1, true);
-        cmd->bindComputeDescriptorSet(m_descriptorSet, 0);
+        cmd->bindComputeDescriptorSet(resource.descriptorSet, 0);
 
         uint32_t groupX = (m_width + 15) / 16;
         uint32_t groupY = (m_height + 15) / 16;

@@ -219,11 +219,6 @@ namespace nitro::renderer
 
         cmd->textureBarrier(textureBarrier);
 
-        textureBarrier.texture = resources.getTexture(blurredSSAO);
-        textureBarrier.before = rhi::ResourceState::ShaderRead;
-        textureBarrier.after = rhi::ResourceState::ShaderWrite;
-
-        cmd->textureBarrier(textureBarrier);
         SSAOBlurPushConstant blurPc;
         blurPc.depthSigma = depthSigma;
         blurPc.textureSize = pc.textureSize;
@@ -231,10 +226,5 @@ namespace nitro::renderer
         cmd->bindComputeDescriptorSet(m_blurDescriptorSet, 0);
         cmd->setPushConstant(&blurPc, sizeof(SSAOBlurPushConstant), 1, true);
         cmd->dispatch(groupSizeX, groupSizeY, 1);
-
-        textureBarrier.before = rhi::ResourceState::ShaderWrite;
-        textureBarrier.after = rhi::ResourceState::ShaderRead;
-
-        cmd->textureBarrier(textureBarrier);
     };
 } // namespace nitro::renderer

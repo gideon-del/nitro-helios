@@ -5,6 +5,7 @@
 #include <nitro-renderer/context.h>
 #include <nitro-renderer/settings.h>
 #include "graph.h"
+#include <variant>
 namespace nitro::renderer
 {
     using RGResourceID = uint32_t;
@@ -16,8 +17,8 @@ namespace nitro::renderer
         std::string name;
         rhi::TextureDesc::ImageFormat format;
         uint32_t width = 0, height = 0;
-        bool transient = true;
         bool isStorage = false;
+        bool transient = true;
     };
     struct RGBufferDesc
     {
@@ -26,6 +27,13 @@ namespace nitro::renderer
         rhi::BufferDesc::Usage usage;
         bool transient = true;
     };
+
+    struct RGResourceAccess
+    {
+        RGResourceID id;
+        rhi::ResourceState state;
+    };
+
     struct RGValidationError
     {
         std::string passName;
@@ -39,6 +47,7 @@ namespace nitro::renderer
         int createdAt = -1;
         int lastUsedAt = -1;
     };
+
     struct RGResources
     {
         std::unordered_map<RGResourceID, rhi::RHITexture *> allocatedTextures;
@@ -61,10 +70,37 @@ namespace nitro::renderer
     {
         std::string name;
 
-        std::vector<RGTextureID> reads, writes;
-        std::vector<RGBufferID> readBufs, writeBufs;
+        std::vector<RGResourceAccess> reads, writes;
+        std::vector<RGResourceAccess> readBufs, writeBufs;
         std::function<void(const RGResources &resources)> bind;
         std::function<void(rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)> execute;
+    };
+
+    template <class... Ts>
+    struct overloaded : Ts...
+    {
+        using Ts::operator()...;
+    };
+
+    template <class... Ts>
+    overloaded(Ts...) -> overloaded<Ts...>;
+
+    struct RGTextureBarrier
+    {
+        RGTextureID textureId;
+        rhi::ResourceState from;
+        rhi::ResourceState to;
+    };
+    struct RGBufferBarrier
+    {
+        RGBufferID bufferId;
+        rhi::ResourceState from;
+        rhi::ResourceState to;
+    };
+    struct RGCompiledFrameGraph
+    {
+        using StepVariant = std::variant<int, RGTextureBarrier>;
+        std::vector<StepVariant> steps;
     };
 
     struct RGMemoryBlock
@@ -101,7 +137,9 @@ namespace nitro::renderer
         void deleteBuffers(std::shared_ptr<rhi::RHIDevice> device);
         const RGResources buildResources();
         void bindPassResources(const RGResources &resources);
-        void execute(rhi::RHICommandBuffer *cmd, const RenderContext &ctx, RendererSettings &settings, const RGResources &resources);
+
+        const RGCompiledFrameGraph compileFrameGraph();
+        void executeFrameGraph(const RGCompiledFrameGraph &compiledGraph, rhi::RHICommandBuffer *cmd, const RenderContext &ctx, RendererSettings &settings, rhi::RHITimer *timer);
         std::vector<RGValidationError> validate();
         void drawImGui();
         std::unordered_map<RGResourceID, RGLifetime> computeLifetimes();

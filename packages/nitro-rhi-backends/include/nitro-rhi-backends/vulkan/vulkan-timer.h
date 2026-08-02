@@ -21,6 +21,7 @@ namespace nitro::rhi::vulkan
         void end(RHICommandBuffer *cmd, const std::string &name) override;
         void endFrame() override;
         float getResult(const std::string &name) const override;
+        TimerResult getAllResults() const override { return m_results; };
 
     private:
         VulkanDevice *m_device;
@@ -33,6 +34,6 @@ namespace nitro::rhi::vulkan
         uint32_t m_nextIndex = 0;
 
         std::vector<uint64_t> m_timestamps;
-        std::unordered_map<std::string, float> m_results;
+        TimerResult m_results;
     };
 }

@@ -11,6 +11,7 @@ namespace nitro::rhi::vulkan
     VkImageType convertVkImageType(rhi::TextureDesc::Type type);
     VkImageUsageFlags convertToImageUsage(TextureDesc::Usage usage);
     VkImageCreateInfo makeVkImageInfo(const TextureDesc &desc);
+    VkImageLayout convertResourceStateToImageLayout(ResourceState state);
     class VulkanTexture : public RHITexture
     {
 

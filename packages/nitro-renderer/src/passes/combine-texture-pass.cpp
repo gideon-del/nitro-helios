@@ -41,14 +41,23 @@ namespace nitro::renderer
 
         m_computePipeline = m_device->createComputePipeline(computePipelineDesc);
 
-        m_descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
-    };
+        m_resources.create(g_MAX_FRAMES_IN_FLIGHT,
+                           [&](uint32_t frameIdx)
+                           {
+                               CombineTexturePassResource resource;
+                               resource.descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
+                               return resource;
+                           });
+    }
 
     CombineTexturePass::~CombineTexturePass()
     {
         m_device->destroyComputePipeline(m_computePipeline);
 
-        m_device->destroyDescriptorSet(m_descriptorSet);
+        for (auto &resource : m_resources)
+        {
+            m_device->destroyDescriptorSet(resource.descriptorSet);
+        }
         m_device->destroyDescriptorLayout(m_descriptorLayout);
     }
 
@@ -61,33 +70,30 @@ namespace nitro::renderer
 
     void CombineTexturePass::execute(rhi::RHICommandBuffer *cmd, CombineTexturePushConstant pc, CombineTexturePassTextures textures)
     {
-        rhi::TextureBarrier initialTextureBarrier;
-        initialTextureBarrier.texture = textures.output;
-        initialTextureBarrier.before = rhi::ResourceState::ShaderRead;
-        initialTextureBarrier.after = rhi::ResourceState::ShaderWrite;
-        cmd->textureBarrier(initialTextureBarrier);
+        auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
 
-        rhi::TextureBinding textureBinding;
-        textureBinding.texture = textures.hdrTexture;
-        textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
-        m_descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
-        textureBinding.texture = textures.blurredTexture;
-        m_descriptorSet->writeTexture(textureBinding, 3, rhi::ImageLayout::ShaderReadOnly);
-        m_descriptorSet->writeStorageImage(textures.output, 4, rhi::ImageLayout::General, rhi::TextureSubresource{});
-        m_descriptorSet->commit();
+        if (resource.lastHdrTexture != textures.hdrTexture || resource.lastBlurredTexture != textures.blurredTexture)
+        {
+            resource.lastHdrTexture = textures.hdrTexture;
+            resource.lastBlurredTexture = textures.blurredTexture;
+
+            rhi::TextureBinding textureBinding;
+            textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+            textureBinding.texture = textures.hdrTexture;
+            resource.descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
+            textureBinding.texture = textures.blurredTexture;
+            resource.descriptorSet->writeTexture(textureBinding, 3, rhi::ImageLayout::ShaderReadOnly);
+            resource.descriptorSet->writeStorageImage(textures.output, 4, rhi::ImageLayout::General, rhi::TextureSubresource{});
+            resource.descriptorSet->commit();
+        }
 
         cmd->bindComputePipeline(m_computePipeline);
-        cmd->bindComputeDescriptorSet(m_descriptorSet, 0);
+        cmd->bindComputeDescriptorSet(resource.descriptorSet, 0);
         cmd->setPushConstant(&pc, sizeof(CombineTexturePushConstant), 1, true);
         uint32_t groupSizeX = (m_width + 15) / 16;
         uint32_t groupSizeY = (m_height + 15) / 16;
 
         cmd->dispatch(groupSizeX, groupSizeY, 1);
-        rhi::TextureBarrier finalTextureBarrier;
-        finalTextureBarrier.texture = textures.output;
-        finalTextureBarrier.before = rhi::ResourceState::ShaderWrite;
-        finalTextureBarrier.after = rhi::ResourceState::ShaderRead;
-        cmd->textureBarrier(finalTextureBarrier);
     };
 
 } // namespace nitro::renderer

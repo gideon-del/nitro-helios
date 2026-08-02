@@ -1,6 +1,7 @@
 #pragma once
 #include <nitro-rhi/rhi.h>
 #include <glm/glm.hpp>
+#include <nitro-renderer/per-frame.h>
 
 namespace nitro::renderer
 {
@@ -17,6 +18,12 @@ namespace nitro::renderer
         rhi::RHITexture *blurredTexture;
         rhi::RHITexture *output;
     };
+    struct CombineTexturePassResource
+    {
+        rhi::RHIDescriptorSet *descriptorSet;
+        rhi::RHITexture *lastHdrTexture = nullptr;
+        rhi::RHITexture *lastBlurredTexture = nullptr;
+    };
     class CombineTexturePass
     {
     public:
@@ -30,6 +37,6 @@ namespace nitro::renderer
         uint32_t m_width, m_height;
         rhi::RHIComputePipeline *m_computePipeline;
         rhi::RHIDescriptorLayout *m_descriptorLayout;
-        rhi::RHIDescriptorSet *m_descriptorSet;
+        PerFrame<CombineTexturePassResource> m_resources;
     };
 } // namespace nitro::renderer

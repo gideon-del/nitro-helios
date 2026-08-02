@@ -43,12 +43,21 @@ namespace nitro::renderer
 
         m_computePipeline = m_device->createComputePipeline(computePipelineDesc);
 
-        m_descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
+        m_resources.create(g_MAX_FRAMES_IN_FLIGHT,
+                           [&](uint32_t frameIdx)
+                           {
+                               SingleInputPassResource resource;
+                               resource.descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
+                               return resource;
+                           });
     }
 
     ColorGradingPass::~ColorGradingPass()
     {
-        m_device->destroyDescriptorSet(m_descriptorSet);
+        for (auto &resource : m_resources)
+        {
+            m_device->destroyDescriptorSet(resource.descriptorSet);
+        }
         m_device->destroyComputePipeline(m_computePipeline);
 
         m_device->destroyDescriptorLayout(m_descriptorLayout);
@@ -57,39 +66,34 @@ namespace nitro::renderer
     void ColorGradingPass::resize(uint32_t width, uint32_t height)
     {
 
-        m_lastHdrTexture = nullptr;
+        for (auto &resource : m_resources)
+        {
+            resource.lastInputTexture = nullptr;
+        }
         m_width = width;
         m_height = height;
     };
 
     void ColorGradingPass::execute(rhi::RHICommandBuffer *cmd, ColorGradingPushConstant pc, ColorGradingTextures textures)
     {
-        if (m_lastHdrTexture != textures.sceneTexture)
+
+        auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
+        if (resource.lastInputTexture != textures.sceneTexture)
         {
-            m_lastHdrTexture = textures.sceneTexture;
+            resource.lastInputTexture = textures.sceneTexture;
             rhi::TextureBinding textureBinding;
-            textureBinding.texture = m_lastHdrTexture;
+            textureBinding.texture = resource.lastInputTexture;
             textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
-            m_descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
-            m_descriptorSet->writeStorageImage(textures.output, 3, rhi::ImageLayout::General, rhi::TextureSubresource{});
-            m_descriptorSet->commit();
+            resource.descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
+            resource.descriptorSet->writeStorageImage(textures.output, 3, rhi::ImageLayout::General, rhi::TextureSubresource{});
+            resource.descriptorSet->commit();
         }
 
-        rhi::TextureBarrier initialBarrier;
-        initialBarrier.texture = textures.output;
-        initialBarrier.before = rhi::ResourceState::ShaderRead;
-        initialBarrier.after = rhi::ResourceState::ShaderWrite;
-
-        cmd->textureBarrier(initialBarrier);
         cmd->bindComputePipeline(m_computePipeline);
-        cmd->bindComputeDescriptorSet(m_descriptorSet, 0);
+        cmd->bindComputeDescriptorSet(resource.descriptorSet, 0);
         cmd->setPushConstant(&pc, sizeof(ColorGradingPushConstant), 1, true);
         uint32_t groupX = (m_width + 15) / 16;
         uint32_t groupY = (m_height + 15) / 16;
         cmd->dispatch(groupX, groupY, 1);
-
-        initialBarrier.before = rhi::ResourceState::ShaderWrite;
-        initialBarrier.after = rhi::ResourceState::ShaderRead;
-        cmd->textureBarrier(initialBarrier);
     }
 } // namespace nitro::renderer

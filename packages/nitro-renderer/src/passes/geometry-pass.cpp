@@ -38,8 +38,7 @@ namespace nitro::renderer
         pipelineDesc.vertexLayout = geometry::Vertex::getVertexLayout();
         pipelineDesc.hasPushConstant = true;
         pipelineDesc.pushConstantSize = sizeof(RenderObjectPushConstant);
-        pipelineDesc.depthAttachmentFormat = rhi::TextureDesc::ImageFormat::Depth32FloatStencil8;
-        pipelineDesc.hasStencil = true;
+        pipelineDesc.depthAttachmentFormat = rhi::TextureDesc::ImageFormat::Depth32Float;
         pipelineDesc.cullMode = PipelineDesc::CullMode::None;
 
         m_pipeline = m_device->createPipeline(pipelineDesc);
@@ -124,11 +123,9 @@ namespace nitro::renderer
         rhi::RenderPassDesc::Attachment depthAttachment;
         depthAttachment.load = rhi::RenderPassDesc::LoadOp::Load;
         depthAttachment.store = rhi::RenderPassDesc::StoreOp::DontCare;
-        depthAttachment.hasStencil = true;
-        depthAttachment.stencilLoad = rhi::RenderPassDesc::LoadOp::Clear;
-        depthAttachment.stencilStore = rhi::RenderPassDesc::StoreOp::Store;
-        depthAttachment.clearStencil = 0;
         depthAttachment.texture = resources.getTexture(gBuffer.depth);
+        depthAttachment.depthWrite = false;
+        depthAttachment.stencilWrite = false;
 
         renderPassDesc.depthAttachment = &depthAttachment;
 

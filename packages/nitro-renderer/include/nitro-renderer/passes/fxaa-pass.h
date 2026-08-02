@@ -1,5 +1,7 @@
 #pragma once
 #include <nitro-rhi/rhi.h>
+#include <nitro-renderer/per-frame.h>
+#include <nitro-renderer/single-texture-pass-resource.h>
 #include <glm/glm.hpp>
 
 namespace nitro::renderer
@@ -14,6 +16,7 @@ namespace nitro::renderer
         rhi::RHITexture *ldrTexture;
         rhi::RHITexture *output;
     };
+
     class FXAAPass
     {
     public:
@@ -27,7 +30,6 @@ namespace nitro::renderer
         uint32_t m_width, m_height;
         rhi::RHIDescriptorLayout *m_descriptorLayout;
         rhi::RHIComputePipeline *m_computePipeline;
-        rhi::RHIDescriptorSet *m_descriptorSet;
-        rhi::RHITexture *m_lastLDRTexture = nullptr;
+        PerFrame<SingleInputPassResource> m_resources;
     };
 } // namespace nitro::renderer

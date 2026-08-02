@@ -30,27 +30,41 @@ namespace nitro::renderer
         }
 
         m_pipeline = m_device->createPipeline(pipelineDesc);
-        m_descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
+        m_resources.create(g_MAX_FRAMES_IN_FLIGHT,
+                           [&](uint32_t frameIdx)
+                           {
+                               SingleInputPassResource resource;
+                               resource.descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
+                               return resource;
+                           });
     }
 
     MainScenePass::~MainScenePass()
     {
         m_device->destroyPipeline(m_pipeline);
-        m_device->destroyDescriptorSet(m_descriptorSet);
+        for (auto &resource : m_resources)
+        {
+            m_device->destroyDescriptorSet(resource.descriptorSet);
+        }
         m_device->destroyDescriptorLayout(m_descriptorLayout);
     }
 
     void MainScenePass::execute(rhi::RHICommandBuffer *cmd, rhi::RHIRenderPassDesc &desc, RendererSettings &settings, rhi::RHITexture *inputTexture, RenderGraph &renderGraph)
     {
+        auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
 
-        rhi::TextureBinding textureBinding;
-        textureBinding.texture = inputTexture;
-        textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
-        m_descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
-        m_descriptorSet->commit();
+        if (resource.lastInputTexture != inputTexture)
+        {
+            resource.lastInputTexture = inputTexture;
+            rhi::TextureBinding textureBinding;
+            textureBinding.texture = inputTexture;
+            textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+            resource.descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
+            resource.descriptorSet->commit();
+        }
         cmd->beginRenderPass(desc);
         cmd->bindPipeline(m_pipeline);
-        cmd->bindDescriptorSet(m_descriptorSet, 0);
+
         RHIViewScale swapchainViewScale = m_swapchain->getViewScale();
         rhi::RHIViewport viewport;
         viewport.width = m_swapchain->getWidth() * swapchainViewScale.x;

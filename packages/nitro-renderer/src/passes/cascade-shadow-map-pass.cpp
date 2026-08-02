@@ -13,12 +13,14 @@ namespace nitro::renderer
 
         rhi::PipelineDesc pipelineDesc;
         pipelineDesc.depthWrite = true;
+        pipelineDesc.depthAttachmentFormat = rhi::TextureDesc::ImageFormat::Depth32Float;
         pipelineDesc.hasColorAttachment = false;
         pipelineDesc.layouts = {m_descriptorLayout};
         pipelineDesc.cullMode = PipelineDesc::CullMode::Front;
         pipelineDesc.hasPushConstant = true;
         pipelineDesc.pushConstantSize = sizeof(ShadowPushConstant);
         pipelineDesc.vertexLayout = geometry::Vertex::getVertexLayout();
+        pipelineDesc.hasStencil = false;
 
         std::string shaderPath = shaderDir + "/shadow/shadow";
 

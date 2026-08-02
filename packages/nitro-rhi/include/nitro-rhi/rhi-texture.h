@@ -91,6 +91,7 @@ namespace nitro::rhi
         RenderTarget,
         DepthWrite,
         DepthRead,
+        DepthReadStencilWrite,
 
         Present,
     };
@@ -127,6 +128,11 @@ namespace nitro::rhi
         default:
             return 4;
         }
+    }
+
+    inline bool isDepthFormat(TextureDesc::ImageFormat format)
+    {
+        return format == rhi::TextureDesc::ImageFormat::Depth32Float || format == rhi::TextureDesc::ImageFormat::Depth32FloatStencil8;
     }
 
 }
