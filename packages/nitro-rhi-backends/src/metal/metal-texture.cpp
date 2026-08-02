@@ -34,17 +34,14 @@ namespace nitro::rhi::metal
             return MTL::TextureType2D;
         }
     }
-    MetalTexture::MetalTexture(MetalDevice *device, const TextureDesc &desc) : m_device(device), width(desc.size.width), height(desc.size.height)
-    {
 
-        m_isCubeMap = desc.type == rhi::TextureDesc::Type::Cube;
+    MTL::TextureDescriptor *makeMTLTextureDescriptor(const TextureDesc &desc)
+    {
         MTL::TextureDescriptor *textureDesc = MTL::TextureDescriptor::texture2DDescriptor(
             convertToPixelFormat(desc.format),
-            NS::UInteger(width),
-            NS::UInteger(height),
+            NS::UInteger(desc.size.width),
+            NS::UInteger(desc.size.height),
             desc.mipmaps > 0);
-        mipLevels = desc.mipmaps;
-        totalLayers = m_isCubeMap ? 6 : 1;
         MTL::TextureUsage usage = MTL::TextureUsageUnknown;
 
         if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::RenderTarget) ||
@@ -68,22 +65,48 @@ namespace nitro::rhi::metal
             textureDesc->setMipmapLevelCount(1 + desc.mipmaps);
         }
 
-        if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::DepthStencil) &&
-            hasTextureUsageFlag(desc.usage, TextureDesc::Usage::ShaderRead))
-        {
-            textureDesc->setStorageMode(MTL::StorageModePrivate);
-        }
-        else if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::DepthStencil))
-        {
-            textureDesc->setStorageMode(MTL::StorageModeMemoryless);
-        }
-        else if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::ShaderRead))
-        {
-            textureDesc->setStorageMode(MTL::StorageModeShared);
-        }
+        // if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::DepthStencil) &&
+        //     hasTextureUsageFlag(desc.usage, TextureDesc::Usage::ShaderRead))
+        // {
+        //     textureDesc->setStorageMode(MTL::StorageModePrivate);
+        // }
+        // else if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::DepthStencil))
+        // {
+        //     textureDesc->setStorageMode(MTL::StorageModeMemoryless);
+        // }
+        // else if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::ShaderRead))
+        // {
+        //     textureDesc->setStorageMode(MTL::StorageModeShared);
+        // }
+
+        textureDesc->setStorageMode(MTL::StorageModePrivate);
 
         textureDesc->setTextureType(convertTextureType(desc.type));
+
+        return textureDesc;
+    }
+    MetalTexture::MetalTexture(MetalDevice *device, const TextureDesc &desc) : m_device(device), width(desc.size.width), height(desc.size.height)
+    {
+
+        MTL::TextureDescriptor *textureDesc = makeMTLTextureDescriptor(desc);
         texture = m_device->device->newTexture(textureDesc);
+        createTextureFaceAndSampler(desc);
+        textureDesc->release();
+    }
+
+    MetalTexture::MetalTexture(MetalDevice *device, MTL::Texture *texture, const TextureDesc &desc) : m_device(device),
+                                                                                                      texture(texture),
+                                                                                                      width(desc.size.width),
+                                                                                                      height(desc.size.height)
+    {
+        createTextureFaceAndSampler(desc);
+    }
+
+    void MetalTexture::createTextureFaceAndSampler(const TextureDesc &desc)
+    {
+        m_isCubeMap = desc.type == rhi::TextureDesc::Type::Cube;
+        mipLevels = desc.mipmaps;
+        totalLayers = m_isCubeMap ? 6 : 1;
 
         if (!hasTextureUsageFlag(desc.usage, TextureDesc::Usage::DepthStencil) && desc.initialData != nullptr)
         {
@@ -92,15 +115,7 @@ namespace nitro::rhi::metal
                                                      NS::UInteger(0),
                                                      NS::UInteger(width),
                                                      NS::UInteger(height));
-            size_t bytePerPixel = 4;
-            if (desc.format == TextureDesc::ImageFormat::ColorRGBA16)
-            {
-                bytePerPixel = 8;
-            }
-            if (desc.format == TextureDesc::ImageFormat::ColorRGBA32)
-            {
-                bytePerPixel = 16;
-            }
+            size_t bytePerPixel = getImageFormatSize(desc.format);
             texture->replaceRegion(region, NS::UInteger(0), desc.initialData, NS::UInteger(width * bytePerPixel));
         }
         if (!hasTextureUsageFlag(desc.usage, TextureDesc::Usage::DepthStencil))
@@ -139,10 +154,7 @@ namespace nitro::rhi::metal
             samplerState = m_device->device->newSamplerState(samplerDesc);
             samplerDesc->release();
         }
-
-        textureDesc->release();
     }
-
     MetalTexture::~MetalTexture()
     {
 

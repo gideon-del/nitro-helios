@@ -571,7 +571,7 @@ namespace nitro::renderer
 
         m_renderGraph.addPass({
             "Color Grading",
-            {},
+            {bloomTexture},
             {colorGradedTexture},
             {readbackBuffer},
             {},

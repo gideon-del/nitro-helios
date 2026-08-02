@@ -85,6 +85,7 @@ namespace nitro::rhi::vulkan
             break;
         }
     };
+
     VkImageViewType convertVkImageViewType(rhi::TextureDesc::Type type)
     {
         switch (type)
@@ -101,21 +102,15 @@ namespace nitro::rhi::vulkan
             break;
         }
     };
-    VulkanTexture::VulkanTexture(VulkanDevice *device, const TextureDesc &desc) : m_device(device)
+    VkImageCreateInfo makeVkImageInfo(const TextureDesc &desc)
     {
-        format = convertToFormat(desc.format);
-        width = desc.size.width;
-        height = desc.size.height;
-        mipmapLevels = desc.mipmaps;
-        totalLayers = (desc.type == TextureDesc::Type::Cube) ? 6 : 1;
-
-        m_isCubeMap = desc.type == rhi::TextureDesc::Type::Cube;
+        int totalLayers = (desc.type == TextureDesc::Type::Cube) ? 6 : 1;
 
         VkImageCreateInfo imageInfo{};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         imageInfo.arrayLayers = totalLayers;
         imageInfo.extent = {desc.size.width, desc.size.height, 1};
-        imageInfo.format = format;
+        imageInfo.format = convertToFormat(desc.format);
         imageInfo.imageType = convertVkImageType(desc.type);
         imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         imageInfo.mipLevels = 1 + desc.mipmaps;
@@ -124,10 +119,18 @@ namespace nitro::rhi::vulkan
         imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
         imageInfo.usage = convertToImageUsage(desc.usage);
 
-        if (desc.type == TextureDesc::Type::Cube)
+        if (desc.isAliased)
         {
-            imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+            imageInfo.flags |= VK_IMAGE_CREATE_ALIAS_BIT;
         }
+
+        return imageInfo;
+    }
+    VulkanTexture::VulkanTexture(VulkanDevice *device, const TextureDesc &desc) : m_device(device),
+                                                                                  m_isAliased(desc.isAliased)
+    {
+
+        VkImageCreateInfo imageInfo = makeVkImageInfo(desc);
 
         VmaAllocationCreateInfo allocationInfo{};
         allocationInfo.usage = VMA_MEMORY_USAGE_AUTO;
@@ -140,6 +143,48 @@ namespace nitro::rhi::vulkan
                           &allocation,
                           nullptr),
                       "Unable to create Image");
+        createImageViews(desc);
+    }
+    VulkanTexture::VulkanTexture(VulkanDevice *device, VkImage existingImage, uint32_t width, uint32_t height, VkFormat surfaceFormat) : m_device(device), width(width), height(height), image(existingImage), format(surfaceFormat)
+    {
+        VkImageViewCreateInfo imageViewInfo{};
+        imageViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        imageViewInfo.format = format;
+        imageViewInfo.image = image;
+        imageViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        imageViewInfo.subresourceRange.baseArrayLayer = 0;
+        imageViewInfo.subresourceRange.baseMipLevel = 0;
+        imageViewInfo.subresourceRange.layerCount = 1;
+        imageViewInfo.subresourceRange.levelCount = 1;
+        imageViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+
+        checkVkResult(vkCreateImageView(
+                          m_device->device,
+                          &imageViewInfo,
+                          nullptr,
+                          &imageView),
+                      "Unable to create a image view");
+    }
+
+    VulkanTexture::VulkanTexture(VulkanDevice *device,
+                                 VkImage image,
+                                 const TextureDesc &desc)
+        : m_device(device),
+          image(image)
+    {
+        createImageViews(desc);
+    }
+
+    void VulkanTexture::createImageViews(const TextureDesc &desc)
+    {
+        format = convertToFormat(desc.format);
+        width = desc.size.width;
+        height = desc.size.height;
+        mipmapLevels = desc.mipmaps;
+        totalLayers = (desc.type == TextureDesc::Type::Cube) ? 6 : 1;
+
+        m_isCubeMap = desc.type == rhi::TextureDesc::Type::Cube;
+
         imageAspect = convertToAspectFlag(desc.usage);
         if (desc.format == TextureDesc::ImageFormat::Depth32FloatStencil8)
         {
@@ -147,15 +192,7 @@ namespace nitro::rhi::vulkan
         }
         if (desc.initialData != nullptr && hasTextureUsageFlag(desc.usage, TextureDesc::Usage::ShaderRead))
         {
-            size_t bytePerPixel = 4;
-            if (desc.format == TextureDesc::ImageFormat::ColorRGBA16)
-            {
-                bytePerPixel = 8;
-            }
-            if (desc.format == TextureDesc::ImageFormat::ColorRGBA32)
-            {
-                bytePerPixel = 16;
-            }
+            size_t bytePerPixel = getImageFormatSize(desc.format);
             BufferDesc stagingDesc;
             stagingDesc.initialData = nullptr;
             stagingDesc.size = width * height * bytePerPixel;
@@ -228,26 +265,6 @@ namespace nitro::rhi::vulkan
             }
         }
     }
-    VulkanTexture::VulkanTexture(VulkanDevice *device, VkImage existingImage, uint32_t width, uint32_t height, VkFormat surfaceFormat) : m_device(device), width(width), height(height), image(existingImage), format(surfaceFormat)
-    {
-        VkImageViewCreateInfo imageViewInfo{};
-        imageViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        imageViewInfo.format = format;
-        imageViewInfo.image = image;
-        imageViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        imageViewInfo.subresourceRange.baseArrayLayer = 0;
-        imageViewInfo.subresourceRange.baseMipLevel = 0;
-        imageViewInfo.subresourceRange.layerCount = 1;
-        imageViewInfo.subresourceRange.levelCount = 1;
-        imageViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-
-        checkVkResult(vkCreateImageView(
-                          m_device->device,
-                          &imageViewInfo,
-                          nullptr,
-                          &imageView),
-                      "Unable to create a image view");
-    }
     VulkanTexture::~VulkanTexture()
     {
         for (auto &faceView : m_faceMipViews)
@@ -266,8 +283,11 @@ namespace nitro::rhi::vulkan
         {
             vkDestroySampler(m_device->device, sampler, nullptr);
         }
-
-        if (image != VK_NULL_HANDLE && allocation != VK_NULL_HANDLE)
+        if (m_isAliased && image != VK_NULL_HANDLE)
+        {
+            vkDestroyImage(m_device->device, image, nullptr);
+        }
+        else if (image != VK_NULL_HANDLE && allocation != VK_NULL_HANDLE)
         {
             vmaDestroyImage(m_device->allocator, image, allocation);
         }

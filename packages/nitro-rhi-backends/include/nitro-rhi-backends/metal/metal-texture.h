@@ -5,11 +5,13 @@
 namespace nitro::rhi::metal
 {
     MTL::PixelFormat convertToPixelFormat(const TextureDesc::ImageFormat &format);
+    MTL::TextureDescriptor *makeMTLTextureDescriptor(const TextureDesc &desc);
     class MetalDevice;
     class MetalTexture : public RHITexture
     {
     public:
         MetalTexture(MetalDevice *device, const TextureDesc &desc);
+        MetalTexture(MetalDevice *device, MTL::Texture *texture, const TextureDesc &desc);
         ~MetalTexture() override;
 
         MTL::Texture *texture;
@@ -28,5 +30,6 @@ namespace nitro::rhi::metal
         MetalDevice *m_device;
         std::vector<MTL::Texture *> m_faceMipViews;
         bool m_isCubeMap;
+        void createTextureFaceAndSampler(const TextureDesc &desc);
     };
 } // namespace nitro::rhi::metal

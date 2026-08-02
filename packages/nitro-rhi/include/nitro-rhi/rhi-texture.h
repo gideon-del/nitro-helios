@@ -55,6 +55,7 @@ namespace nitro::rhi
         } type = Type::Flat;
         const void *initialData = nullptr;
         uint32_t mipmaps = 0;
+        bool isAliased = false;
     };
 
     inline bool hasTextureUsageFlag(TextureDesc::Usage value,
@@ -110,5 +111,22 @@ namespace nitro::rhi
 
         TextureSubresource subresource;
     };
+
+    inline int getImageFormatSize(TextureDesc::ImageFormat format)
+    {
+        switch (format)
+        {
+        case TextureDesc::ImageFormat::ColorRGBA16:
+            return 8;
+        case TextureDesc::ImageFormat::ColorRGBA32:
+            return 16;
+        case TextureDesc::ImageFormat::Depth32Float:
+            return 4;
+        case TextureDesc::ImageFormat::Depth32FloatStencil8:
+            return 8;
+        default:
+            return 4;
+        }
+    }
 
 }

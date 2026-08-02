@@ -149,10 +149,19 @@ namespace nitro::renderer
     {
 
         deleteTextures(device);
-
+        m_memoryBlocks.clear();
+        m_aliasAssignments = computeAliases(frameWidth, frameHeight);
         rhi::RHICommandBuffer *cmd = device->createCommandBuffer();
-        for (auto &[tid, desc] : m_textures)
+        std::unordered_map<int, std::vector<RGResourceID>> blockMap;
+
+        for (auto &[tid, blockId] : m_aliasAssignments)
         {
+            blockMap[blockId].push_back(tid);
+        }
+
+        auto makeTextureDesc = [&](RGTextureID tid, bool isAlias = false)
+        {
+            auto &desc = m_textures[tid];
             rhi::TextureDesc textureDesc;
             textureDesc.usage = rhi::TextureDesc::Usage::ShaderRead;
             textureDesc.format = desc.format;
@@ -171,16 +180,72 @@ namespace nitro::renderer
 
             textureDesc.size.width = desc.width ? desc.width : frameWidth;
             textureDesc.size.height = desc.height ? desc.height : frameHeight;
+            textureDesc.isAliased = isAlias;
+            return textureDesc;
+        };
 
-            if (!m_allocatedTextures.count(tid))
+        auto alignUp = [&](size_t size, size_t alignment)
+        {
+            return (size + alignment - 1) & ~(alignment - 1);
+        };
+        for (auto &[blockId, textureIds] : blockMap)
+        {
+
+            if (textureIds.size() == 1)
             {
-                std::cerr << "[RenderGraph] allocating texture '" << desc.name << "' " << textureDesc.size.width << "x" << textureDesc.size.height << "\n";
-                m_allocatedTextures[tid] = device->createTexture(textureDesc);
-                rhi::TextureBarrier textureBarrier;
-                textureBarrier.texture = m_allocatedTextures[tid];
-                textureBarrier.before = rhi::ResourceState::Undefined;
-                textureBarrier.after = rhi::ResourceState::ShaderRead;
-                cmd->textureBarrier(textureBarrier);
+                auto &tid = textureIds[0];
+                if (!m_allocatedTextures.count(textureIds[0]))
+                {
+                    auto textureDesc = makeTextureDesc(tid);
+                    m_allocatedTextures[tid] = device->createTexture(textureDesc);
+                    rhi::TextureBarrier textureBarrier;
+                    textureBarrier.texture = m_allocatedTextures[tid];
+                    textureBarrier.before = rhi::ResourceState::Undefined;
+                    textureBarrier.after = rhi::ResourceState::ShaderRead;
+                    cmd->textureBarrier(textureBarrier);
+                }
+                continue;
+            }
+
+            size_t blockSize = 0;
+            size_t maxAlignment = 0;
+            uint32_t combinedMemoryTypeBits = ~0u;
+
+            for (auto &tid : textureIds)
+            {
+                auto req = device->textureMemoryRequirements(makeTextureDesc(tid, true));
+
+                blockSize = std::max(blockSize, req.size);
+                maxAlignment = std::max(maxAlignment, req.alignment);
+
+                combinedMemoryTypeBits &= req.memoryTypeBits;
+            }
+            if (combinedMemoryTypeBits == 0)
+            {
+                throw std::runtime_error("Alias group has no compatible memory type — cannot share a heap");
+            }
+
+            size_t alignedBlockSize = alignUp(blockSize, maxAlignment);
+            auto &block = m_memoryBlocks[blockId];
+            if (block.heap)
+            {
+                device->destroyHeap(block.heap);
+            }
+
+            block.heap = device->createHeap(alignedBlockSize, combinedMemoryTypeBits);
+
+            for (auto &tid : textureIds)
+            {
+                if (!m_allocatedTextures.count(tid))
+                {
+                    auto textureDesc = makeTextureDesc(tid, true);
+                    m_allocatedTextures[tid] = device->createTextureFromHeap(block.heap, textureDesc, 0);
+                    rhi::TextureBarrier textureBarrier;
+                    textureBarrier.texture = m_allocatedTextures[tid];
+                    textureBarrier.before = rhi::ResourceState::Undefined;
+                    textureBarrier.after = rhi::ResourceState::ShaderRead;
+                    cmd->textureBarrier(textureBarrier);
+                }
             }
         };
         device->endCommandBuffer(cmd);
@@ -217,7 +282,7 @@ namespace nitro::renderer
             {
                 device->destroyTexture(m_allocatedTextures[tid]);
             }
-            std::cerr << "[RenderGraph] reallocating texture '" << desc.name << "' " << textureDesc.size.width << "x" << textureDesc.size.height << "\n";
+
             m_allocatedTextures[tid] = device->createTexture(textureDesc);
 
             rhi::TextureBarrier textureBarrier;
@@ -467,11 +532,13 @@ namespace nitro::renderer
             {
                 lifetime[tid].createdAt = i;
                 lifetime[tid].lastUsedAt = i;
+                lifetime[tid].id = tid;
             };
             for (auto &tid : pass.reads)
             {
 
                 lifetime[tid].lastUsedAt = std::max(lifetime[tid].lastUsedAt, i);
+                lifetime[tid].id = tid;
             };
         }
 
@@ -488,17 +555,20 @@ namespace nitro::renderer
                   { return lifetimes[a].createdAt < lifetimes[b].createdAt; });
 
         ImGui::Begin("Lifetimes");
-        if (ImGui::BeginTable("lifetimes_table", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+        if (ImGui::BeginTable("lifetimes_table", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
         {
             ImGui::TableSetupColumn("Resource");
             ImGui::TableSetupColumn("Created at");
             ImGui::TableSetupColumn("Last used at");
             ImGui::TableSetupColumn("Span");
+            ImGui::TableSetupColumn("Memory Block");
             ImGui::TableHeadersRow();
 
             for (auto tid : ids)
             {
                 auto &lt = lifetimes[tid];
+                auto &desc = m_textures[tid];
+
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
                 ImGui::TextUnformatted(m_textures.at(tid).name.c_str());
@@ -508,9 +578,65 @@ namespace nitro::renderer
                 ImGui::TextUnformatted(m_passes[m_executionOrder[lt.lastUsedAt]].name.c_str());
                 ImGui::TableNextColumn();
                 ImGui::Text("%d", lt.lastUsedAt - lt.createdAt + 1);
+                ImGui::TableNextColumn();
+                ImGui::Text("%d", desc.transient ? m_aliasAssignments[tid] : -1);
             }
             ImGui::EndTable();
         }
         ImGui::End();
     }
+
+    std::unordered_map<RGResourceID, int> RenderGraph::computeAliases(uint32_t frameWidth, uint32_t frameHeight)
+    {
+        auto lifetimeMap = computeLifetimes();
+        std::vector<RGLifetime> lifetimes;
+        for (auto &[tid, lt] : lifetimeMap)
+            lifetimes.push_back(lt);
+
+        std::sort(lifetimes.begin(), lifetimes.end(), [](RGLifetime a, RGLifetime b)
+                  { return a.createdAt < b.createdAt; });
+        std::unordered_map<RGResourceID, int> m_aliasAssignments;
+        for (auto &lt : lifetimes)
+        {
+            auto &desc = m_textures[lt.id];
+            uint32_t w = desc.width ? desc.width : frameWidth;
+            uint32_t h = desc.height ? desc.height : frameHeight;
+            size_t neededSize = (size_t)w * h * rhi::getImageFormatSize(desc.format);
+            if (!desc.transient)
+            {
+                auto blockId = static_cast<int>(m_memoryBlocks.size());
+                m_memoryBlocks.push_back({blockId, neededSize, static_cast<int>(lifetimes.size() - 1)});
+                continue;
+            };
+
+            int reusedBlock = -1;
+
+            for (auto &block : m_memoryBlocks)
+            {
+                if (block.size >= neededSize && block.lastUsePass < lt.createdAt)
+                {
+                    if (reusedBlock < 0 || m_memoryBlocks[reusedBlock].size > block.size)
+                    {
+                        reusedBlock = block.id;
+                    }
+                }
+            }
+
+            if (reusedBlock >= 0)
+            {
+                m_aliasAssignments[lt.id] = reusedBlock;
+                m_memoryBlocks[reusedBlock].lastUsePass = lt.lastUsedAt;
+            }
+            else
+            {
+                auto blockId = static_cast<int>(m_memoryBlocks.size());
+
+                m_memoryBlocks.push_back({blockId, neededSize, lt.lastUsedAt});
+
+                m_aliasAssignments[lt.id] = blockId;
+            }
+        };
+
+        return m_aliasAssignments;
+    };
 } // namespace nitro::renderer

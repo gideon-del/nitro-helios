@@ -10,6 +10,7 @@
 #include <nitro-rhi-backends/metal/metal-descriptor-layout.h>
 #include <nitro-rhi-backends/metal/metal-timer.h>
 #include <nitro-rhi-backends/metal/metal-compute-pipeline.h>
+#include <nitro-rhi-backends/metal/metal-heap.h>
 #include <imgui_impl_glfw.h>
 #ifndef IMGUI_IMPL_METAL_CPP
 #define IMGUI_IMPL_METAL_CPP
@@ -212,5 +213,46 @@ namespace nitro::rhi::metal
     {
         auto *mtlTex = static_cast<MetalTexture *>(texture);
         return (void *)mtlTex->texture;
+    }
+
+    MemoryRequirements MetalDevice::textureMemoryRequirements(const TextureDesc &desc)
+    {
+        MTL::TextureDescriptor *textureDesc = makeMTLTextureDescriptor(desc);
+        MTL::SizeAndAlign sizeAndAlign = device->heapTextureSizeAndAlign(textureDesc);
+
+        size_t size = sizeAndAlign.size;
+        size_t alignment = sizeAndAlign.align;
+
+        textureDesc->release();
+
+        return MemoryRequirements{
+            size,
+            alignment, 0};
+    }
+
+    RHIHeap *MetalDevice::createHeap(size_t sizeBytes, uint32_t memoryTypeBits)
+    {
+        MTL::HeapDescriptor *heapDesc = MTL::HeapDescriptor::alloc()->init();
+        heapDesc->setSize(sizeBytes);
+        heapDesc->setStorageMode(MTL::StorageModePrivate);
+        auto *heap = new MetalHeap();
+        heap->heap = device->newHeap(heapDesc);
+        heapDesc->release();
+        return heap;
+    }
+
+    void MetalDevice::destroyHeap(RHIHeap *heap)
+    {
+        auto *mtlHeap = static_cast<MetalHeap *>(heap);
+        mtlHeap->heap->release();
+        delete heap;
+    }
+
+    RHITexture *MetalDevice::createTextureFromHeap(RHIHeap *heap, const TextureDesc &desc, size_t offset)
+    {
+        auto *mtlHeap = static_cast<MetalHeap *>(heap);
+        MTL::TextureDescriptor *textureDesc = makeMTLTextureDescriptor(desc); // your shared desc-building function
+        MTL::Texture *texture = mtlHeap->heap->newTexture(textureDesc, offset);
+        return new MetalTexture(this, texture, desc);
     }
 } // namespace nitro::rhi::metal

@@ -10,6 +10,7 @@
 #include <nitro-rhi-backends/vulkan/vulkan-render-pass.h>
 #include <nitro-rhi-backends/vulkan/vulkan-timer.h>
 #include <nitro-rhi-backends/vulkan/vulkan-compute-pipeline.h>
+#include <nitro-rhi-backends/vulkan/vulkan-heap.h>
 #include <vk_mem_alloc.h>
 #include <imgui.h>
 #include <imgui_impl_vulkan.h>
@@ -883,4 +884,53 @@ namespace nitro::rhi::vulkan
         m_imguiTextureCache[vkTex] = ds;
         return (void *)ds;
     }
+    MemoryRequirements VulkanDevice::textureMemoryRequirements(const TextureDesc &desc)
+    {
+        VkImageCreateInfo imageInfo = makeVkImageInfo(desc);
+
+        VkImage image;
+        checkVkResult(vkCreateImage(device, &imageInfo, nullptr, &image), "Failed to create virtual image");
+
+        VkMemoryRequirements requirements;
+
+        vkGetImageMemoryRequirements(device, image, &requirements);
+
+        vkDestroyImage(device, image, nullptr);
+
+        return MemoryRequirements{
+            (uint64_t)requirements.size,
+            (uint64_t)requirements.alignment,
+            (uint32_t)requirements.memoryTypeBits};
+    };
+
+    RHIHeap *VulkanDevice::createHeap(size_t sizeBytes, uint32_t memoryTypeBits)
+    {
+        VkMemoryAllocateInfo allocInfo{};
+        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.allocationSize = sizeBytes;
+        allocInfo.memoryTypeIndex = findVulkanMemoryType(physicalDevice, memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+        auto *heap = new VulkanHeap();
+        checkVkResult(vkAllocateMemory(device, &allocInfo, nullptr, &heap->memory), "Heap allocation failed");
+        return heap;
+    }
+
+    RHITexture *VulkanDevice::createTextureFromHeap(RHIHeap *heap, const TextureDesc &desc, size_t offset)
+    {
+        auto *vkHeap = static_cast<VulkanHeap *>(heap);
+        VkImageCreateInfo imageInfo = makeVkImageInfo(desc);
+        VkImage image;
+        checkVkResult(vkCreateImage(device, &imageInfo, nullptr, &image), "Failed to create aliased image");
+        checkVkResult(vkBindImageMemory(device, image, vkHeap->memory, offset), "Failed to bind aliased image");
+
+        return new VulkanTexture(this, image, desc);
+    }
+
+    void VulkanDevice::destroyHeap(RHIHeap *heap)
+    {
+        auto *vkHeap = static_cast<VulkanHeap *>(heap);
+        vkFreeMemory(device, vkHeap->memory, nullptr);
+        delete heap;
+    }
+
 }

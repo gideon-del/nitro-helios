@@ -63,7 +63,7 @@ namespace nitro::rhi::vulkan
         void destroy(RHISamplerHandle &handle) override;
 
         void *getImGuiTextureRef(RHITexture *texture) override;
-
+        MemoryRequirements textureMemoryRequirements(const TextureDesc &desc) override;
         const DefaultSamplers &defaultSamplers() const override { return m_defaultSamplers; };
         const VulkanSampler &get(RHISamplerHandle handle) { return m_samplers.get(handle.id); }
         void beginImGuiFrame() override;
@@ -90,6 +90,10 @@ namespace nitro::rhi::vulkan
         void endFrame(RHICommandBuffer *cmd) override;
         void endCommandBuffer(RHICommandBuffer *cmd) override;
         void waitIdle() override;
+
+        RHIHeap *createHeap(size_t sizeBytes, uint32_t memoryTypeBits) override;
+        void destroyHeap(RHIHeap *heap) override;
+        RHITexture *createTextureFromHeap(RHIHeap *heap, const TextureDesc &desc, size_t offset) override;
         VkFormat getSurfaceFormat() const;
         VkDevice device;
         VmaAllocator allocator;

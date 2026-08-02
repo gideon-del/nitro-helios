@@ -12,6 +12,8 @@
 #include "rhi-compute-pipeline.h"
 #include "rhi-handle.h"
 #include "rhi-sampler.h"
+#include "rhi-heap.h"
+
 #include <imgui.h>
 namespace nitro::rhi
 {
@@ -25,7 +27,12 @@ namespace nitro::rhi
         RHISamplerHandle shadow;
         RHISamplerHandle anisotropicRepeat;
     };
-
+    struct MemoryRequirements
+    {
+        size_t size;
+        size_t alignment;
+        uint32_t memoryTypeBits = 0;
+    };
     class RHIDevice
     {
     public:
@@ -54,7 +61,7 @@ namespace nitro::rhi
 
         virtual RHIComputePipeline *createComputePipeline(const ComputePipelineDesc &desc) = 0;
         virtual void destroyComputePipeline(RHIComputePipeline *pipeline) = 0;
-
+        virtual MemoryRequirements textureMemoryRequirements(const TextureDesc &desc) = 0;
         virtual RHISamplerHandle create(const RHISamplerDesc &desc) = 0;
         virtual void destroy(RHISamplerHandle &handle) = 0;
         virtual const DefaultSamplers &defaultSamplers() const = 0;
@@ -68,5 +75,8 @@ namespace nitro::rhi
         virtual void beginImGuiFrame() = 0;
         virtual void endImGuiFrame() = 0;
         virtual void drawImGui(RHICommandBuffer *cmd) = 0;
+        virtual RHIHeap *createHeap(size_t sizeBytes, uint32_t memoryTypeBits) = 0;
+        virtual void destroyHeap(RHIHeap *heap) = 0;
+        virtual RHITexture *createTextureFromHeap(RHIHeap *heap, const TextureDesc &desc, size_t offset) = 0;
     };
 }

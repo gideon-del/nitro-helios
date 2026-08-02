@@ -52,6 +52,12 @@ namespace nitro::rhi::metal
         MTL::Device *device;
         MTL::CommandQueue *commandQueue;
 
+        MemoryRequirements textureMemoryRequirements(const TextureDesc &desc) override;
+
+        RHIHeap *createHeap(size_t sizeBytes, uint32_t memoryTypeBits) override;
+        void destroyHeap(RHIHeap *heap) override;
+        RHITexture *createTextureFromHeap(RHIHeap *heap, const TextureDesc &desc, size_t offset) override;
+
     private:
         MetalSwapchain *m_swapchain = nullptr;
         void *m_window = nullptr;

@@ -35,6 +35,7 @@ namespace nitro::renderer
 
     struct RGLifetime
     {
+        RGResourceID id;
         int createdAt = -1;
         int lastUsedAt = -1;
     };
@@ -66,6 +67,14 @@ namespace nitro::renderer
         std::function<void(rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)> execute;
     };
 
+    struct RGMemoryBlock
+    {
+        int id;
+        size_t size = 0;
+        int lastUsePass = -1;
+        rhi::RHIHeap *heap = nullptr;
+    };
+
     class RenderGraph
     {
         RGResourceID m_nextId = 0;
@@ -76,6 +85,8 @@ namespace nitro::renderer
         std::vector<RenderPass> m_passes;
         Graph m_depGraph;
         std::vector<NodeID> m_executionOrder;
+        std::vector<RGMemoryBlock> m_memoryBlocks;
+        std::unordered_map<RGResourceID, int> m_aliasAssignments;
 
     public:
         RGTextureID declareTexture(RGTextureDesc desc);
@@ -94,6 +105,7 @@ namespace nitro::renderer
         std::vector<RGValidationError> validate();
         void drawImGui();
         std::unordered_map<RGResourceID, RGLifetime> computeLifetimes();
+        std::unordered_map<RGResourceID, int> computeAliases(uint32_t frameWidth, uint32_t frameHeight);
 
     private:
         void drawLifetimeTimeline();
