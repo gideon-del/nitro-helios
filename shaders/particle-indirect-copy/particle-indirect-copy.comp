@@ -1,0 +1,36 @@
+#version 450
+layout(local_size_x=1) in;
+
+
+layout(std430, set=0, binding=2) buffer AliveCounter {
+    uint aliveCount;
+} counter;
+
+layout(std430, set=0, binding=3) buffer DrawIndirectArgs {
+    uint vertexCount;
+    uint instanceCount;
+    uint firstVertex;
+    uint firstInstance;
+} drawArgs;
+
+layout(std430, set=0, binding=4) buffer DispatchIndirectArgs {
+    uint x;
+    uint y;
+    uint z;
+} dispatchArgs;
+
+
+
+void main() {
+  
+
+drawArgs.vertexCount = 6u;
+drawArgs.instanceCount = counter.aliveCount;
+drawArgs.firstVertex = 0u;
+drawArgs.firstInstance = 0u;
+
+
+dispatchArgs.x = (counter.aliveCount + 63u) / 64u;
+dispatchArgs.y = 1u;
+dispatchArgs.z = 1u;
+}

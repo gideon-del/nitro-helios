@@ -1,0 +1,44 @@
+#version 450
+layout(local_size_x=64) in;
+
+struct Particle {
+       vec4 position;
+       vec4 velocity;
+        vec4 color;
+        float lifetime;
+        float age;
+        float size;
+};
+
+layout(std430,set=0, binding=2) buffer ParticleBuffer {
+ Particle particles[];
+};
+
+layout(std430,set=0, binding=3) buffer AliveIndices {
+    uint indices[];
+} aliveList;
+
+layout(std430, set=0, binding=4) buffer AliveCounter {
+    uint aliveCount;
+} counter;
+layout(push_constant) uniform PushConstant {
+ uint particleCount;
+};
+
+
+void main() {
+uint id = gl_GlobalInvocationID.x;
+if(id >= particleCount) return;
+
+Particle p = particles[id];
+
+if(p.age < p.lifetime){
+    uint slot = atomicAdd(counter.aliveCount, 1);
+    aliveList.indices[slot] = id;
+} 
+
+
+
+}
+
+

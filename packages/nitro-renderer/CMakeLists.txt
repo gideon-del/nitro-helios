@@ -39,6 +39,8 @@ add_library(nitro-renderer STATIC
  src/passes/ssao-pass.cpp
  src/passes/fxaa-pass.cpp
  src/render-graph.cpp
+ src/passes/particle-update-pass.cpp
+ src/passes/particle-billboard-pass.cpp
 )
 
 find_package(glm REQUIRED)

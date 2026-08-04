@@ -150,7 +150,7 @@ namespace nitro::rhi::metal
     {
         encoder->setStencilReferenceValue(reference);
     };
-    void MetalCommandBuffer::draw(uint32_t vertexCount)
+    void MetalCommandBuffer::draw(uint32_t vertexCount, uint32_t instanceCount)
     {
 
         if (!m_pipeline)
@@ -159,7 +159,7 @@ namespace nitro::rhi::metal
         }
         m_FrameStats.drawCalls += 1;
         m_FrameStats.triangles += vertexCount / 3;
-        encoder->drawPrimitives(m_pipeline->topology, NS::UInteger(0), NS::UInteger(vertexCount));
+        encoder->drawPrimitives(m_pipeline->topology, NS::UInteger(0), NS::UInteger(vertexCount), NS::UInteger(instanceCount), NS::UInteger(0));
     }
     void MetalCommandBuffer::bindDescriptorSet(RHIDescriptorSet *set, uint32_t mainBinding)
     {
@@ -215,7 +215,7 @@ namespace nitro::rhi::metal
             m_computeEncoder->setTexture(texture, MetalDescriptorSet::s_getMetalTextureBinding(mainBinding, binding));
         }
     }
-    void MetalCommandBuffer::drawIndexed(uint32_t indexCount)
+    void MetalCommandBuffer::drawIndexed(uint32_t indexCount, uint32_t instanceCount)
     {
         if (!m_pipeline)
         {
@@ -229,7 +229,8 @@ namespace nitro::rhi::metal
                                        NS::UInteger(indexCount),
                                        MTL::IndexTypeUInt32,
                                        m_currentIndexBuffer->buffer,
-                                       NS::UInteger(0));
+                                       NS::UInteger(0),
+                                       NS::UInteger(instanceCount));
     }
     void MetalCommandBuffer::dispatch(uint32_t x, uint32_t y, uint32_t z)
     {

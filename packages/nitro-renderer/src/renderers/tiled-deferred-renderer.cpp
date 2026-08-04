@@ -175,6 +175,8 @@ namespace nitro::renderer
         m_fxaaPass = std::make_unique<FXAAPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
 
         m_mainScenePass = std::make_shared<MainScenePass>(m_device, m_swapchain, shaderDir, isMetal);
+        m_particleUpdatePass = std::make_unique<ParticleUpdatePass>(m_device, shaderDir, isMetal);
+        m_particleBillboardPass = std::make_unique<ParticleBillboardPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
 
         buildRenderGraph();
     }
@@ -193,6 +195,7 @@ namespace nitro::renderer
         m_fxaaPass->resize(width, height);
         m_autoExposurePass->resize(width, height);
         m_colorGradingPass->resize(width, height);
+        m_particleBillboardPass->resize(width, height);
 
         m_renderGraph.allocateTextures(m_device, width, height);
         m_renderGraph.bindPassResources(m_renderGraph.buildResources());
@@ -517,14 +520,73 @@ namespace nitro::renderer
             },
         });
 
+        auto particleBuffer = m_renderGraph.declareBuffer({"Particle Buffer",
+                                                           sizeof(ParticleDesc) * ParticleUpdatePass::s_MAX_PARTICLE_COUNT,
+                                                           rhi::BufferDesc::Usage::Storage});
+
+        m_renderGraph.addPass({
+            "Particle Update",
+            {{lightShadedTex, rhi::ResourceState::ShaderRead}},
+            {},
+            {},
+            {{particleBuffer, rhi::ResourceState::ShaderWrite}},
+            [](const RGResources &resources) {},
+            [particleBuffer, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            {
+                ParticlePushConstant pc;
+                pc.dt = float(ctx.deltaTime);
+                pc.particleCount = ParticleUpdatePass::s_MAX_PARTICLE_COUNT;
+
+                m_particleUpdatePass->execute(cmd, pc, resources, particleBuffer);
+            },
+        });
+
+        auto particleTexture = m_renderGraph.declareTexture({"Particle Texture",
+                                                             rhi::TextureDesc::ImageFormat::ColorRGBA16});
+
+        m_renderGraph.addPass({
+            "Particle Billboard",
+            {},
+            {{particleTexture, rhi::ResourceState::RenderTarget}},
+            {{particleBuffer, rhi::ResourceState::ShaderRead}},
+            {},
+            [particleTexture, particleBuffer, this](const RGResources &resources)
+            {
+                m_particleBillboardPass->bindResources(resources, {particleBuffer,
+                                                                   particleTexture});
+            },
+            [particleTexture, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            {
+                GeometryCameraBuffer geometryCamera;
+                geometryCamera.view = ctx.camera->getView();
+                geometryCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), settings.viewportSize.x / settings.viewportSize.y, ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
+
+                if (!m_isMetal)
+                {
+                    geometryCamera.proj[1][1] *= -1.0f;
+                }
+
+                glm::mat4 inverseView = glm::inverse(geometryCamera.view);
+
+                ParticleBillboardUBO ubo;
+                ubo.view = geometryCamera.view;
+                ubo.proj = geometryCamera.proj;
+                ubo.right = inverseView[0];
+                ubo.up = inverseView[1];
+
+                m_particleBillboardPass->execute(cmd, ubo, ParticleUpdatePass::s_MAX_PARTICLE_COUNT);
+                m_currentSceneTextureID = particleTexture;
+            },
+        });
+
         auto bloomTexture = m_renderGraph.declareTexture({"Bloom Texture",
                                                           rhi::TextureDesc::ImageFormat::ColorRGBA16, 0, 0, true});
 
         m_renderGraph.addPass({
             "Bloom",
-            {{lightShadedTex, rhi::ResourceState::ShaderRead}},
+            {{particleTexture, rhi::ResourceState::ShaderRead}},
             {{bloomTexture, rhi::ResourceState::ShaderWrite}},
-            {},
+            {{particleBuffer, rhi::ResourceState::ShaderRead}},
             {},
             [](const RGResources &resources) {},
             [bloomTexture, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
@@ -666,7 +728,7 @@ namespace nitro::renderer
         m_renderGraph.allocateTextures(m_device, m_swapchain->getWidth(), m_swapchain->getHeight());
         m_renderGraph.allocateBuffers(m_device);
         m_renderGraph.bindPassResources(m_renderGraph.buildResources());
-
+        m_particleUpdatePass->uploadInitalParticles(m_renderGraph.buildResources(), particleBuffer);
         m_compiledFrameGraph = m_renderGraph.compileFrameGraph();
     }
 } // namespace nitro::renderer

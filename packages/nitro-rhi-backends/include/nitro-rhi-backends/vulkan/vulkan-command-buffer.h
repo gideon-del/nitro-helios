@@ -34,8 +34,8 @@ namespace nitro::rhi::vulkan
         void setScissor(const RHIScissor &scissor) override;
         void setStencilReference(uint32_t reference) override;
         void bufferBarrier(RHIBuffer *buffer) override;
-        void draw(uint32_t vertexCount) override;
-        void drawIndexed(uint32_t indexCount) override;
+        void draw(uint32_t vertexCount, uint32_t instanceCount = 1) override;
+        void drawIndexed(uint32_t indexCount, uint32_t instanceCount = 1) override;
         FrameStats getFrameStats() override;
         void resetFrameStats() override;
         void updateVertexCount(uint32_t count) override;

@@ -8,7 +8,7 @@ namespace nitro::renderer
     struct SSAOSamples
     {
         std::vector<glm::vec4> samples;
-        void generate(uint32_t count = 32)
+        void generate(uint32_t count = 16)
         {
             std::uniform_real_distribution<float> randomFloats(0.0f, 1.0f);
             std::default_random_engine generator;

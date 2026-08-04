@@ -19,3 +19,5 @@
 #include "color-grading-pass.h"
 #include "ssao-pass.h"
 #include "fxaa-pass.h"
+#include "particle-update-pass.h"
+#include "particle-billboard-pass.h"

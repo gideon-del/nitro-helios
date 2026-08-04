@@ -32,8 +32,8 @@ namespace nitro::rhi::metal
         void setScissor(const RHIScissor &scissor) override;
         void setStencilReference(uint32_t reference) override;
         void bufferBarrier(RHIBuffer *buffer) override;
-        void draw(uint32_t vertexCount) override;
-        void drawIndexed(uint32_t indexCount) override;
+        void draw(uint32_t vertexCount, uint32_t instanceCount = 1) override;
+        void drawIndexed(uint32_t indexCount, uint32_t instanceCount = 1) override;
         void dispatch(uint32_t x, uint32_t y, uint32_t z) override;
         void submit() override;
         void present() override;

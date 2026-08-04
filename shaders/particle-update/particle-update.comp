@@ -1,0 +1,69 @@
+#version 450
+layout(local_size_x=64) in;
+
+struct Particle {
+       vec4 position;
+       vec4 velocity;
+        vec4 color;
+        float lifetime;
+        float age;
+        float size;
+};
+
+layout(push_constant) uniform PushConstant {
+      float dt;
+        float gravity;
+        float drag;
+        uint particleCount;
+};
+
+layout(std430, set=0, binding = 2)  buffer ParticleBuffer {
+    Particle particles[];
+};
+
+layout(std430,set=0, binding=3)  buffer AliveIndices {
+    uint indices[];
+} aliveList;
+
+layout(std430, set=0, binding=4) buffer AliveCounter {
+    uint aliveCount;
+} counter;
+
+layout(std430,set=0, binding=5) buffer DeadList {
+    uint count;
+    uint indices[];
+} deadList;
+
+float hash(uint n) {
+    n = (n << 13u) ^ n;
+    n = n * (n * n * 15731u + 0x789221u) + 0x6136312Bu;
+    return float(n & 0x7fffffffu) / float(0x7fffffff);
+}
+
+
+
+void main() {
+    uint id = gl_GlobalInvocationID.x;
+
+    if(id >= counter.aliveCount) return;
+    
+    uint particleIdx = aliveList.indices[id];
+    Particle p = particles[particleIdx];
+
+    p.age += dt;
+
+    if(p.age >= p.lifetime) {
+     uint slot = atomicAdd(deadList.count, 1u);
+     deadList.indices[slot] = particleIdx;
+    }else {
+        p.velocity.y -= gravity * dt;
+        p.velocity.xyz *= pow(drag, dt);
+        p.position.xyz += p.velocity.xyz * dt;
+
+       float t = p.age / p.lifetime;
+        p.color.a = 1.0 - smoothstep(0.7, 1.0, t);
+      
+    }
+
+    particles[particleIdx] = p;
+}

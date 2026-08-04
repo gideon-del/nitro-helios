@@ -244,25 +244,25 @@ namespace nitro::rhi::vulkan
             nullptr);
     }
 
-    void VulkanCommandBuffer::draw(uint32_t vertexCount)
+    void VulkanCommandBuffer::draw(uint32_t vertexCount, uint32_t instanceCount)
     {
         m_FrameStats.triangles += vertexCount / 3;
         m_FrameStats.drawCalls += 1;
         vkCmdDraw(
             cmd,
             vertexCount,
-            1,
+            instanceCount,
             0,
             0);
     }
-    void VulkanCommandBuffer::drawIndexed(uint32_t indexCount)
+    void VulkanCommandBuffer::drawIndexed(uint32_t indexCount, uint32_t instanceCount)
     {
         m_FrameStats.triangles += indexCount / 3;
         m_FrameStats.drawCalls += 1;
         vkCmdDrawIndexed(
             cmd,
             indexCount,
-            1,
+            instanceCount,
             0,
             0,
             0);
