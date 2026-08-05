@@ -12,6 +12,7 @@ struct EmitterDesc{
  float spread;
  float minLifetime;
  float maxLifetime;
+ float spawnAccumulator;
 };
 
 struct Particle {
@@ -94,10 +95,21 @@ void main() {
        
     EmitterDesc emitter = emitters[id];
     
-    uint numParticles = uint(float(emitter.spawnRate) * frameTime);
-
+    emitter.spawnAccumulator += float(emitter.spawnRate) * frameTime;
+    uint numParticles = uint(emitter.spawnAccumulator);
+    emitter.spawnAccumulator -= float(numParticles);
+     
     for(uint i=0; i < numParticles; i++) {
-    uint deadIdx = atomicAdd(deadList.count, -1) - 1;
+
+     uint oldCount, newCount;
+
+     do {
+        oldCount = deadList.count;
+        if(oldCount == 0u) break;
+        newCount = oldCount -1;
+     } while(atomicCompSwap(deadList.count, oldCount, newCount) != oldCount);
+
+    uint deadIdx = oldCount - 1;
     if(deadIdx >= maxParticles) break;
      
       uint particleIdx = deadList.indices[deadIdx];
@@ -120,11 +132,12 @@ void main() {
      particles[particleIdx].velocity =vec4( speed * randomDirection, 0.0);
      particles[particleIdx].position = emitter.position;
      
-
     
 
 
     };
+
+    emitters[id].spawnAccumulator = emitter.spawnAccumulator;
   
     
     

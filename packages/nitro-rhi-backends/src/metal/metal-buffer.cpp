@@ -25,9 +25,9 @@ namespace nitro::rhi::metal
         if (buffer)
             buffer->release();
     }
-    void MetalBuffer::upload(const void *data, size_t size)
+    void MetalBuffer::upload(const void *data, size_t size, size_t offset)
     {
-        memcpy(buffer->contents(), data, size);
+        memcpy(static_cast<char *>(buffer->contents()) + offset, data, size);
     }
 
     size_t MetalBuffer::getSize() const

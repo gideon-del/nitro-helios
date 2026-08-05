@@ -15,6 +15,9 @@ namespace nitro::renderer
             {rhi::RHIDescriptorBinding::Type::UniformBuffer,
              rhi::RHIDescriptorBinding::ShaderStage::Vertex,
              3},
+            {rhi::RHIDescriptorBinding::Type::StorageBuffer,
+             rhi::RHIDescriptorBinding::ShaderStage::Vertex,
+             4},
 
         };
 
@@ -90,6 +93,7 @@ namespace nitro::renderer
         {
             resource.descriptorSet->writeBuffer(resources.getBuffer(particleResource.particleId), 2);
             resource.descriptorSet->writeBuffer(resource.uniformBuffer, 3);
+            resource.descriptorSet->writeBuffer(resources.getBuffer(particleResource.aliveList), 4);
             resource.descriptorSet->commit();
         }
     };
@@ -113,7 +117,7 @@ namespace nitro::renderer
         m_height = height;
     };
 
-    void ParticleBillboardPass::execute(rhi::RHICommandBuffer *cmd, const ParticleBillboardUBO ubo, uint particleCount)
+    void ParticleBillboardPass::execute(rhi::RHICommandBuffer *cmd, const ParticleBillboardUBO ubo, rhi::RHIBuffer *indirectDraw)
     {
         auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
 
@@ -136,7 +140,7 @@ namespace nitro::renderer
 
         cmd->setScissor(scissors);
 
-        cmd->draw(6, particleCount);
+        cmd->drawIndirect(indirectDraw);
 
         cmd->endRenderPass();
     }

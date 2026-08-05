@@ -5,9 +5,20 @@ namespace nitro::renderer
     ParticleUpdatePass::ParticleUpdatePass(std::shared_ptr<rhi::RHIDevice> device, std::string shaderDir, bool isMetal)
         : m_device(device)
     {
-        std::vector<rhi::RHIDescriptorBinding> bindings{{rhi::RHIDescriptorBinding::Type::StorageBuffer,
-                                                         rhi::RHIDescriptorBinding::ShaderStage::Compute,
-                                                         2}};
+        std::vector<rhi::RHIDescriptorBinding> bindings{
+            {rhi::RHIDescriptorBinding::Type::StorageBuffer,
+             rhi::RHIDescriptorBinding::ShaderStage::Compute,
+             2},
+            {rhi::RHIDescriptorBinding::Type::StorageBuffer,
+             rhi::RHIDescriptorBinding::ShaderStage::Compute,
+             3},
+            {rhi::RHIDescriptorBinding::Type::StorageBuffer,
+             rhi::RHIDescriptorBinding::ShaderStage::Compute,
+             4},
+            {rhi::RHIDescriptorBinding::Type::StorageBuffer,
+             rhi::RHIDescriptorBinding::ShaderStage::Compute,
+             5},
+        };
 
         m_descriptorLayout = m_device->createDescriptorLayout(bindings);
 
@@ -44,41 +55,35 @@ namespace nitro::renderer
         m_device->destroyDescriptorLayout(m_descriptorLayout);
     }
 
-    void ParticleUpdatePass::uploadInitalParticles(const RGResources &resources, RGBufferID particleId)
+    void ParticleUpdatePass::uploadDeadList(const RGResources &resources, RGBufferID deadListID)
     {
         if (m_uploadedParticles)
             return;
-        rhi::RHIBuffer *particleBuffer = resources.getBuffer(particleId);
-        std::vector<ParticleDesc> initialParticles(s_MAX_PARTICLE_COUNT);
-        std::mt19937 rng(42);
-        std::uniform_real_distribution<float> velocityDist(-1.0f, 1.0f);
-        std::uniform_real_distribution<float> ageDist(0.0f, 5.0f);
+        rhi::RHIBuffer *deadListBuffer = resources.getBuffer(deadListID);
+        uint initialCount = s_MAX_PARTICLE_COUNT;
+        std::vector<uint> initialParticles(s_MAX_PARTICLE_COUNT);
 
-        for (auto &p : initialParticles)
+        for (uint i = 0; i < s_MAX_PARTICLE_COUNT; i++)
         {
-            p.position = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-            p.velocity = glm::vec4(velocityDist(rng), velocityDist(rng), velocityDist(rng), 1.0f);
-            p.age = ageDist(rng);
-            p.color = glm::vec4(1.0f);
-            p.lifetime = 5.0f;
-            p.size = 0.05f;
+            initialParticles[i] = i;
         }
-
-        particleBuffer->upload(initialParticles.data(), sizeof(ParticleDesc) * s_MAX_PARTICLE_COUNT);
-
-        m_descriptorSet->writeBuffer(particleBuffer, 2);
-        m_descriptorSet->commit();
-
+        deadListBuffer->upload(&initialCount, sizeof(uint), 0);
+        deadListBuffer->upload(initialParticles.data(), sizeof(uint) * s_MAX_PARTICLE_COUNT, sizeof(uint));
         m_uploadedParticles = true;
     }
-
-    void ParticleUpdatePass::execute(rhi::RHICommandBuffer *cmd, ParticlePushConstant pc, const RGResources &resources, const RGBufferID particleId)
+    void ParticleUpdatePass::bindResources(const RGResources &resources, const ParticleUpdateResourceIDs ids)
+    {
+        m_descriptorSet->writeBuffer(resources.getBuffer(ids.particleId), 2);
+        m_descriptorSet->writeBuffer(resources.getBuffer(ids.aliveIndicesId), 3);
+        m_descriptorSet->writeBuffer(resources.getBuffer(ids.aliveCounterId), 4);
+        m_descriptorSet->writeBuffer(resources.getBuffer(ids.deadListId), 5);
+        m_descriptorSet->commit();
+    }
+    void ParticleUpdatePass::execute(rhi::RHICommandBuffer *cmd, ParticlePushConstant pc, rhi::RHIBuffer *indirectDispatch)
     {
         cmd->bindComputePipeline(m_computePipeline);
         cmd->bindComputeDescriptorSet(m_descriptorSet, 0);
         cmd->setPushConstant(&pc, sizeof(ParticlePushConstant), 1, true);
-
-        uint32_t groupCount = (s_MAX_PARTICLE_COUNT + 63) / 64;
-        cmd->dispatch(groupCount, 1, 1);
+        cmd->dispatchIndirect(indirectDispatch);
     }
 } // namespace nitro::renderer

@@ -11,7 +11,7 @@ namespace nitro::rhi::vulkan
         VulkanBuffer(VulkanDevice *device, const BufferDesc &desc);
         ~VulkanBuffer() override;
 
-        void upload(const void *data, size_t size) override;
+        void upload(const void *data, size_t size, size_t offset = 0) override;
         size_t getSize() const override;
         void *map() override;
         void unmap() override;

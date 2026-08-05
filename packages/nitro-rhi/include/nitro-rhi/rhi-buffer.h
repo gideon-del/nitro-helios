@@ -1,6 +1,7 @@
 #pragma once
 #include <cstddef>
 #include <iostream>
+#include "rhi-utils.h"
 namespace nitro::rhi
 {
     struct BufferDesc
@@ -19,7 +20,8 @@ namespace nitro::rhi
             Uniform,
             Storage,
             Staging,
-            TransferDst
+            TransferDst,
+            Indirect
         } usage;
 
         size_t size;
@@ -31,10 +33,17 @@ namespace nitro::rhi
     {
     public:
         virtual ~RHIBuffer() = default;
-        virtual void upload(const void *data, size_t size) = 0;
+        virtual void upload(const void *data, size_t size, size_t offset = 0) = 0;
         virtual size_t getSize() const = 0;
 
         virtual void *map() = 0;
         virtual void unmap() = 0;
+    };
+
+    struct BufferBarrier
+    {
+        RHIBuffer *buffer;
+        ResourceState before;
+        ResourceState after;
     };
 }

@@ -21,3 +21,6 @@
 #include "fxaa-pass.h"
 #include "particle-update-pass.h"
 #include "particle-billboard-pass.h"
+#include "particle-emitter-pass.h"
+#include "particle-compact-pass.h"
+#include "particle-indirect-pass.h"

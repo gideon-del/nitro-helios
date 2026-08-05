@@ -161,6 +161,21 @@ namespace nitro::rhi::metal
         m_FrameStats.triangles += vertexCount / 3;
         encoder->drawPrimitives(m_pipeline->topology, NS::UInteger(0), NS::UInteger(vertexCount), NS::UInteger(instanceCount), NS::UInteger(0));
     }
+    void MetalCommandBuffer::drawIndirect(RHIBuffer *indirectBuffer, size_t offset)
+    {
+        if (!m_pipeline)
+        {
+            throw std::runtime_error("Must bind pipeline for draws");
+        }
+
+        auto *metalBuffer =
+            static_cast<MetalBuffer *>(indirectBuffer);
+
+        encoder->drawPrimitives(
+            m_pipeline->topology,
+            metalBuffer->buffer,
+            NS::UInteger(offset));
+    }
     void MetalCommandBuffer::bindDescriptorSet(RHIDescriptorSet *set, uint32_t mainBinding)
     {
         MetalDescriptorSet *metalSet = reinterpret_cast<MetalDescriptorSet *>(set);
@@ -249,6 +264,30 @@ namespace nitro::rhi::metal
 
         m_computeEncoder->dispatchThreadgroups(threadgroupsPerGrid, threadsPerThreadgroup);
     };
+
+    void MetalCommandBuffer::dispatchIndirect(
+        RHIBuffer *indirectBuffer,
+        size_t offset)
+    {
+        if (!m_computePipeline)
+        {
+            throw std::runtime_error(
+                "Metal Compute Pipeline must be bound before dispatch");
+        }
+
+        auto *metalBuffer =
+            static_cast<MetalBuffer *>(indirectBuffer);
+
+        MTL::Size threadsPerThreadgroup(
+            m_computePipeline->threadGroupSizeX,
+            m_computePipeline->threadGroupSizeY,
+            m_computePipeline->threadGroupSizeZ);
+
+        m_computeEncoder->dispatchThreadgroups(
+            metalBuffer->buffer,
+            NS::UInteger(offset),
+            threadsPerThreadgroup);
+    }
     void MetalCommandBuffer::submit()
     {
     }
@@ -278,7 +317,7 @@ namespace nitro::rhi::metal
     {
         m_FrameStats.vertices += count;
     }
-    void MetalCommandBuffer::bufferBarrier(RHIBuffer *buffer) {}
+    void MetalCommandBuffer::bufferBarrier(const BufferBarrier &barrier) {}
     void MetalCommandBuffer::generateMipmaps(RHITexture *texture)
     {
         auto *metalTexture = static_cast<MetalTexture *>(texture);
@@ -336,6 +375,16 @@ namespace nitro::rhi::metal
             0,
             16,
             16);
+        blitEncoder->endEncoding();
+    }
+
+    void MetalCommandBuffer::fillBuffer(RHIBuffer *buffer, size_t offset, size_t size, uint32_t value)
+    {
+        MetalBuffer *metalBuffer = static_cast<MetalBuffer *>(buffer);
+        MTL::BlitCommandEncoder *blitEncoder = commandBuffer->blitCommandEncoder();
+        blitEncoder->fillBuffer(metalBuffer->buffer,
+                                NS::Range(offset, size),
+                                (uint8_t)value);
         blitEncoder->endEncoding();
     }
 } // namespace nitro::rhi::metal

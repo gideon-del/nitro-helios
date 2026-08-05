@@ -10,7 +10,7 @@ namespace nitro::rhi::metal
     public:
         MetalBuffer(MetalDevice *device, const BufferDesc &desc);
         ~MetalBuffer() override;
-        void upload(const void *data, size_t size) override;
+        void upload(const void *data, size_t size, size_t offset = 0) override;
         size_t getSize() const override;
         void *map() override;
         void unmap() override;

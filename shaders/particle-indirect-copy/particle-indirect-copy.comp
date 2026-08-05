@@ -2,7 +2,7 @@
 layout(local_size_x=1) in;
 
 
-layout(std430, set=0, binding=2) buffer AliveCounter {
+layout(std430, set=0, binding=2) readonly buffer AliveCounter {
     uint aliveCount;
 } counter;
 

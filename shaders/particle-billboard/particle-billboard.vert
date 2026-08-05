@@ -28,6 +28,7 @@ layout(std430,set=0, binding=4)readonly  buffer AliveIndices {
     uint indices[];
 } aliveList;
 
+
 void main() {
   vec2 offsets[6] = vec2[](
     vec2(-0.5,-0.5), vec2(0.5,-0.5), vec2(-0.5,0.5),

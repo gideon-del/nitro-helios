@@ -1,23 +1,9 @@
 #pragma once
 #include <cstdint>
-
+#include "rhi-utils.h"
 namespace nitro::rhi
 {
 
-    enum class ImageLayout
-    {
-        Undefined,
-        ColorAttachment,
-        DepthStencilAttachment,
-        DepthAttachmentStencilReadOnly,
-        DepthReadOnlyStencilAttachment,
-        DepthStencilReadOnly,
-        ShaderReadOnly,
-        TransferSrc,
-        TransferDst,
-        Present,
-        General
-    };
     struct TextureDesc
     {
         enum class Sampler
@@ -78,23 +64,6 @@ namespace nitro::rhi
             static_cast<uint32_t>(b));
     };
 
-    enum class ResourceState
-    {
-        Undefined,
-
-        CopySrc,
-        CopyDst,
-
-        ShaderRead,
-        ShaderWrite,
-
-        RenderTarget,
-        DepthWrite,
-        DepthRead,
-        DepthReadStencilWrite,
-
-        Present,
-    };
     struct TextureSubresource
     {
         uint32_t baseMip = 0;

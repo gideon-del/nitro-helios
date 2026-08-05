@@ -189,9 +189,17 @@ namespace nitro::renderer
         cmd->bindComputePipeline(m_computePipeline);
         cmd->bindComputeDescriptorSet(resource.descriptorSet, 0);
         cmd->dispatch(m_tileSizeX, m_tileSizeY, 1);
-        cmd->bufferBarrier(resource.tileLightCountBuffer);
-        cmd->bufferBarrier(resource.tileLightIndicesBuffer);
-        cmd->bufferBarrier(resource.tileLightDebugBuffer);
+
+        rhi::BufferBarrier bufferBarrier;
+        bufferBarrier.before = rhi::ResourceState::ShaderWrite;
+        bufferBarrier.after = rhi::ResourceState::ShaderRead;
+        bufferBarrier.buffer = resource.tileLightCountBuffer;
+        cmd->bufferBarrier(bufferBarrier);
+        bufferBarrier.buffer = resource.tileLightIndicesBuffer;
+        cmd->bufferBarrier(bufferBarrier);
+        bufferBarrier.buffer = resource.tileLightDebugBuffer;
+
+        cmd->bufferBarrier(bufferBarrier);
     };
 
 } // namespace nitro::renderer

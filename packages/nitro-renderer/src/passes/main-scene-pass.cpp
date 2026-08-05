@@ -87,7 +87,7 @@ namespace nitro::renderer
         m_bloomPanel.draw(settings.bloom);
         m_colorGradePanel.draw(settings.colorGrading);
         m_ssaoPanel.draw(settings.ssao);
-        renderGraph.drawImGui();
+        // renderGraph.drawImGui();
         // ImGui::Begin("Viewport");
 
         // ImGuiViewport *vp = ImGui::GetWindowViewport();

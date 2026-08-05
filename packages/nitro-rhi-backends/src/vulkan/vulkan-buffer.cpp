@@ -50,6 +50,8 @@ namespace nitro::rhi::vulkan
             return VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
         case BufferDesc::Usage::TransferDst:
             return VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        case BufferDesc::Usage::Indirect:
+            return VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
         default:
             return VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
         }
@@ -91,11 +93,11 @@ namespace nitro::rhi::vulkan
         };
     };
 
-    void VulkanBuffer::upload(const void *data, size_t size)
+    void VulkanBuffer::upload(const void *data, size_t size, size_t offset)
     {
         void *bufferData;
         vmaMapMemory(m_device->allocator, allocation, &bufferData);
-        memcpy(bufferData, data, size);
+        memcpy(static_cast<char *>(bufferData) + offset, data, size);
         vmaUnmapMemory(m_device->allocator, allocation);
     }
 

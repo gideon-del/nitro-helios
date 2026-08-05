@@ -255,6 +255,18 @@ namespace nitro::rhi::vulkan
             0,
             0);
     }
+    void VulkanCommandBuffer::drawIndirect(RHIBuffer *indirectBuffer, size_t offset)
+    {
+
+        VulkanBuffer *vulkanIndirectBuffer = reinterpret_cast<VulkanBuffer *>(indirectBuffer);
+
+        vkCmdDrawIndirect(
+            cmd,
+            vulkanIndirectBuffer->buffer,
+            offset,
+            1,
+            sizeof(VkDrawIndirectCommand));
+    }
     void VulkanCommandBuffer::drawIndexed(uint32_t indexCount, uint32_t instanceCount)
     {
         m_FrameStats.triangles += indexCount / 3;
@@ -266,6 +278,16 @@ namespace nitro::rhi::vulkan
             0,
             0,
             0);
+    }
+    void VulkanCommandBuffer::dispatchIndirect(RHIBuffer *indirectBuffer, size_t offset)
+    {
+
+        VulkanBuffer *vulkanIndirectBuffer = reinterpret_cast<VulkanBuffer *>(indirectBuffer);
+
+        vkCmdDispatchIndirect(
+            cmd,
+            vulkanIndirectBuffer->buffer,
+            offset);
     }
 
     void VulkanCommandBuffer::submit()
@@ -412,33 +434,6 @@ namespace nitro::rhi::vulkan
             x,
             y,
             z);
-    }
-
-    void VulkanCommandBuffer::bufferBarrier(RHIBuffer *buffer)
-    {
-        VulkanBuffer *vulkanBuffer = reinterpret_cast<VulkanBuffer *>(buffer);
-
-        VkBufferMemoryBarrier barrier{};
-        barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-        barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.offset = 0;
-        barrier.size = VK_WHOLE_SIZE;
-        barrier.buffer = vulkanBuffer->buffer;
-
-        vkCmdPipelineBarrier(
-            cmd,
-            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-            0,
-            0,
-            nullptr,
-            1,
-            &barrier,
-            0,
-            nullptr);
     }
 
     void VulkanCommandBuffer::generateMipmaps(RHITexture *texture)
@@ -673,6 +668,7 @@ namespace nitro::rhi::vulkan
             return VK_PIPELINE_STAGE_2_NONE;
         }
     }
+
     void VulkanCommandBuffer::textureBarrier(const TextureBarrier &barrier)
     {
         VulkanTexture *vulkanTexture = reinterpret_cast<VulkanTexture *>(barrier.texture);
@@ -703,6 +699,55 @@ namespace nitro::rhi::vulkan
         vkCmdPipelineBarrier2(cmd, &dependencyInfo);
         vulkanTexture->currentLayout = convertResourceStateToImageLayout(barrier.after);
     }
+
+    VkPipelineStageFlags convertResourceStateToBufferStage(ResourceState state)
+    {
+        switch (state)
+        {
+        case ResourceState::Undefined:
+            return VK_PIPELINE_STAGE_NONE;
+
+        case ResourceState::CopySrc:
+        case ResourceState::CopyDst:
+            return VK_PIPELINE_STAGE_TRANSFER_BIT;
+
+        case ResourceState::ShaderRead:
+            return VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+                   VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+
+        case ResourceState::ShaderWrite:
+            return VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+        default:
+            return VK_PIPELINE_STAGE_NONE;
+        }
+    }
+    void VulkanCommandBuffer::bufferBarrier(const BufferBarrier &barrier)
+    {
+        VulkanBuffer *vulkanBuffer = reinterpret_cast<VulkanBuffer *>(barrier.buffer);
+
+        VkBufferMemoryBarrier memoryBarrier{};
+        memoryBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+        memoryBarrier.srcAccessMask = convertResourceStateToAccessMask(barrier.before);
+        memoryBarrier.dstAccessMask = convertResourceStateToAccessMask(barrier.after);
+        memoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        memoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        memoryBarrier.offset = 0;
+        memoryBarrier.size = VK_WHOLE_SIZE;
+        memoryBarrier.buffer = vulkanBuffer->buffer;
+
+        vkCmdPipelineBarrier(
+            cmd,
+            convertResourceStateToBufferStage(barrier.before),
+            convertResourceStateToBufferStage(barrier.after),
+            0,
+            0,
+            nullptr,
+            1,
+            &memoryBarrier,
+            0,
+            nullptr);
+    }
+
     void VulkanCommandBuffer::copyTextureToBuffer(RHITexture *texture, RHIBuffer *buffer)
     {
         VulkanBuffer *vulkanBuffer = reinterpret_cast<VulkanBuffer *>(buffer);
@@ -730,5 +775,12 @@ namespace nitro::rhi::vulkan
         vkCmdCopyImageToBuffer2(
             cmd,
             &bufferInfo);
+    }
+
+    void VulkanCommandBuffer::fillBuffer(RHIBuffer *buffer, size_t offset, size_t size, uint32_t value)
+    {
+        VulkanBuffer *vulkanBuffer = reinterpret_cast<VulkanBuffer *>(buffer);
+
+        vkCmdFillBuffer(cmd, vulkanBuffer->buffer, (VkDeviceSize)offset, (VkDeviceSize)size, value);
     }
 }

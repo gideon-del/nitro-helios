@@ -18,6 +18,7 @@ namespace nitro::rhi
     class RHIDescriptorSet;
     class RHIRenderPass;
     struct TextureBarrier;
+    struct BufferBarrier;
     struct RHIRenderPassDesc
     {
         float clearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
@@ -46,6 +47,19 @@ namespace nitro::rhi
         uint32_t height;
     };
 
+    struct DrawIndirectArgs
+    {
+        uint32_t vertexCount;
+        uint32_t instanceCount;
+        uint32_t firstVertex;
+        uint32_t firstInstance;
+    };
+    struct DispatchIndirectArgs
+    {
+        uint32_t x;
+        uint32_t y;
+        uint32_t z;
+    };
     class RHICommandBuffer
     {
     public:
@@ -66,11 +80,16 @@ namespace nitro::rhi
         virtual void setViewPort(const RHIViewport &viewport) = 0;
         virtual void setScissor(const RHIScissor &scissor) = 0;
         virtual void setStencilReference(uint32_t reference) = 0;
-        virtual void bufferBarrier(RHIBuffer *buffer) = 0;
         virtual void generateMipmaps(RHITexture *texture) = 0;
+        virtual void bufferBarrier(const BufferBarrier &barrier) = 0;
         virtual void textureBarrier(const TextureBarrier &barrier) = 0;
+        virtual void fillBuffer(RHIBuffer *buffer, size_t offset, size_t size, uint32_t value) = 0;
         virtual void draw(uint32_t vertexCount, uint32_t instanceCount = 1) = 0;
+
+        virtual void drawIndirect(RHIBuffer *indirectBuffer, size_t offset = 0) = 0;
+
         virtual void drawIndexed(uint32_t indexCount, uint32_t instanceCount = 1) = 0;
+
         virtual void copyTextureToBuffer(RHITexture *texture, RHIBuffer *buffer) = 0;
         virtual FrameStats getFrameStats() = 0;
         virtual void resetFrameStats() = 0;
@@ -78,6 +97,7 @@ namespace nitro::rhi
         virtual void submit() = 0;
         virtual void present() = 0;
         virtual void dispatch(uint32_t x, uint32_t y, uint32_t z) = 0;
+        virtual void dispatchIndirect(RHIBuffer *indirectBuffer, size_t offset = 0) = 0;
     };
 
 }

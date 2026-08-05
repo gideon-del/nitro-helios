@@ -9,6 +9,7 @@ namespace nitro::renderer
     struct ParticleBillboardResourceIDs
     {
         RGBufferID particleId;
+        RGBufferID aliveList;
         RGTextureID outputTexture;
     };
 
@@ -33,7 +34,7 @@ namespace nitro::renderer
         ~ParticleBillboardPass();
         void resize(uint32_t width, uint32_t height);
         void bindResources(const RGResources &resources, const ParticleBillboardResourceIDs particleResource);
-        void execute(rhi::RHICommandBuffer *cmd, const ParticleBillboardUBO ubo, uint particleCount);
+        void execute(rhi::RHICommandBuffer *cmd, const ParticleBillboardUBO ubo, rhi::RHIBuffer *indirectDraw);
 
     private:
         std::shared_ptr<rhi::RHIDevice> m_device;

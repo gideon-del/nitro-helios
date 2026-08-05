@@ -24,13 +24,22 @@ namespace nitro::renderer
         uint particleCount;
     };
 
+    struct ParticleUpdateResourceIDs
+    {
+        RGBufferID particleId;
+        RGBufferID aliveIndicesId;
+        RGBufferID aliveCounterId;
+        RGBufferID deadListId;
+    };
+
     class ParticleUpdatePass
     {
     public:
         ParticleUpdatePass(std::shared_ptr<rhi::RHIDevice> device, std::string shaderDir, bool isMetal);
         ~ParticleUpdatePass();
-        void uploadInitalParticles(const RGResources &resources, RGBufferID particleId);
-        void execute(rhi::RHICommandBuffer *cmd, ParticlePushConstant pc, const RGResources &resources, const RGBufferID particleId);
+        void uploadDeadList(const RGResources &resources, RGBufferID deadList);
+        void bindResources(const RGResources &resources, const ParticleUpdateResourceIDs ids);
+        void execute(rhi::RHICommandBuffer *cmd, ParticlePushConstant pc, rhi::RHIBuffer *indirectDispatch);
         static constexpr uint32_t s_MAX_PARTICLE_COUNT = 1000000;
 
     private:
