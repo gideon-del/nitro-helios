@@ -304,7 +304,7 @@ namespace nitro::renderer
                     system.syncFieldToGPU(emitterBuffer, i, offsetof(EmitterDesc, wind),
                                           &emitter.wind, sizeof(float) * 3);
                 }
-                if (ImGui::SliderFloat3("Spawn Area", &emitter.spawnAreaExtent.x, -60.0f, 60.0f))
+                if (ImGui::SliderFloat3("Spawn Area", &emitter.spawnAreaExtent.x, -200.0f, 200.0f))
                 {
                     system.syncFieldToGPU(emitterBuffer, i, offsetof(EmitterDesc, spawnAreaExtent),
                                           &emitter.spawnAreaExtent, sizeof(float) * 3);

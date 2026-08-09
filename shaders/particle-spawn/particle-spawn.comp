@@ -191,8 +191,8 @@ particles[particleIdx].position = emitter.position + vec4(spawnOffset, 0.0);
      particles[particleIdx].velocity =vec4( speed * randomDirection, 0.0);
         vec3 spawnOffset = vec3(
     (rand(seed + 2u) * 2.0 - 1.0) * emitter.spawnAreaExtent.x,
-    0.0,
-    (rand(seed + 3u) * 2.0 - 1.0) * emitter.spawnAreaExtent.z
+    (rand(seed + 3u) * 2.0 - 1.0) * emitter.spawnAreaExtent.y,
+    (rand(seed + 4u) * 2.0 - 1.0) * emitter.spawnAreaExtent.z
 );
 particles[particleIdx].position = emitter.position + vec4(spawnOffset, 0.0);
      particles[particleIdx].emitterId = id;
