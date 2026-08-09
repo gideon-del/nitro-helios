@@ -49,7 +49,7 @@ namespace nitro::renderer
         m_device->destroyDescriptorLayout(m_descriptorLayout);
     }
 
-    void MainScenePass::execute(rhi::RHICommandBuffer *cmd, rhi::RHIRenderPassDesc &desc, RendererSettings &settings, rhi::RHITexture *inputTexture, RenderGraph &renderGraph)
+    void MainScenePass::execute(rhi::RHICommandBuffer *cmd, rhi::RHIRenderPassDesc &desc, RendererSettings &settings, rhi::RHITexture *inputTexture, RenderGraph &renderGraph, ParticleEmitterSystem &system, rhi::RHIBuffer *emitterBuffer)
     {
         auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
 
@@ -87,6 +87,7 @@ namespace nitro::renderer
         m_bloomPanel.draw(settings.bloom);
         m_colorGradePanel.draw(settings.colorGrading);
         m_ssaoPanel.draw(settings.ssao);
+        m_emitterPanel.draw(system, emitterBuffer);
         // renderGraph.drawImGui();
         // ImGui::Begin("Viewport");
 

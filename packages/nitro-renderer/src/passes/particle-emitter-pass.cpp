@@ -55,28 +55,30 @@ namespace nitro::renderer
 
     void ParticleEmitterPass::uploadInitialEmitter(const RGResources &resources, const RGBufferID emitterID)
     {
-        if (m_hasUploadedEmitters)
-            return;
+        // if (m_hasUploadedEmitters)
+        //     return;
 
-        EmitterDesc fireEmitter;
-        fireEmitter.position = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
-        fireEmitter.direction = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
-        fireEmitter.startColor = glm::vec4(1.0f, 0.9f, 0.3f, 1.0f);
-        fireEmitter.endColor = glm::vec4(0.8f, 0.15f, 0.0f, 1.0f);
-        fireEmitter.spawnRate = 500.0f;
-        fireEmitter.initialSpeed = 1.5f;
-        fireEmitter.speedVariance = 0.5f;
-        fireEmitter.spread = glm::radians(15.0f);
-        fireEmitter.minLifetime = 0.8f;
-        fireEmitter.maxLifetime = 1.5f;
+        // EmitterDesc fireEmitter;
+        // fireEmitter.position = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+        // fireEmitter.direction = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
+        // fireEmitter.startColor = glm::vec4(1.0f, 0.9f, 0.3f, 1.0f);
+        // fireEmitter.endColor = glm::vec4(0.8f, 0.15f, 0.0f, 1.0f);
+        // fireEmitter.spawnRate = 1000.0f;
+        // fireEmitter.initialSpeed = 1.5f;
+        // fireEmitter.speedVariance = 0.5f;
+        // fireEmitter.spread = glm::radians(15.0f);
+        // fireEmitter.minLifetime = 0.8f;
+        // fireEmitter.maxLifetime = 2.0f;
+        // fireEmitter.startSize = 1.4f;
+        // fireEmitter.endSize = 0.6f;
 
-        std::vector<EmitterDesc> initialEmitters(s_MAX_EMITTERS);
-        initialEmitters[0] = fireEmitter;
+        // std::vector<EmitterDesc> initialEmitters(s_MAX_EMITTERS);
+        // initialEmitters[0] = fireEmitter;
 
-        rhi::RHIBuffer *emitterBuffer = resources.getBuffer(emitterID);
+        // rhi::RHIBuffer *emitterBuffer = resources.getBuffer(emitterID);
 
-        emitterBuffer->upload(initialEmitters.data(), sizeof(EmitterDesc) * s_MAX_EMITTERS);
-        m_hasUploadedEmitters = true;
+        // emitterBuffer->upload(initialEmitters.data(), sizeof(EmitterDesc) * s_MAX_EMITTERS);
+        // m_hasUploadedEmitters = true;
     }
 
     void ParticleEmitterPass::bindResources(const RGResources &resources, const ParticleEmitterBufferIDs &ids)
@@ -94,6 +96,7 @@ namespace nitro::renderer
         cmd->bindComputeDescriptorSet(m_descriptorSet, 0);
         cmd->setPushConstant(&pc, sizeof(ParticleEmitterPushConstant), 1, true);
         uint32_t groupX = (pc.emitterCount + 63) / 64;
+        groupX = std::max(groupX, 1u);
 
         cmd->dispatch(groupX, 1, 1);
     };

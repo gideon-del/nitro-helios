@@ -268,4 +268,169 @@ namespace nitro::renderer
         ImGui::SliderFloat("Depth Sigma", &settings.depthSigma, 0.0f, 2.0f);
         ImGui::End();
     }
+
+    void EmitterPanel::draw(ParticleEmitterSystem &system, rhi::RHIBuffer *emitterBuffer)
+    {
+        ImGui::Begin("Emitters");
+        const char *emitterTypes[] =
+            {
+                "Continuous",
+                "Burst"};
+        for (uint32_t i = 0; i < system.getEmitterCount(); i++)
+        {
+            EmitterDesc &emitter = system.getEmitter(i);
+            std::string label = "Emitter " + std::to_string(i);
+            ImGui::PushID(i);
+            if (ImGui::CollapsingHeader(label.c_str()))
+            {
+
+                if (ImGui::SliderFloat3("Position", &emitter.position.x, -100.0f, 100.0f))
+                {
+                    system.syncFieldToGPU(emitterBuffer, i, offsetof(EmitterDesc, position),
+                                          &emitter.position, sizeof(float) * 3);
+                }
+                if (ImGui::SliderFloat3("Direction", &emitter.direction.x, -1.01f, 1.0f))
+                {
+                    system.syncFieldToGPU(emitterBuffer, i, offsetof(EmitterDesc, direction),
+                                          &emitter.direction, sizeof(float) * 3);
+                }
+                if (ImGui::SliderFloat3("Gravity", &emitter.gravity.x, -30.0f, 30.0f))
+                {
+                    system.syncFieldToGPU(emitterBuffer, i, offsetof(EmitterDesc, gravity),
+                                          &emitter.gravity, sizeof(float) * 3);
+                }
+                if (ImGui::SliderFloat3("Wind", &emitter.wind.x, -30.0f, 30.0f))
+                {
+                    system.syncFieldToGPU(emitterBuffer, i, offsetof(EmitterDesc, wind),
+                                          &emitter.wind, sizeof(float) * 3);
+                }
+                if (ImGui::SliderFloat3("Spawn Area", &emitter.spawnAreaExtent.x, -60.0f, 60.0f))
+                {
+                    system.syncFieldToGPU(emitterBuffer, i, offsetof(EmitterDesc, spawnAreaExtent),
+                                          &emitter.spawnAreaExtent, sizeof(float) * 3);
+                }
+
+                if (ImGui::ColorEdit4("Start Color", &emitter.startColor.x))
+                {
+                    system.syncFieldToGPU(emitterBuffer, i, offsetof(EmitterDesc, startColor),
+                                          &emitter.startColor, sizeof(glm::vec4));
+                }
+                if (ImGui::ColorEdit4("End Color", &emitter.endColor.x))
+                {
+                    system.syncFieldToGPU(emitterBuffer, i, offsetof(EmitterDesc, endColor),
+                                          &emitter.endColor, sizeof(glm::vec4));
+                }
+
+                if (ImGui::SliderFloat("Start Size", &emitter.startSize, 0.0001f, 2.0f))
+                {
+                    system.syncFieldToGPU(emitterBuffer, i, offsetof(EmitterDesc, startSize),
+                                          &emitter.startSize, sizeof(float));
+                }
+                if (ImGui::SliderFloat("End Size", &emitter.endSize, 0.01f, 2.0f))
+                {
+                    system.syncFieldToGPU(emitterBuffer, i, offsetof(EmitterDesc, endSize),
+                                          &emitter.endSize, sizeof(float));
+                }
+
+                if (ImGui::SliderFloat("Sway Amplitude", &emitter.swayAmplitude, 0.0001f, 20.0f))
+                {
+                    system.syncFieldToGPU(emitterBuffer, i, offsetof(EmitterDesc, swayAmplitude),
+                                          &emitter.swayAmplitude, sizeof(float));
+                }
+                if (ImGui::SliderFloat("Sway Frequency", &emitter.swayFrequency, 0.0001f, 20.0f))
+                {
+                    system.syncFieldToGPU(emitterBuffer, i, offsetof(EmitterDesc, swayFrequency),
+                                          &emitter.swayFrequency, sizeof(float));
+                }
+                if (ImGui::SliderFloat("Min Lifetime", &emitter.minLifetime, 0.001f, 10.0f))
+                {
+                    system.syncFieldToGPU(emitterBuffer, i, offsetof(EmitterDesc, minLifetime),
+                                          &emitter.minLifetime, sizeof(float));
+                }
+                if (ImGui::SliderFloat("Max Lifetime", &emitter.maxLifetime, 0.009f, 70.0f))
+                {
+                    system.syncFieldToGPU(emitterBuffer, i, offsetof(EmitterDesc, maxLifetime),
+                                          &emitter.maxLifetime, sizeof(float));
+                }
+                if (ImGui::SliderFloat("Drag", &emitter.drag, 0.0f, 100.0f))
+                {
+                    system.syncFieldToGPU(emitterBuffer, i, offsetof(EmitterDesc, drag),
+                                          &emitter.drag, sizeof(float));
+                }
+                if (ImGui::SliderFloat("Spread", &emitter.spread, 0.01f, glm::pi<float>()))
+                {
+                    system.syncFieldToGPU(emitterBuffer, i, offsetof(EmitterDesc, spread),
+                                          &emitter.spread, sizeof(float));
+                }
+                if (ImGui::SliderFloat("Spawn Rate", &emitter.spawnRate, 10.0f, 10000.0f))
+                {
+                    system.syncFieldToGPU(emitterBuffer, i, offsetof(EmitterDesc, spawnRate),
+                                          &emitter.spawnRate, sizeof(float));
+                }
+                if (ImGui::SliderFloat("Initial Speed", &emitter.initialSpeed, 0.0f, 100.0f))
+                {
+                    system.syncFieldToGPU(emitterBuffer, i, offsetof(EmitterDesc, initialSpeed),
+                                          &emitter.initialSpeed, sizeof(float));
+                }
+                if (ImGui::SliderFloat("Speed Variance", &emitter.speedVariance, 1.0f, 100.0f))
+                {
+                    system.syncFieldToGPU(emitterBuffer, i, offsetof(EmitterDesc, speedVariance),
+                                          &emitter.speedVariance, sizeof(float));
+                }
+
+                int currentEmitterType = static_cast<int>(emitter.type);
+
+                if (ImGui::Combo(
+                        "Emitter Type",
+                        &currentEmitterType,
+                        emitterTypes,
+                        IM_ARRAYSIZE(emitterTypes)))
+                {
+                    emitter.type = static_cast<EmitterType>(currentEmitterType);
+
+                    system.syncFieldToGPU(emitterBuffer, i, offsetof(EmitterDesc, type),
+                                          &emitter.type, sizeof(uint32_t));
+                }
+                if (emitter.type == EmitterType::Burst)
+                {
+                    if (ImGui::SliderFloat("Burst Count", &emitter.burstCount, 1.0f, 10000.0f))
+                    {
+                        system.syncFieldToGPU(emitterBuffer, i, offsetof(EmitterDesc, burstCount),
+                                              &emitter.burstCount, sizeof(float));
+                    }
+
+                    if (ImGui::Button("Explode"))
+                    {
+                        float resetFire = 0.0f;
+                        system.syncFieldToGPU(emitterBuffer, i, offsetof(EmitterDesc, hasFired),
+                                              &resetFire, sizeof(float));
+                    }
+                }
+            }
+            ImGui::PopID();
+        }
+
+        if (ImGui::Button("Add Emitter"))
+        {
+            EmitterDesc newEmitter;
+            newEmitter.position = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+            newEmitter.direction = glm::vec4(0.0f, 1.0f, 0.0f, 0.0f);
+            newEmitter.startColor = glm::vec4(1.0f, 0.9f, 0.3f, 1.0f);
+            newEmitter.endColor = glm::vec4(0.8f, 0.15f, 0.0f, 1.0f);
+            newEmitter.startSize = 0.1f;
+            newEmitter.endSize = 0.02f;
+            newEmitter.spawnRate = 200.0f;
+            newEmitter.initialSpeed = 1.0f;
+            newEmitter.speedVariance = 0.3f;
+            newEmitter.spread = glm::radians(15.0f);
+            newEmitter.gravity = glm::vec4(0.0, 9.8f, 0.0f, 0.0f);
+            newEmitter.drag = 1.0;
+            newEmitter.minLifetime = 0.8f;
+            newEmitter.maxLifetime = 1.5f;
+
+            system.addEmitter(newEmitter, emitterBuffer);
+        }
+
+        ImGui::End();
+    }
 } // namespace nitro::renderer

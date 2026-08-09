@@ -536,7 +536,7 @@ namespace nitro::renderer
                                                              (sizeof(uint32_t)),
                                                              rhi::BufferDesc::Usage::Storage});
         auto emitterBuffer = m_renderGraph.declareBuffer({"Emitter Buffer",
-                                                          (sizeof(EmitterDesc) * ParticleEmitterPass::s_MAX_EMITTERS),
+                                                          (sizeof(EmitterDesc) * ParticleEmitterSystem::s_MAX_EMITTERS),
                                                           rhi::BufferDesc::Usage::Storage});
 
         auto indirectDrawBuffer = m_renderGraph.declareBuffer({"Indirect Draw Buffer",
@@ -561,7 +561,7 @@ namespace nitro::renderer
             [particleBuffer, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
             {
                 ParticleEmitterPushConstant pc;
-                pc.emitterCount = 1;
+                pc.emitterCount = m_emitterSystem.getEmitterCount();
                 pc.frameIndex = m_device->getCurrentFrameIndex();
                 pc.frameTime = ctx.deltaTime;
                 pc.maxParticles = ParticleUpdatePass::s_MAX_PARTICLE_COUNT;
@@ -633,12 +633,13 @@ namespace nitro::renderer
                 {indirectDispatchBuffer, rhi::ResourceState::ShaderRead},
             },
             {{particleBuffer, rhi::ResourceState::ShaderWrite}},
-            [particleBuffer, deadListBuffer, aliveCountBuffer, aliveListBuffer, this](const RGResources &resources)
+            [particleBuffer, deadListBuffer, aliveCountBuffer, aliveListBuffer, emitterBuffer, this](const RGResources &resources)
             {
                 m_particleUpdatePass->bindResources(resources, {particleBuffer,
                                                                 aliveListBuffer,
                                                                 aliveCountBuffer,
-                                                                deadListBuffer});
+                                                                deadListBuffer,
+                                                                emitterBuffer});
             },
             [indirectDispatchBuffer, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
             {
@@ -823,7 +824,7 @@ namespace nitro::renderer
             [](const RGResources &resources) {
 
             },
-            [this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            [this, emitterBuffer](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
             {
                 rhi::RHIRenderPassDesc rpDesc{};
                 rpDesc.clearColor[0] = 0.3f;
@@ -833,7 +834,7 @@ namespace nitro::renderer
                 rpDesc.clearDepth = 1.0f;
                 rpDesc.hasDepth = true;
 
-                m_mainScenePass->execute(cmd, rpDesc, settings, resources.getTexture(m_currentSceneTextureID), m_renderGraph);
+                m_mainScenePass->execute(cmd, rpDesc, settings, resources.getTexture(m_currentSceneTextureID), m_renderGraph, m_emitterSystem, resources.getBuffer(emitterBuffer));
             },
         });
 
@@ -842,7 +843,7 @@ namespace nitro::renderer
         m_renderGraph.allocateBuffers(m_device);
         auto resources = m_renderGraph.buildResources();
         m_renderGraph.bindPassResources(resources);
-        m_particleEmitterPass->uploadInitialEmitter(resources, emitterBuffer);
+        // m_particleEmitterPass->uploadInitialEmitter(resources, emitterBuffer);
         m_particleUpdatePass->uploadDeadList(resources, deadListBuffer);
         m_compiledFrameGraph = m_renderGraph.compileFrameGraph();
     }

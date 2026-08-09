@@ -9,6 +9,7 @@ struct Particle {
         float lifetime;
         float age;
         float size;
+        uint emitterId;
 };
 
 layout(std430, set=0, binding = 2) readonly buffer ParticleBuffer {

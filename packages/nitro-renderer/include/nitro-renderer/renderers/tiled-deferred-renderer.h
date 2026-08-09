@@ -5,6 +5,7 @@
 #include <nitro-renderer/post-process/post-process.h>
 #include <nitro-renderer/panels.h>
 #include <nitro-renderer/render-graph.h>
+#include <nitro-renderer/particle-emitter-system.h>
 namespace nitro::renderer
 {
     class TiledDeferredRenderer : IRenderer
@@ -52,6 +53,7 @@ namespace nitro::renderer
         StatPanel m_statsPanel;
         std::shared_ptr<MaterialSystem> m_materialSystem;
         RGCompiledFrameGraph m_compiledFrameGraph;
+        ParticleEmitterSystem m_emitterSystem;
 
         void buildRenderGraph();
     };

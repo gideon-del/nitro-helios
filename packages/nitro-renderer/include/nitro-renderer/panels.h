@@ -1,6 +1,7 @@
 #pragma once
 #include "settings.h"
-
+#include "particle-emitter-system.h"
+#include <nitro-rhi/rhi.h>
 namespace nitro::renderer
 {
     struct LightPanel
@@ -35,5 +36,10 @@ namespace nitro::renderer
     struct SSAOPanel
     {
         void draw(SSAOSettings &settings);
+    };
+
+    struct EmitterPanel
+    {
+        void draw(ParticleEmitterSystem &system, rhi::RHIBuffer *emitterBuffer);
     };
 } // namespace nitro::renderer

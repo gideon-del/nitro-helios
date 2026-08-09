@@ -477,6 +477,8 @@ namespace nitro::rhi::vulkan
         vkQueueWaitIdle(presentQueue);
         vkDestroyCommandPool(device, commandPool, nullptr);
         ImNodes::DestroyContext();
+        ImGui_ImplVulkan_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
         vmaDestroyAllocator(allocator);
         vkDestroyRenderPass(device, defaultRenderPass, nullptr);

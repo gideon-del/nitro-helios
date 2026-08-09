@@ -1,5 +1,33 @@
 #version 450
 layout(local_size_x=64) in;
+const float PI = 3.14159265358979323846;
+
+
+struct EmitterDesc{
+ vec4 position;
+ vec4 direction;
+ vec4 startColor;
+ vec4 endColor;
+ vec4 gravity;
+ vec4 wind;
+  vec4 spawnAreaExtent;
+  float startSize;
+ float endSize;
+  float  spawnRate; 
+ float initialSpeed;
+ float speedVariance;
+ float spread;
+ float minLifetime;
+ float maxLifetime;
+ float spawnAccumulator;
+ float drag;
+ float burstCount;
+ float hasFired;
+  float swayAmplitude;
+ float swayFrequency;
+ uint type;
+};
+
 
 struct Particle {
        vec4 position;
@@ -8,6 +36,7 @@ struct Particle {
         float lifetime;
         float age;
         float size;
+        uint emitterId;
 };
 
 layout(push_constant) uniform PushConstant {
@@ -15,6 +44,7 @@ layout(push_constant) uniform PushConstant {
         float gravity;
         float drag;
         uint particleCount;
+        
 };
 
 layout(std430, set=0, binding = 2)  buffer ParticleBuffer {
@@ -34,11 +64,24 @@ layout(std430,set=0, binding=5) buffer DeadList {
     uint indices[];
 } deadList;
 
+layout(std430,set=0, binding=6) buffer EmitterBuffer {
+ EmitterDesc emitters[];
+};
+
+
 float hash(uint n) {
     n = (n << 13u) ^ n;
     n = n * (n * n * 15731u + 0x789221u) + 0x6136312Bu;
     return float(n & 0x7fffffffu) / float(0x7fffffff);
 }
+
+
+float rand(uint seed) 
+{ 
+    return float(hash(seed)) / 4294967295.0; 
+}
+
+
 
 
 
@@ -49,19 +92,26 @@ void main() {
     
     uint particleIdx = aliveList.indices[id];
     Particle p = particles[particleIdx];
-
+ EmitterDesc emitter = emitters[p.emitterId];
     p.age += dt;
 
     if(p.age >= p.lifetime) {
      uint slot = atomicAdd(deadList.count, 1u);
      deadList.indices[slot] = particleIdx;
     }else {
-        p.velocity.y -= gravity * dt;
-        p.velocity.xyz *= pow(drag, dt);
+        float phase = rand(particleIdx * 7919u) * 2.0 * PI;
+        float sway = cos(p.age * emitter.swayFrequency + phase) * emitter.swayAmplitude * emitter.swayFrequency;
+        p.velocity.x = sway;
+        p.velocity.xyz -= emitter.gravity.xyz * dt;
+        p.velocity.xyz += emitter.wind.xyz * dt;
+        p.velocity.xyz *= pow(emitter.drag, dt);
         p.position.xyz += p.velocity.xyz * dt;
 
        float t = p.age / p.lifetime;
-        p.color.a = 1.0 - smoothstep(0.7, 1.0, t);
+        p.color = mix(emitter.startColor, emitter.endColor, t);
+        p.color.a =mix(emitter.startColor.a, emitter.endColor.a, t);
+        p.size = mix(emitter.startSize, emitter.endSize, t);
+
       
     }
 

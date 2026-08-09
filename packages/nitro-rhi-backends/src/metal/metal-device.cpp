@@ -57,6 +57,8 @@ namespace nitro::rhi::metal
         commandQueue->release();
 
         ImNodes::DestroyContext();
+        ImGui_ImplMetal_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
         device->release();
     }

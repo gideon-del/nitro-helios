@@ -5,6 +5,7 @@
 #include <nitro-renderer/render-graph.h>
 #include <nitro-renderer/per-frame.h>
 #include <nitro-renderer/single-texture-pass-resource.h>
+#include <nitro-renderer/particle-emitter-system.h>
 
 namespace nitro::renderer
 {
@@ -17,7 +18,7 @@ namespace nitro::renderer
                       bool isMetal);
         ~MainScenePass();
 
-        void execute(rhi::RHICommandBuffer *cmd, rhi::RHIRenderPassDesc &desc, RendererSettings &settings, rhi::RHITexture *inputTexture, RenderGraph &renderGraph);
+        void execute(rhi::RHICommandBuffer *cmd, rhi::RHIRenderPassDesc &desc, RendererSettings &settings, rhi::RHITexture *inputTexture, RenderGraph &renderGraph, ParticleEmitterSystem &system, rhi::RHIBuffer *emitterBuffer);
 
     private:
         ShadowPanel m_shadowPanel;
@@ -28,6 +29,7 @@ namespace nitro::renderer
         BloomPanel m_bloomPanel;
         ColorGradingPanel m_colorGradePanel;
         SSAOPanel m_ssaoPanel;
+        EmitterPanel m_emitterPanel;
         std::shared_ptr<rhi::RHIDevice> m_device;
         std::shared_ptr<rhi::RHISwapchain> m_swapchain;
         rhi::RHIPipeline *m_pipeline;

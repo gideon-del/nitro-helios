@@ -18,6 +18,9 @@ namespace nitro::renderer
             {rhi::RHIDescriptorBinding::Type::StorageBuffer,
              rhi::RHIDescriptorBinding::ShaderStage::Compute,
              5},
+            {rhi::RHIDescriptorBinding::Type::StorageBuffer,
+             rhi::RHIDescriptorBinding::ShaderStage::Compute,
+             6},
         };
 
         m_descriptorLayout = m_device->createDescriptorLayout(bindings);
@@ -77,6 +80,7 @@ namespace nitro::renderer
         m_descriptorSet->writeBuffer(resources.getBuffer(ids.aliveIndicesId), 3);
         m_descriptorSet->writeBuffer(resources.getBuffer(ids.aliveCounterId), 4);
         m_descriptorSet->writeBuffer(resources.getBuffer(ids.deadListId), 5);
+        m_descriptorSet->writeBuffer(resources.getBuffer(ids.emitterId), 6);
         m_descriptorSet->commit();
     }
     void ParticleUpdatePass::execute(rhi::RHICommandBuffer *cmd, ParticlePushConstant pc, rhi::RHIBuffer *indirectDispatch)

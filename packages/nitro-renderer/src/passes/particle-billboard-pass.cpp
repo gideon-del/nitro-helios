@@ -28,7 +28,7 @@ namespace nitro::renderer
         pipelineDesc.layouts = {m_descriptorLayout};
 
         rhi::PipelineDesc::ColorAttachmentDesc colorAttachment{rhi::TextureDesc::ImageFormat::ColorRGBA16};
-        colorAttachment.blend.enabled = false;
+        colorAttachment.blend.enabled = true;
         pipelineDesc.colorAttachments = {colorAttachment};
         pipelineDesc.cullMode = rhi::PipelineDesc::CullMode::None;
         pipelineDesc.depthWrite = false;

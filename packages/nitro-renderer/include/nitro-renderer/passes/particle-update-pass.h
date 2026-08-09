@@ -13,7 +13,7 @@ namespace nitro::renderer
         float lifetime;
         float age;
         float size;
-        float _pads;
+        uint emitterId;
     };
 
     struct ParticlePushConstant
@@ -30,6 +30,7 @@ namespace nitro::renderer
         RGBufferID aliveIndicesId;
         RGBufferID aliveCounterId;
         RGBufferID deadListId;
+        RGBufferID emitterId;
     };
 
     class ParticleUpdatePass
