@@ -21,6 +21,8 @@ namespace nitro::rhi
         } stage;
 
         uint32_t binding;
+        bool isBindlessArray = false;
+        uint32_t bindlessCount = 0;
     };
 
     class RHIDescriptorLayout

@@ -35,7 +35,10 @@ namespace nitro::rhi::vulkan
         void setStencilReference(uint32_t reference) override;
         void draw(uint32_t vertexCount, uint32_t instanceCount = 1) override;
         void drawIndirect(RHIBuffer *indirectBuffer, size_t offset = 0) override;
+
         void drawIndexed(uint32_t indexCount, uint32_t instanceCount = 1) override;
+        void drawIndexedIndirect(RHIBuffer *indirectBuffer, size_t offset, uint32_t drawCount, uint32_t stride) override;
+        void drawIndexedIndirectCount(RHIBuffer *indirectBuffer, size_t offset, RHIBuffer *countBuffer, size_t countOffset, uint32_t maxDrawCount, uint32_t stride) override;
         FrameStats getFrameStats() override;
         void resetFrameStats() override;
         void updateVertexCount(uint32_t count) override;
@@ -47,6 +50,7 @@ namespace nitro::rhi::vulkan
         void bufferBarrier(const BufferBarrier &barrier) override;
         void textureBarrier(const TextureBarrier &barrier) override;
         void copyTextureToBuffer(RHITexture *texture, RHIBuffer *buffer) override;
+        void copyTextureToTexture(RHITexture *src, RHITexture *dst) override;
         void fillBuffer(RHIBuffer *buffer, size_t offset, size_t size, uint32_t value) override;
         VkCommandBuffer cmd;
         VkFence inFlight;

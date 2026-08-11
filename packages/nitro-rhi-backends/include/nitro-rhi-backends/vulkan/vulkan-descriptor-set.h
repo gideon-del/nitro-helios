@@ -15,13 +15,15 @@ namespace nitro::rhi::vulkan
         void writeTexture(const TextureBinding &textureBinding, uint32_t binding, ImageLayout imageLayout) override;
         void writeStorageImage(RHITexture *texture, uint32_t binding, ImageLayout imageLayout, TextureSubresource subresource) override;
         void commit() override;
-
+        void writeBindlessTextures(const std::vector<RHITexture *> &textures, uint32_t binding) override;
+        void writeSampler(RHISamplerHandle sampler, uint32_t binding) override;
         VkDescriptorSet descriptorSet;
 
     private:
         std::vector<VkWriteDescriptorSet> m_writes;
         std::vector<VkDescriptorBufferInfo> m_bufferInfos;
         std::vector<VkDescriptorImageInfo> m_imageInfos;
+        std::vector<std::vector<VkDescriptorImageInfo>> m_bindlessImageInfos;
 
         VulkanDevice *m_device;
         VulkanDescriptorLayout *m_layout;

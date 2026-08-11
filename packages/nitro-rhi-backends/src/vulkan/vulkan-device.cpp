@@ -215,15 +215,21 @@ namespace nitro::rhi::vulkan
             "VK_KHR_portability_subset",
             VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME};
 
+        VkPhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeatures{};
+        descriptorIndexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
+        descriptorIndexingFeatures.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+        descriptorIndexingFeatures.runtimeDescriptorArray = VK_TRUE;
+        descriptorIndexingFeatures.descriptorBindingPartiallyBound = VK_TRUE;
+        descriptorIndexingFeatures.descriptorBindingVariableDescriptorCount = VK_TRUE;
+
         VkPhysicalDeviceVulkan13Features vulkan13Features{};
         vulkan13Features.sType =
             VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
         vulkan13Features.synchronization2 = VK_TRUE;
-        VkPhysicalDeviceDynamicRenderingFeatures dynamicRendering{};
-        dynamicRendering.sType =
-            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
-        dynamicRendering.dynamicRendering = VK_TRUE;
-        dynamicRendering.pNext = &vulkan13Features;
+        vulkan13Features.dynamicRendering = VK_TRUE;
+        vulkan13Features.descriptorBindingInlineUniformBlockUpdateAfterBind = VK_TRUE;
+        vulkan13Features.pNext = &descriptorIndexingFeatures;
+
         VkDeviceCreateInfo deviceInfo{};
 
         deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -234,7 +240,7 @@ namespace nitro::rhi::vulkan
         VkPhysicalDeviceFeatures deviceFeatures{};
 
         deviceInfo.pEnabledFeatures = &deviceFeatures;
-        deviceInfo.pNext = &dynamicRendering;
+        deviceInfo.pNext = &vulkan13Features;
 
         VkDevice logicalDevice;
         checkVkResult(vkCreateDevice(physicalDevice, &deviceInfo, nullptr, &logicalDevice), "Logical Device not created");

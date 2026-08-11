@@ -54,6 +54,15 @@ namespace nitro::rhi
         uint32_t firstVertex;
         uint32_t firstInstance;
     };
+    struct DrawIndexedIndirectArgs
+    {
+        uint32_t indexCount;
+        uint32_t instanceCount;
+        uint32_t firstIndex;
+        int vertexOffset;
+        uint32_t firstInstance;
+    };
+
     struct DispatchIndirectArgs
     {
         uint32_t x;
@@ -87,10 +96,12 @@ namespace nitro::rhi
         virtual void draw(uint32_t vertexCount, uint32_t instanceCount = 1) = 0;
 
         virtual void drawIndirect(RHIBuffer *indirectBuffer, size_t offset = 0) = 0;
-
+        virtual void drawIndexedIndirect(RHIBuffer *indirectBuffer, size_t offset, uint32_t drawCount, uint32_t stride) = 0;
+        virtual void drawIndexedIndirectCount(RHIBuffer *indirectBuffer, size_t offset, RHIBuffer *countBuffer, size_t countOffset, uint32_t maxDrawCount, uint32_t stride) = 0;
         virtual void drawIndexed(uint32_t indexCount, uint32_t instanceCount = 1) = 0;
 
         virtual void copyTextureToBuffer(RHITexture *texture, RHIBuffer *buffer) = 0;
+        virtual void copyTextureToTexture(RHITexture *src, RHITexture *dst) = 0;
         virtual FrameStats getFrameStats() = 0;
         virtual void resetFrameStats() = 0;
         virtual void updateVertexCount(uint32_t count) = 0;

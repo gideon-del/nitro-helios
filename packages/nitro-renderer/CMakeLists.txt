@@ -44,6 +44,8 @@ add_library(nitro-renderer STATIC
  src/passes/particle-emitter-pass.cpp
  src/passes/particle-compact-pass.cpp
  src/passes/particle-indirect-pass.cpp
+ src/mesh-manager.cpp
+ src/material-manager.cpp
 )
 
 find_package(glm REQUIRED)

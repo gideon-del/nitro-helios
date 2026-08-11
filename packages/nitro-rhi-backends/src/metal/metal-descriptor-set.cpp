@@ -46,4 +46,14 @@ namespace nitro::rhi::metal
         m_tempDescriptorSet.storageTextureBindings.clear();
     };
 
+    void MetalDescriptorSet::writeBindlessTextures(const std::vector<RHITexture *> &textures, uint32_t binding)
+    {
+        throw std::runtime_error("writeBindlessTextures not yet implemented for Metal");
+    }
+
+    void MetalDescriptorSet::writeSampler(RHISamplerHandle sampler, uint32_t binding)
+    {
+        throw std::runtime_error("writeSampler not yet implemented for Metal");
+    }
+
 } // namespace nitro::rhi::metal

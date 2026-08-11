@@ -1,0 +1,69 @@
+#version 450
+
+layout(local_size_x =64) in;
+
+
+struct MeshDescriptor {
+uint vertexOffset;
+        uint indexOffset;
+        uint indexCount;
+       vec3 aabbMin;
+       vec3 aabbMax;
+};
+
+   struct MeshInstance
+    {
+        uint meshId;
+        uint materialId;
+        mat4 modelTransform;
+        mat4 normalTransform;           
+    };
+
+struct DrawIndexedIndirectCommand {
+uint indexCount;
+uint instanceCount;
+uint firstIndex;
+int vertexOffset;
+uint firstInstance;
+};
+
+
+layout(push_constant) uniform PushConstant {
+  uint objectCount;
+};
+
+layout(std430, set=0, binding=2)  buffer DescriptorBuffer {
+ MeshDescriptor meshDescriptors[];
+};    
+layout(std430, set=0, binding=3)  buffer MeshInstanceBuffer {
+ MeshInstance meshInstances[];
+};    
+
+layout(std430, set=0,binding = 4) buffer DrawCount {
+    uint count;
+};
+layout(std430, set=0,binding = 5) buffer DrawCommands {
+    DrawIndexedIndirectCommand commands[];
+};
+
+
+
+void main() {
+
+uint id = gl_GlobalInvocationID.x;
+
+if(id >= objectCount) return;
+
+MeshInstance instance = meshInstances[id];
+MeshDescriptor desc = meshDescriptors[instance.meshId];
+
+DrawIndexedIndirectCommand cmd;
+cmd.indexCount = desc.indexCount;
+cmd.instanceCount = 1;
+cmd.firstIndex = desc.indexOffset;
+cmd.vertexOffset = int(desc.vertexOffset) ;
+cmd.firstInstance = id;
+
+commands[id] = cmd;
+atomicAdd(count, 1u);
+};

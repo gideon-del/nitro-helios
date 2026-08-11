@@ -80,7 +80,7 @@ namespace nitro::renderer
         rhi::RenderPassDesc::Attachment colorAttachment;
 
         colorAttachment.texture = resources.getTexture(particleResource.outputTexture);
-        colorAttachment.load = rhi::RenderPassDesc::LoadOp::Clear;
+        colorAttachment.load = rhi::RenderPassDesc::LoadOp::Load;
         colorAttachment.store = rhi::RenderPassDesc::StoreOp::Store;
 
         renderPassDesc.colorAttachments = {colorAttachment};

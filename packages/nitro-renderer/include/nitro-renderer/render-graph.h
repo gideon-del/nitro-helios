@@ -28,10 +28,16 @@ namespace nitro::renderer
         bool transient = true;
     };
 
+    enum class WriteMode
+    {
+        Producer,
+        Extend
+    };
     struct RGResourceAccess
     {
         RGResourceID id;
         rhi::ResourceState state;
+        WriteMode writeMode = WriteMode::Producer;
     };
 
     struct RGValidationError

@@ -88,7 +88,7 @@ namespace nitro::rhi::vulkan
             {
                 write.pBufferInfo = &m_bufferInfos[bufferIdx++];
             }
-            else if (write.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER || write.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+            else if (write.descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER || write.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE || write.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER)
             {
                 write.pImageInfo = &m_imageInfos[imageIdx++];
             }
@@ -101,8 +101,58 @@ namespace nitro::rhi::vulkan
         m_writes.clear();
         m_bufferInfos.clear();
         m_imageInfos.clear();
+        m_bindlessImageInfos.clear();
     }
 
+    void VulkanDescriptorSet::writeBindlessTextures(const std::vector<RHITexture *> &textures, uint32_t binding)
+    {
+        if (textures.empty())
+            return;
+
+        std::vector<VkDescriptorImageInfo> imageInfos;
+        imageInfos.reserve(textures.size());
+
+        for (auto *texture : textures)
+        {
+            VulkanTexture *vulkanTexture = reinterpret_cast<VulkanTexture *>(texture);
+
+            VkDescriptorImageInfo imageInfo{};
+            imageInfo.imageLayout = toVkImageLayout(ImageLayout::ShaderReadOnly);
+            imageInfo.imageView = vulkanTexture->imageView;
+            imageInfos.push_back(imageInfo);
+        }
+
+        m_bindlessImageInfos.push_back(std::move(imageInfos));
+
+        VkWriteDescriptorSet descriptorWrite{};
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.descriptorCount = static_cast<uint32_t>(m_bindlessImageInfos.back().size());
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        descriptorWrite.dstSet = descriptorSet;
+        descriptorWrite.dstBinding = binding;
+        descriptorWrite.dstArrayElement = 0;
+        descriptorWrite.pImageInfo = m_bindlessImageInfos.back().data();
+
+        m_writes.push_back(std::move(descriptorWrite));
+    }
+
+    void VulkanDescriptorSet::writeSampler(RHISamplerHandle sampler, uint32_t binding)
+    {
+        VkDescriptorImageInfo imageInfo{};
+        imageInfo.sampler = m_device->get(sampler).sampler;
+
+        m_imageInfos.push_back(std::move(imageInfo));
+
+        VkWriteDescriptorSet descriptorWrite{};
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+        descriptorWrite.dstSet = descriptorSet;
+        descriptorWrite.dstBinding = binding;
+        descriptorWrite.dstArrayElement = 0;
+
+        m_writes.push_back(std::move(descriptorWrite));
+    }
     VulkanDescriptorSet::~VulkanDescriptorSet()
     {
 

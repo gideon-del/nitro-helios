@@ -45,7 +45,11 @@ namespace nitro::rhi::metal
         void generateMipmaps(RHITexture *texture) override;
         void textureBarrier(const TextureBarrier &barrier) override;
         void copyTextureToBuffer(RHITexture *texture, RHIBuffer *buffer) override;
+        void copyTextureToTexture(RHITexture *src, RHITexture *dst) override;
         void fillBuffer(RHIBuffer *buffer, size_t offset, size_t size, uint32_t value) override;
+        void drawIndexedIndirect(RHIBuffer *indirectBuffer, size_t offset, uint32_t drawCount, uint32_t stride) override;
+        void drawIndexedIndirectCount(RHIBuffer *indirectBuffer, size_t offset, RHIBuffer *countBuffer, size_t countOffset, uint32_t maxDrawCount, uint32_t stride) override;
+
         void endEncoders();
         MTL::CommandBuffer *commandBuffer = nullptr;
         MTL::RenderCommandEncoder *encoder = nullptr;

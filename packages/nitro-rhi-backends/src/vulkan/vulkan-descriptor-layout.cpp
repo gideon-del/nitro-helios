@@ -42,7 +42,7 @@ namespace nitro::rhi::vulkan
     {
         VkDescriptorSetLayoutBinding vkBinding{};
         vkBinding.binding = rhiBinding.binding;
-        vkBinding.descriptorCount = 1;
+        vkBinding.descriptorCount = rhiBinding.isBindlessArray ? rhiBinding.bindlessCount : 1;
         vkBinding.descriptorType = convertToDescriptorType(rhiBinding.type);
         vkBinding.stageFlags = convertToShaderStage(rhiBinding.stage);
         return vkBinding;
@@ -64,22 +64,45 @@ namespace nitro::rhi::vulkan
     {
         std::vector<VkDescriptorSetLayoutBinding> descriptorBindings(bindings.size());
         std::vector<VkDescriptorPoolSize> poolSizes(bindings.size());
+        std::vector<VkDescriptorBindingFlags> bindingFlags(bindings.size());
+        bool hasBindless = false;
         for (int i = 0; i < bindings.size(); i++)
 
         {
             descriptorBindings[i] = convertToVkBinding(bindings[i]);
             poolSizes[i] = convertToPoolSize(bindings[i]);
+
+            if (bindings[i].isBindlessArray)
+            {
+                bindingFlags[i] = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
+                hasBindless = true;
+            }
+            else
+            {
+                bindingFlags[i] = 0;
+            }
         }
+
+        VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsInfo{};
+        bindingFlagsInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
+        bindingFlagsInfo.bindingCount = static_cast<uint32_t>(bindingFlags.size());
+        bindingFlagsInfo.pBindingFlags = bindingFlags.data();
 
         VkDescriptorSetLayoutCreateInfo descriptorInfo{};
         descriptorInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         descriptorInfo.bindingCount = static_cast<uint32_t>(descriptorBindings.size());
         descriptorInfo.pBindings = descriptorBindings.data();
+        descriptorInfo.pNext = &bindingFlagsInfo;
+
+        if (hasBindless)
+            descriptorInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
         checkVkResult(vkCreateDescriptorSetLayout(m_device->device, &descriptorInfo, nullptr, &descriptorSetLayout), "Failed to create descriptor layout");
 
         VkDescriptorPoolCreateInfo descriptorPoolInfo{};
         descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         descriptorPoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+        if (hasBindless)
+            descriptorPoolInfo.flags |= VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
         descriptorPoolInfo.maxSets = 1000 * VulkanDevice::MAX_FRAMES_IN_FLIGHT;
         descriptorPoolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
         descriptorPoolInfo.pPoolSizes = poolSizes.data();

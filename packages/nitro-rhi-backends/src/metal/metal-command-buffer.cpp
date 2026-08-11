@@ -170,7 +170,7 @@ namespace nitro::rhi::metal
 
         auto *metalBuffer =
             static_cast<MetalBuffer *>(indirectBuffer);
-
+        m_FrameStats.drawCalls += 1;
         encoder->drawPrimitives(
             m_pipeline->topology,
             metalBuffer->buffer,
@@ -386,5 +386,39 @@ namespace nitro::rhi::metal
                                 NS::Range(offset, size),
                                 (uint8_t)value);
         blitEncoder->endEncoding();
+    }
+
+    void MetalCommandBuffer::copyTextureToTexture(RHITexture *src, RHITexture *dst)
+    {
+        MetalTexture *metalSrc = static_cast<MetalTexture *>(src);
+        MetalTexture *metalDst = static_cast<MetalTexture *>(dst);
+
+        MTL::BlitCommandEncoder *blitEncoder = commandBuffer->blitCommandEncoder();
+        blitEncoder->copyFromTexture(metalSrc->texture, metalDst->texture);
+
+        blitEncoder->endEncoding();
+    }
+
+    void MetalCommandBuffer::drawIndexedIndirect(RHIBuffer *indirectBuffer, size_t offset, uint32_t drawCount, uint32_t stride)
+    {
+        m_FrameStats.drawCalls += 1;
+        auto *metalBuffer =
+            static_cast<MetalBuffer *>(indirectBuffer);
+
+        encoder->drawIndexedPrimitives(m_pipeline->topology,
+                                       MTL::IndexTypeUInt32,
+                                       m_currentIndexBuffer->buffer,
+                                       NS::UInteger(0),
+                                       metalBuffer->buffer,
+                                       NS::UInteger(offset));
+    }
+
+    void MetalCommandBuffer::drawIndexedIndirectCount(RHIBuffer *indirectBuffer, size_t offset, RHIBuffer *countBuffer, size_t countOffset, uint32_t maxDrawCount, uint32_t stride)
+    {
+        // TODO: Metal has no direct drawIndexedIndirectCount equivalent.
+        // Needs either Indirect Command Buffers (real GPU-driven path, matches Vulkan semantics)
+        // or a CPU readback of countBuffer each frame (reintroduces the sync stall particles avoided).
+        // Decide when Metal backend actually needs GPU-driven rendering.
+        throw std::runtime_error("drawIndexedIndirectCount not yet implemented on Metal backend");
     }
 } // namespace nitro::rhi::metal

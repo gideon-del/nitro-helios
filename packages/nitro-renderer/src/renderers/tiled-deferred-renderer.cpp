@@ -608,7 +608,6 @@ namespace nitro::renderer
             {
                 {indirectDrawBuffer, rhi::ResourceState::ShaderWrite},
                 {indirectDispatchBuffer, rhi::ResourceState::ShaderWrite},
-
             },
             [aliveCountBuffer, indirectDrawBuffer, indirectDispatchBuffer, this](const RGResources &resources)
             {
@@ -655,10 +654,24 @@ namespace nitro::renderer
         auto particleTexture = m_renderGraph.declareTexture({"Particle Texture",
                                                              rhi::TextureDesc::ImageFormat::ColorRGBA16});
 
+        m_renderGraph.addPass(
+            {"Copy Light to Particle",
+
+             {{lightShadedTex, rhi::ResourceState::CopySrc}},
+             {{particleTexture, rhi::ResourceState::CopyDst, WriteMode::Producer}},
+             {},
+             {},
+             [](const RGResources &resources) {},
+             [particleTexture, lightShadedTex, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+             {
+                 cmd->copyTextureToTexture(resources.getTexture(lightShadedTex), resources.getTexture(particleTexture));
+             }}
+
+        );
         m_renderGraph.addPass({
             "Particle Billboard",
             {{lightShadedTex, rhi::ResourceState::ShaderRead}},
-            {{particleTexture, rhi::ResourceState::RenderTarget}},
+            {{particleTexture, rhi::ResourceState::RenderTarget, WriteMode::Extend}},
             {{particleBuffer, rhi::ResourceState::ShaderRead},
              {aliveListBuffer, rhi::ResourceState::ShaderWrite},
              {indirectDrawBuffer, rhi::ResourceState::ShaderRead}},

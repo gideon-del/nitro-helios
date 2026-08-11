@@ -29,29 +29,85 @@ namespace nitro::renderer
         m_depGraph = Graph();
 
         std::unordered_map<RGTextureID, int> textureProducerOf;
+        std::unordered_map<RGTextureID, std::vector<int>> textureExtenderOf;
         std::unordered_map<RGBufferID, int> bufferProducerOf;
+        std::unordered_map<RGBufferID, std::vector<int>> bufferExtenderOf;
         for (int i = 0; i < m_passes.size(); i++)
         {
             m_depGraph.addNode(i);
 
             for (auto &tid : m_passes[i].writes)
             {
-                if (textureProducerOf.count(tid.id))
+                if (tid.writeMode == WriteMode::Producer)
                 {
-                    throw std::runtime_error("Texture " + m_textures[tid.id].name + " has two producers");
-                }
+                    if (textureProducerOf.count(tid.id))
+                    {
+                        throw std::runtime_error("Texture " + m_textures[tid.id].name + " has two producers");
+                    }
 
-                textureProducerOf[tid.id] = i;
+                    textureProducerOf[tid.id] = i;
+                }
+                else
+                {
+                    textureExtenderOf[tid.id].push_back(i);
+                }
             }
             for (auto &bid : m_passes[i].writeBufs)
             {
-                if (bufferProducerOf.count(bid.id))
+                if (bid.writeMode == WriteMode::Producer)
                 {
-                    throw std::runtime_error("Buffer " + m_buffers[bid.id].name + " has two producers");
-                }
+                    if (bufferProducerOf.count(bid.id))
+                    {
+                        throw std::runtime_error("Buffer " + m_buffers[bid.id].name + " has two producers");
+                    }
 
-                bufferProducerOf[bid.id] = i;
+                    bufferProducerOf[bid.id] = i;
+                }
+                else
+                {
+                    bufferExtenderOf[bid.id].push_back(i);
+                }
             }
+        }
+
+        std::unordered_map<RGTextureID, int> textureLastWriter = textureProducerOf;
+
+        for (auto &[tid, extendIndices] : textureExtenderOf)
+        {
+            if (!textureProducerOf.count(tid))
+                throw std::runtime_error("Texture " + m_textures[tid].name + " has Extend with no Produce");
+
+            std::sort(extendIndices.begin(), extendIndices.end());
+
+            int prev = textureProducerOf[tid];
+
+            for (auto &extendIdx : extendIndices)
+            {
+
+                m_depGraph.addEdge(prev, extendIdx);
+                prev = extendIdx;
+            }
+
+            textureLastWriter[tid] = prev;
+        }
+        std::unordered_map<RGBufferID, int> bufferLastWriter = bufferProducerOf;
+        for (auto &[bid, extendIndices] : bufferExtenderOf)
+        {
+            if (!bufferProducerOf.count(bid))
+                throw std::runtime_error("Buffer " + m_buffers[bid].name + " has Extend with no Produce");
+
+            std::sort(extendIndices.begin(), extendIndices.end());
+
+            int prev = bufferProducerOf[bid];
+
+            for (auto &extendIdx : extendIndices)
+            {
+
+                m_depGraph.addEdge(prev, extendIdx);
+                prev = extendIdx;
+            }
+
+            bufferLastWriter[bid] = prev;
         }
 
         for (int i = 0; i < m_passes.size(); i++)
@@ -59,12 +115,12 @@ namespace nitro::renderer
 
             for (auto &tid : m_passes[i].reads)
             {
-                if (!textureProducerOf.count(tid.id))
+                if (!textureLastWriter.count(tid.id))
                 {
                     throw std::runtime_error("Texture " + m_textures[tid.id].name + " has no producer");
                 }
 
-                int producer = textureProducerOf[tid.id];
+                int producer = textureLastWriter[tid.id];
                 if (producer != i)
                 {
                     m_depGraph.addEdge(producer, i);
@@ -72,12 +128,12 @@ namespace nitro::renderer
             }
             for (auto &bid : m_passes[i].readBufs)
             {
-                if (!bufferProducerOf.count(bid.id))
+                if (!bufferLastWriter.count(bid.id))
                 {
                     throw std::runtime_error("Buffer " + m_buffers[bid.id].name + " has no producer");
                 }
 
-                int producer = bufferProducerOf[bid.id];
+                int producer = bufferLastWriter[bid.id];
                 if (producer != i)
                 {
                     m_depGraph.addEdge(producer, i);
@@ -453,27 +509,6 @@ namespace nitro::renderer
                 }
             }
         }
-
-        std::unordered_map<RGTextureID, std::string> firstWriter;
-
-        for (int idx : m_executionOrder)
-        {
-            auto &pass = m_passes[idx];
-            for (auto &write : pass.writes)
-            {
-                if (!m_textures.at(write.id).transient)
-                    continue;
-
-                if (firstWriter.count(write.id))
-                {
-                    errors.push_back(
-                        {pass.name,
-                         m_textures.at(write.id).name,
-                         "write-after-write: also written by " + firstWriter.at(write.id)});
-                }
-                firstWriter[write.id] = pass.name;
-            }
-        };
 
         return errors;
     }

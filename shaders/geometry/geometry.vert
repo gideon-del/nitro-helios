@@ -11,6 +11,13 @@ layout(location = 0) out vec2 fragUV;
 layout(location = 1) out vec3 fragNormal;
 layout(location = 2) out vec4 fragTangent;
 
+   struct MeshInstance
+    {
+        uint meshId;
+        uint materialId;
+        mat4 modelTransform;
+        mat4 normalTransform;           
+    };
 
 
 layout(set=0, binding=2) uniform GeometryUBO {
@@ -18,25 +25,22 @@ layout(set=0, binding=2) uniform GeometryUBO {
     mat4 proj;
 } gUbo;
 
-layout(push_constant)uniform PushConstant {
-    mat4 model;
-    mat4 normal;
-    vec4 baseColor;
-    float metallic;
-    float roughness;
-    uint useTextures;
-} pc;
+layout(std430, set=0, binding=3) readonly buffer MeshInstanceBuffer {
+ MeshInstance meshInstances[];
+}; 
 
-invariant gl_Position;
+
 
 void main() {
-    gl_Position = gUbo.proj * gUbo.view * pc.model * vec4(aPos, 1.0);
+
+    MeshInstance instance = meshInstances[gl_InstanceIndex];
+    gl_Position = gUbo.proj * gUbo.view * instance.modelTransform * vec4(aPos, 1.0);
 
     fragUV = aUV;
      mat3 normalMatrix = {
-        pc.normal[0].xyz,
-        pc.normal[1].xyz,
-        pc.normal[2].xyz
+        instance.normalTransform[0].xyz,
+        instance.normalTransform[1].xyz,
+        instance.normalTransform[2].xyz
     };
 
     fragNormal = normalMatrix * aNormal;

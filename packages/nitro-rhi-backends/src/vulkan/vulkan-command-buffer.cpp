@@ -783,4 +783,62 @@ namespace nitro::rhi::vulkan
 
         vkCmdFillBuffer(cmd, vulkanBuffer->buffer, (VkDeviceSize)offset, (VkDeviceSize)size, value);
     }
+
+    void VulkanCommandBuffer::copyTextureToTexture(RHITexture *src, RHITexture *dst)
+    {
+        VulkanTexture *vulkanTextureSrc = reinterpret_cast<VulkanTexture *>(src);
+        VulkanTexture *vulkanTextureDst = reinterpret_cast<VulkanTexture *>(dst);
+
+        VkImageCopy2 region{};
+        region.sType = VK_STRUCTURE_TYPE_IMAGE_COPY_2;
+        region.srcSubresource.aspectMask = vulkanTextureSrc->imageAspect;
+        region.srcSubresource.layerCount = 1;
+
+        region.dstSubresource.aspectMask = vulkanTextureDst->imageAspect;
+        region.dstSubresource.layerCount = 1;
+        region.extent = {vulkanTextureSrc->width, vulkanTextureSrc->height, 1};
+
+        VkCopyImageInfo2 copyInfo{};
+
+        copyInfo.sType = VK_STRUCTURE_TYPE_COPY_IMAGE_INFO_2;
+        copyInfo.srcImage = vulkanTextureSrc->image;
+        copyInfo.srcImageLayout = vulkanTextureSrc->currentLayout;
+        copyInfo.dstImage = vulkanTextureDst->image;
+        copyInfo.dstImageLayout = vulkanTextureDst->currentLayout;
+        copyInfo.regionCount = 1;
+        copyInfo.pRegions = &region;
+
+        vkCmdCopyImage2(cmd, &copyInfo);
+    }
+
+    void VulkanCommandBuffer::drawIndexedIndirect(RHIBuffer *indirectBuffer, size_t offset, uint32_t drawCount, uint32_t stride)
+    {
+
+        m_FrameStats.drawCalls += 1;
+
+        VulkanBuffer *vulkanBuffer = reinterpret_cast<VulkanBuffer *>(indirectBuffer);
+
+        vkCmdDrawIndexedIndirect(
+            cmd,
+            vulkanBuffer->buffer,
+            (VkDeviceSize)offset,
+            drawCount,
+            stride);
+    };
+
+    void VulkanCommandBuffer::drawIndexedIndirectCount(RHIBuffer *indirectBuffer, size_t offset, RHIBuffer *countBuffer, size_t countOffset, uint32_t maxDrawCount, uint32_t stride)
+    {
+        m_FrameStats.drawCalls += 1;
+        VulkanBuffer *vulkanIndirectBuffer = reinterpret_cast<VulkanBuffer *>(indirectBuffer);
+        VulkanBuffer *vulkanCountBuffer = reinterpret_cast<VulkanBuffer *>(countBuffer);
+
+        vkCmdDrawIndexedIndirectCount(
+            cmd,
+            vulkanIndirectBuffer->buffer,
+            (VkDeviceSize)offset,
+            vulkanCountBuffer->buffer,
+            (VkDeviceSize)countOffset,
+            maxDrawCount,
+            stride);
+    }
 }
