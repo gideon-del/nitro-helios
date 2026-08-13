@@ -238,6 +238,7 @@ namespace nitro::rhi::vulkan
         deviceInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
         deviceInfo.ppEnabledExtensionNames = deviceExtensions.data();
         VkPhysicalDeviceFeatures deviceFeatures{};
+        deviceFeatures.multiDrawIndirect = VK_TRUE;
 
         deviceInfo.pEnabledFeatures = &deviceFeatures;
         deviceInfo.pNext = &vulkan13Features;

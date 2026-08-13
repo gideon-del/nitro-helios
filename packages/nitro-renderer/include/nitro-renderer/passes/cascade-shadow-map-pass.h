@@ -36,7 +36,7 @@ namespace nitro::renderer
 
         ~CascadeShadowMapPass();
 
-        void execute(rhi::RHICommandBuffer *cmd, Scene &scene, CascadeShadowContext ctx);
+        void execute(rhi::RHICommandBuffer *cmd, Scene &scene, CascadeShadowContext ctx, rhi::RHIBuffer *drawCommandsBuffer, rhi::RHIBuffer *drawCountBuffer);
         void bindResources(const RGResources &resources, const std::vector<RGTextureID> textures);
         glm::mat4 lightViewProj[4];
         glm::vec4 cascadeSplit;
@@ -48,5 +48,8 @@ namespace nitro::renderer
         rhi::RHIPipeline *m_pipeline;
         rhi::RHIDescriptorLayout *m_descriptorLayout;
         PerFrame<CascadeShadowMapResource> m_resources;
+        rhi::RHIBuffer *m_lastMeshInstanceBuffer = nullptr;
+        bool isSceneBuffersStale(Scene &scene);
+        void bindSceneBuffers(Scene &scene);
     };
 } // namespace nitro::renderer

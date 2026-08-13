@@ -427,7 +427,9 @@ namespace nitro::renderer
         if (!m_buffers.count(id))
             return false;
 
-        return m_buffers[id].usage == rhi::BufferDesc::Usage::TransferDst || m_buffers[id].usage == rhi::BufferDesc::Usage::Uniform || m_buffers[id].usage == rhi::BufferDesc::Usage::Storage;
+        return m_buffers[id].usage == rhi::BufferDesc::Usage::TransferDst || m_buffers[id].usage == rhi::BufferDesc::Usage::Uniform || m_buffers[id].usage == rhi::BufferDesc::Usage::Storage
+
+               || m_buffers[id].usage == rhi::BufferDesc::Usage::Indirect;
     }
     const RGResources RenderGraph::buildResources()
     {

@@ -30,6 +30,8 @@ uint firstInstance;
 
 layout(push_constant) uniform PushConstant {
   uint objectCount;
+  uint indexSize;
+  uint vertexSize;
 };
 
 layout(std430, set=0, binding=2)  buffer DescriptorBuffer {
@@ -45,6 +47,9 @@ layout(std430, set=0,binding = 4) buffer DrawCount {
 layout(std430, set=0,binding = 5) buffer DrawCommands {
     DrawIndexedIndirectCommand commands[];
 };
+layout(std430, set=0,binding = 6) buffer SceneInstanceIdBuffet {
+    uint sceneInstanceIds[];
+};
 
 
 
@@ -54,7 +59,8 @@ uint id = gl_GlobalInvocationID.x;
 
 if(id >= objectCount) return;
 
-MeshInstance instance = meshInstances[id];
+uint globalInstanceId = sceneInstanceIds[id];
+MeshInstance instance = meshInstances[globalInstanceId];
 MeshDescriptor desc = meshDescriptors[instance.meshId];
 
 DrawIndexedIndirectCommand cmd;
@@ -62,8 +68,8 @@ cmd.indexCount = desc.indexCount;
 cmd.instanceCount = 1;
 cmd.firstIndex = desc.indexOffset;
 cmd.vertexOffset = int(desc.vertexOffset) ;
-cmd.firstInstance = id;
+cmd.firstInstance = globalInstanceId;
 
 commands[id] = cmd;
 atomicAdd(count, 1u);
-};
+}

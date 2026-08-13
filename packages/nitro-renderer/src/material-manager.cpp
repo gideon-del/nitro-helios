@@ -22,7 +22,7 @@ namespace nitro::renderer
             return INVALID_TEXTURE_INDEX;
 
         uint32_t id = static_cast<uint32_t>(m_textures.size());
-
+        std::cout << "Material texture added: " << id << "\n";
         m_textures.push_back(texture);
         return id;
     }

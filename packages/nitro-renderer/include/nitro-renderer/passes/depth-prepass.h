@@ -20,10 +20,10 @@ namespace nitro::renderer
     class DepthPrepass
     {
     public:
-        DepthPrepass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, std::string shaderDir, bool isMetal, std::shared_ptr<MaterialSystem> materialSystem);
+        DepthPrepass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, std::string shaderDir, bool isMetal);
         ~DepthPrepass();
         void resize(uint32_t width, uint32_t height);
-        void execute(rhi::RHICommandBuffer *cmd, Scene &scene, DepthPrePassCamera camera);
+        void execute(rhi::RHICommandBuffer *cmd, Scene &scene, rhi::RHIBuffer *drawCommandBuffer, rhi::RHIBuffer *drawCountBuffer, DepthPrePassCamera camera);
         void bindResources(const RGResources &resource, RGTextureID depth);
 
     private:
@@ -35,6 +35,8 @@ namespace nitro::renderer
         PerFrame<DepthResource> m_resources;
         uint32_t m_width;
         uint32_t m_height;
-        std::shared_ptr<MaterialSystem> m_materialSystem;
+        rhi::RHIBuffer *m_lastMeshInstanceBuffer = nullptr;
+        bool isSceneBuffersStale(Scene &scene);
+        void bindSceneBuffers(Scene &scene);
     };
 } // namespace nitro::renderer

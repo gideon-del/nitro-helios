@@ -45,6 +45,7 @@ namespace nitro::renderer
     uint32_t MeshManager::addMeshInstances(MeshInstance &instance)
     {
         uint32_t id = static_cast<uint32_t>(m_instances.size());
+        std::cout << "Mesh Instance mesId " << instance.meshId << "\n";
         m_instances.push_back(std::move(instance));
         return id;
     }

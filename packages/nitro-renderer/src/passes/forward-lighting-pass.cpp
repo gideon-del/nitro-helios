@@ -19,8 +19,8 @@ namespace nitro::renderer
         m_mainDescriptorLayout = m_device->createDescriptorLayout(mainBindings);
         m_shadowDescriptorLayout = m_device->createDescriptorLayout(cascadeBindings);
         rhi::PipelineDesc pipelineDesc;
-        pipelineDesc.hasPushConstant = true;
-        pipelineDesc.pushConstantSize = sizeof(RenderObjectPushConstant);
+        pipelineDesc.hasPushConstant = false;
+
         pipelineDesc.layouts = {m_mainDescriptorLayout, m_shadowDescriptorLayout};
         pipelineDesc.vertexLayout = geometry::Vertex::getVertexLayout();
         pipelineDesc.depthWrite = true;
@@ -97,6 +97,6 @@ namespace nitro::renderer
         mainScissor.height = m_swapchain->getHeight() * swapchainViewScale.y;
         cmd->setScissor(mainScissor);
 
-        scene.draw(cmd);
+        // scene.draw(cmd);
     }
 } // namespace nitro::renderer

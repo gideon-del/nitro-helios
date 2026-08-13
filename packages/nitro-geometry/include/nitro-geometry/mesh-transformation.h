@@ -21,10 +21,10 @@ namespace nitro::geometry
         {
             m_rotate *= glm::rotate(glm::mat4(1.0f), angle, axis);
         };
-        void rotate(glm::highp_dquat &qua)
+        void rotate(const glm::quat &qua)
         {
-            m_rotate = glm::mat4_cast(qua);
-        };
+            m_rotate *= glm::mat4_cast(qua);
+        }
         PushConstant getTransform()
         {
             PushConstant pc;

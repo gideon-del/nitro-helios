@@ -24,3 +24,4 @@
 #include "particle-emitter-pass.h"
 #include "particle-compact-pass.h"
 #include "particle-indirect-pass.h"
+#include "mesh-compace-pass.h"

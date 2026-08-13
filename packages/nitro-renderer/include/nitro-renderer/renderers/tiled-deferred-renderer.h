@@ -11,7 +11,7 @@ namespace nitro::renderer
     class TiledDeferredRenderer : IRenderer
     {
     public:
-        TiledDeferredRenderer(std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<rhi::RHISwapchain> swapchain, std::string shaderDir, bool isMetal, std::shared_ptr<MaterialSystem> materialSystem);
+        TiledDeferredRenderer(std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<rhi::RHISwapchain> swapchain, std::string shaderDir, bool isMetal);
         void execute(rhi::RHICommandBuffer *cmd, const RenderContext &ctx, RendererSettings &settings, rhi::RHITimer *timer) override;
         void resize(uint32_t width, uint32_t height) override;
         ~TiledDeferredRenderer();
@@ -41,6 +41,7 @@ namespace nitro::renderer
         std::unique_ptr<ParticleEmitterPass> m_particleEmitterPass;
         std::unique_ptr<ParticleCompactPass> m_particleCompactPass;
         std::unique_ptr<ParticleIndirectPass> m_particleIndirectPass;
+        std::unique_ptr<MeshCompactPass> m_meshCompactPass;
 
         rhi::RHITexture *m_cubemapTexture;
         rhi::RHITexture *m_irradianceTexture;
@@ -51,7 +52,6 @@ namespace nitro::renderer
         LightPanel m_lightPanel;
         RendererPanel m_rendererPanel;
         StatPanel m_statsPanel;
-        std::shared_ptr<MaterialSystem> m_materialSystem;
         RGCompiledFrameGraph m_compiledFrameGraph;
         ParticleEmitterSystem m_emitterSystem;
 

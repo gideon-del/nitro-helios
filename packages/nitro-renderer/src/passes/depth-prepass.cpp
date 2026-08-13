@@ -7,25 +7,30 @@ namespace nitro::renderer
                                uint32_t width,
                                uint32_t height,
                                std::string shaderDir,
-                               bool isMetal,
-                               std::shared_ptr<MaterialSystem> materialSystem) : m_device(device), m_width(width), m_height(height), m_materialSystem(materialSystem)
+                               bool isMetal) : m_device(device), m_width(width), m_height(height)
     {
 
-        std::vector<rhi::RHIDescriptorBinding> binding{{rhi::RHIDescriptorBinding::Type::UniformBuffer,
-                                                        rhi::RHIDescriptorBinding::ShaderStage::Vertex,
-                                                        2}};
+        std::vector<rhi::RHIDescriptorBinding> binding{
+            {rhi::RHIDescriptorBinding::Type::UniformBuffer,
+             rhi::RHIDescriptorBinding::ShaderStage::Vertex,
+             2},
+            {rhi::RHIDescriptorBinding::Type::StorageBuffer,
+             rhi::RHIDescriptorBinding::ShaderStage::Vertex,
+             3},
+
+        };
 
         m_descriptorLayout = m_device->createDescriptorLayout(binding);
         rhi::PipelineDesc pipelineDesc;
         pipelineDesc.depthTest = rhi::CompareOp::Less;
         pipelineDesc.depthWrite = true;
         pipelineDesc.hasColorAttachment = false;
-        pipelineDesc.pushConstantSize = sizeof(RenderObjectPushConstant);
-        pipelineDesc.layouts = {m_descriptorLayout, m_materialSystem->getMaterialLayout()};
+        pipelineDesc.layouts = {m_descriptorLayout};
         pipelineDesc.vertexLayout = geometry::Vertex::getVertexLayout();
         pipelineDesc.depthAttachmentFormat = rhi::TextureDesc::ImageFormat::Depth32Float;
         pipelineDesc.hasDepth = true;
         pipelineDesc.hasStencil = false;
+        pipelineDesc.hasPushConstant = false;
         std::string shaderPath = shaderDir + "/depth-prepass/depth-prepass";
 
         if (isMetal)
@@ -54,9 +59,6 @@ namespace nitro::renderer
                 resource.uniformBuffer = m_device->createBuffer(uboDesc);
 
                 resource.descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
-
-                resource.descriptorSet->writeBuffer(resource.uniformBuffer, 2);
-                resource.descriptorSet->commit();
 
                 return resource;
             });
@@ -100,9 +102,29 @@ namespace nitro::renderer
         m_renderPass = m_device->createRenderPass(renderPassDesc);
     }
 
-    void DepthPrepass::execute(rhi::RHICommandBuffer *cmd, Scene &scene, DepthPrePassCamera camera)
+    void DepthPrepass::bindSceneBuffers(Scene &scene)
+    {
+        m_lastMeshInstanceBuffer = scene.meshManager->instanceBuffer();
+        for (auto &resource : m_resources)
+        {
+            resource.descriptorSet->writeBuffer(resource.uniformBuffer, 2);
+            resource.descriptorSet->writeBuffer(m_lastMeshInstanceBuffer, 3);
+            resource.descriptorSet->commit();
+        }
+    }
+
+    bool DepthPrepass::isSceneBuffersStale(Scene &scene)
+    {
+        return m_lastMeshInstanceBuffer != scene.meshManager->instanceBuffer();
+    }
+
+    void DepthPrepass::execute(rhi::RHICommandBuffer *cmd, Scene &scene, rhi::RHIBuffer *drawCommandBuffer, rhi::RHIBuffer *drawCountBuffer, DepthPrePassCamera camera)
     {
 
+        if (isSceneBuffersStale(scene))
+        {
+            bindSceneBuffers(scene);
+        }
         auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
         cmd->beginRenderPass(m_renderPass);
         cmd->bindPipeline(m_pipeline);
@@ -119,7 +141,7 @@ namespace nitro::renderer
         cmd->setViewPort(viewport);
         cmd->setScissor(scissor);
 
-        scene.draw(cmd);
+        scene.draw(cmd, drawCommandBuffer, drawCountBuffer);
 
         cmd->endRenderPass();
     }

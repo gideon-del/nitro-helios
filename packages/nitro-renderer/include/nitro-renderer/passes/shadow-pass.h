@@ -13,7 +13,7 @@ namespace nitro::renderer
 
     struct ShadowPushConstant
     {
-        glm::mat4 model;
+
         int cascadeIndex;
         float pad[3];
     };
@@ -24,7 +24,7 @@ namespace nitro::renderer
         ShadowPass(rhi::RHIDevice *device, int cascadeIndex);
         int cascadeIndex;
 
-        void execute(rhi::RHICommandBuffer *cmd, rhi::RHIPipeline *pipeline, rhi::RHIDescriptorSet *descriptorSet, Scene &scene);
+        void execute(rhi::RHICommandBuffer *cmd, rhi::RHIPipeline *pipeline, rhi::RHIDescriptorSet *descriptorSet, Scene &scene, rhi::RHIBuffer *drawCommandsBuffer, rhi::RHIBuffer *drawCountBuffer);
         void bindResource(const RGResources &resources, const RGTextureID shadowTexture);
         static float s_getUniformSplit(
             float near,

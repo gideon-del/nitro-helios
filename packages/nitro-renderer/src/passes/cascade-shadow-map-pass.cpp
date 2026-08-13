@@ -6,9 +6,14 @@ namespace nitro::renderer
     CascadeShadowMapPass::CascadeShadowMapPass(std::shared_ptr<rhi::RHIDevice> device, std::string shaderDir, bool isMetal) : m_device(device)
     {
 
-        std::vector<rhi::RHIDescriptorBinding> bindings = {{rhi ::RHIDescriptorBinding::Type::UniformBuffer,
-                                                            rhi::RHIDescriptorBinding::ShaderStage::Vertex,
-                                                            2}};
+        std::vector<rhi::RHIDescriptorBinding> bindings = {
+            {rhi ::RHIDescriptorBinding::Type::UniformBuffer,
+             rhi::RHIDescriptorBinding::ShaderStage::Vertex,
+             2},
+            {rhi ::RHIDescriptorBinding::Type::StorageBuffer,
+             rhi::RHIDescriptorBinding::ShaderStage::Vertex,
+             3},
+        };
         m_descriptorLayout = m_device->createDescriptorLayout(bindings);
 
         rhi::PipelineDesc pipelineDesc;
@@ -56,8 +61,7 @@ namespace nitro::renderer
                 uboDesc.usage = rhi::BufferDesc::Usage::Uniform;
                 resource.uniformBuffer = m_device->createBuffer(uboDesc);
                 resource.descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
-                resource.descriptorSet->writeBuffer(resource.uniformBuffer, 2);
-                resource.descriptorSet->commit();
+
                 return resource;
             });
     }
@@ -78,8 +82,27 @@ namespace nitro::renderer
             m_shadowPasses[i].bindResource(resources, textures[i]);
         }
     };
-    void CascadeShadowMapPass::execute(rhi::RHICommandBuffer *cmd, Scene &scene, CascadeShadowContext ctx)
+    bool CascadeShadowMapPass::isSceneBuffersStale(Scene &scene)
     {
+        return m_lastMeshInstanceBuffer != scene.meshManager->instanceBuffer();
+    }
+    void CascadeShadowMapPass::bindSceneBuffers(Scene &scene)
+    {
+        m_lastMeshInstanceBuffer = scene.meshManager->instanceBuffer();
+
+        for (auto &resource : m_resources)
+        {
+            resource.descriptorSet->writeBuffer(resource.uniformBuffer, 2);
+            resource.descriptorSet->writeBuffer(m_lastMeshInstanceBuffer, 3);
+            resource.descriptorSet->commit();
+        }
+    }
+    void CascadeShadowMapPass::execute(rhi::RHICommandBuffer *cmd, Scene &scene, CascadeShadowContext ctx, rhi::RHIBuffer *drawCommandsBuffer, rhi::RHIBuffer *drawCountBuffer)
+    {
+        if (isSceneBuffersStale(scene))
+        {
+            bindSceneBuffers(scene);
+        }
 
         auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
 
@@ -97,7 +120,7 @@ namespace nitro::renderer
 
         for (auto &shadowPass : m_shadowPasses)
         {
-            shadowPass.execute(cmd, m_pipeline, resource.descriptorSet, scene);
+            shadowPass.execute(cmd, m_pipeline, resource.descriptorSet, scene, drawCommandsBuffer, drawCountBuffer);
         }
     };
 } // namespace nitro::renderer

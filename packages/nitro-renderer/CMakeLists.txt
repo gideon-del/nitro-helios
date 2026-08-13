@@ -7,7 +7,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_library(nitro-renderer STATIC
  src/mesh-renderer.cpp
  src/frame-resource.cpp
- src/render-object.cpp
  src/passes/shadow-pass.cpp
  src/passes/geometry-pass.cpp
  src/panels.cpp
@@ -25,7 +24,6 @@ add_library(nitro-renderer STATIC
  vendor/tinygltf_impl.cpp
  src/scene.cpp
  vendor/stb_impl.cpp
- src/material-system.cpp
  src/passes/tone-map-pass.cpp
  src/passes/main-scene-pass.cpp
  src/utils.cpp
@@ -46,6 +44,7 @@ add_library(nitro-renderer STATIC
  src/passes/particle-indirect-pass.cpp
  src/mesh-manager.cpp
  src/material-manager.cpp
+ src/passes/mesh-compact-pass.cpp
 )
 
 find_package(glm REQUIRED)

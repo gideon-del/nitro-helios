@@ -92,15 +92,21 @@ void handleKeyboard(GLFWwindow *window, OrbitalCamera &camera)
     }
 }
 
-void addRandomSpheres(uint32_t count, float areaSize, Scene &scene, std::shared_ptr<MeshRenderer> renderer)
+void addRandomSpheres(uint32_t count, float areaSize, Scene &scene, uint32_t meshId)
 {
     std::mt19937 rng(50); // fixed seed
     std::uniform_real_distribution<float> pos(-areaSize, areaSize);
 
     for (int i = 0; i < count; i++)
     {
-        scene.objects.push_back({renderer,
-                                 MeshTransformation(glm::translate(glm::mat4(1.0f), glm::vec3(pos(rng), 10.0f, pos(rng))))});
+        auto transform = MeshTransformation(glm::translate(glm::mat4(1.0f), glm::vec3(pos(rng), 10.0f, pos(rng))));
+        auto pc = transform.getTransform();
+
+        MeshInstance instance;
+        instance.meshId = meshId;
+        instance.modelTransform = pc.model;
+        instance.normalTransform = pc.normalMatrix;
+        scene.instanceIds.push_back(scene.meshManager->addMeshInstances(instance));
     }
 }
 void handleMouse(
@@ -143,7 +149,7 @@ void handleMouse(
         state.mousePressed = false;
     }
 }
-void addPBRSphereGrid(Scene &pbrScene, std::shared_ptr<MeshRenderer> sphereRenderer)
+void addPBRSphereGrid(Scene &pbrScene, uint32_t sphereMeshId)
 {
 
     int areaWidth = 200;
@@ -160,15 +166,23 @@ void addPBRSphereGrid(Scene &pbrScene, std::shared_ptr<MeshRenderer> sphereRende
             float roughness = float(col) / 4.0f;
             float xPos = col * spacing;
 
-            auto material = std::make_shared<Material>();
+            MaterialDesc materialDesc;
 
-            material->metallicFactor = metallic;
-            material->roughnessFactor = roughness;
-            material->baseColorFactor = glm::vec4(0.4f, 0.9f, 1.0f, 1.0f);
+            materialDesc.parameters.metallic = metallic;
+            materialDesc.parameters.roughness = roughness;
+            materialDesc.parameters.albedo = glm::vec4(0.4f, 0.9f, 1.0f, 1.0f);
+
+            uint32_t materialId = pbrScene.materialManager->addMaterial(materialDesc);
             MeshTransformation transformation;
             transformation.translate(glm::vec3(xPos, yPos, 0.0f));
+            auto pc = transformation.getTransform();
+            MeshInstance instance;
+            instance.meshId = sphereMeshId;
+            instance.materialId = materialId;
+            instance.modelTransform = pc.model;
+            instance.normalTransform = pc.normalMatrix;
 
-            pbrScene.objects.push_back({sphereRenderer, transformation, material});
+            pbrScene.instanceIds.push_back(pbrScene.meshManager->addMeshInstances(instance));
         }
     }
 };
@@ -186,22 +200,26 @@ int main()
     std::shared_ptr<RHISwapchain> swapchain(
         device->createSwapchain(nullptr));
 
-    std::shared_ptr<MaterialSystem> materialSystem = std::make_shared<MaterialSystem>(device);
-    Scene mainScene;
-    Scene pbrScene;
-    Scene helmetScene;
+    std::shared_ptr<MaterialManager> materialManager = std::make_shared<MaterialManager>(device);
+    std::shared_ptr<MeshManager> meshManager = std::make_shared<MeshManager>(device);
+    Scene mainScene{device, meshManager, materialManager};
+    Scene pbrScene{device, meshManager, materialManager};
+    Scene helmetScene{device, meshManager, materialManager};
 
-    Mesh sphere = MeshGenerator::createUVSphere(5, 10, 100);
+    auto sphereMeshId = meshManager->addMesh(MeshGenerator::createUVSphere(5, 10, 100));
 
-    auto sphereRenderer = std::make_shared<MeshRenderer>(sphere, device);
-
-    addPBRSphereGrid(pbrScene, sphereRenderer);
+    addPBRSphereGrid(pbrScene, sphereMeshId);
     Mesh plane = MeshGenerator::createPlane(500, 500);
     plane.calculateNormals();
-    auto planeRenderer = std::make_shared<MeshRenderer>(plane, device);
-    mainScene.objects.push_back(RenderObject(planeRenderer));
+    auto planeMeshId = meshManager->addMesh(plane);
+
+    MeshInstance planeInstance;
+    planeInstance.meshId = planeMeshId;
+
+    mainScene.instanceIds.push_back(meshManager->addMeshInstances(planeInstance));
+
     // pbrScene.objects.push_back(RenderObject(planeRenderer));
-    addRandomSpheres(400, 500, mainScene, sphereRenderer);
+    addRandomSpheres(1000, 800, mainScene, sphereMeshId);
     Mesh pointLightSphere = MeshGenerator::createUVSphere(1, 10, 100);
     std::shared_ptr<MeshRenderer> pointLightRenderer = std::make_shared<MeshRenderer>(pointLightSphere, device);
     OrbitalCamera camera;
@@ -237,8 +255,8 @@ int main()
     // helmetScene.objects = Scene::loadGltfScene("./assets/buster_drone/scene.gltf", device, materialSystem);
     // ForwardRenderer forwardRenderer = ForwardRenderer(device, swapchain, std::string(SHADER_DIR), isMetal);
     // DeferredRenderer deferredRenderer = DeferredRenderer(device, swapchain, std::string(SHADER_DIR), isMetal, materialSystem);
-    TiledDeferredRenderer tileDeferredRenderer = TiledDeferredRenderer(device, swapchain, std::string(SHADER_DIR), isMetal, materialSystem);
-    helmetScene.objects = Scene::loadGltfScene("./assets/DamagedHelmet/DamagedHelmet.gltf", device, materialSystem);
+    TiledDeferredRenderer tileDeferredRenderer = TiledDeferredRenderer(device, swapchain, std::string(SHADER_DIR), isMetal);
+    helmetScene.loadGltfScene("./assets/DamagedHelmet/DamagedHelmet.gltf", device);
 
     renderContext.scene = &helmetScene;
     renderContext.ssaoSamples.generate();
@@ -248,6 +266,14 @@ int main()
     glfwGetFramebufferSize(window, &cachedWindowWidth, &cachedWindowHeight);
     uint32_t cachedViewportWidth = (uint32_t)rendererSettings.viewportSize.x;
     uint32_t cachedViewportHeight = (uint32_t)rendererSettings.viewportSize.y;
+
+    // Build scene buffers
+    helmetScene.buildSceneInstanceId();
+    mainScene.buildSceneInstanceId();
+    pbrScene.buildSceneInstanceId();
+
+    materialManager->buildMegaMaterialBuffer();
+    meshManager->buildMegaBuffers();
 
     while (!glfwWindowShouldClose(window))
     {

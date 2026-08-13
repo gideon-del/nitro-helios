@@ -135,12 +135,10 @@ namespace nitro::renderer
         std::shared_ptr<rhi::RHIDevice> device,
         std::shared_ptr<rhi::RHISwapchain> swapchain,
         std::string shaderDir,
-        bool isMetal,
-        std::shared_ptr<MaterialSystem> materialSystem)
+        bool isMetal)
         : m_device(device),
           m_swapchain(swapchain),
-          m_isMetal(isMetal),
-          m_materialSystem(materialSystem)
+          m_isMetal(isMetal)
     {
         rhi::RHITexture *hdrTexture = loadHDRImage(m_device, "./assets/flamingo_pan_2k.hdr");
         m_cubemapTexture = createCubeMap(m_device, hdrTexture, 512, shaderDir, isMetal);
@@ -151,8 +149,8 @@ namespace nitro::renderer
         m_device->destroyTexture(hdrTexture);
 
         m_skyboxPass = std::make_shared<SkyboxPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
-        m_depthPrepass = std::make_shared<DepthPrepass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal, m_materialSystem);
-        m_geometryPass = std::make_shared<GeometryPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal, m_materialSystem);
+        m_depthPrepass = std::make_shared<DepthPrepass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
+        m_geometryPass = std::make_shared<GeometryPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
 
         m_ssaoPass = std::make_unique<SSAOPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
         m_csmPass = std::make_shared<CascadeShadowMapPass>(m_device, shaderDir, isMetal);
@@ -179,6 +177,7 @@ namespace nitro::renderer
         m_particleEmitterPass = std::make_unique<ParticleEmitterPass>(m_device, shaderDir, isMetal);
         m_particleCompactPass = std::make_unique<ParticleCompactPass>(m_device, shaderDir, isMetal);
         m_particleIndirectPass = std::make_unique<ParticleIndirectPass>(m_device, shaderDir, isMetal);
+        m_meshCompactPass = std::make_unique<MeshCompactPass>(m_device, shaderDir, isMetal);
         m_particleBillboardPass = std::make_unique<ParticleBillboardPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
 
         buildRenderGraph();
@@ -221,6 +220,37 @@ namespace nitro::renderer
 
     void TiledDeferredRenderer::buildRenderGraph()
     {
+
+        auto drawCountId = m_renderGraph.declareBuffer({"Draw Count",
+                                                        sizeof(uint32_t),
+                                                        rhi::BufferDesc::Usage::Indirect});
+        auto drawCommandsId = m_renderGraph.declareBuffer({"Draw Command Buffer",
+                                                           sizeof(DrawIndexedIndirectArgs) * Scene::s_MAX_DRAW_COMMANDS,
+
+                                                           rhi::BufferDesc::Usage::Indirect});
+
+        m_renderGraph.addPass({
+            "Mesh Compact pass",
+            {},
+            {},
+            {},
+            {
+                {drawCountId, rhi::ResourceState::ShaderWrite},
+                {drawCommandsId, rhi::ResourceState::ShaderWrite},
+            },
+            [](const RGResources &resources) {
+
+            },
+            [drawCommandsId, drawCountId, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            {
+                MeshCompactPushConstant pc;
+                pc.objectCount = static_cast<uint32_t>(ctx.scene->instanceIds.size());
+                pc.indexSize = static_cast<uint32_t>(sizeof(uint32_t));
+                pc.vertexSize = static_cast<uint32_t>(sizeof(geometry::Vertex));
+                m_meshCompactPass->execute(cmd, *ctx.scene, resources.getBuffer(drawCommandsId), resources.getBuffer(drawCountId), pc);
+            },
+        });
+
         auto depth = m_renderGraph.declareTexture({"GBuffer Depth",
                                                    rhi::TextureDesc::ImageFormat::Depth32Float});
         auto albedo = m_renderGraph.declareTexture({"GBuffer Albedo",
@@ -236,13 +266,16 @@ namespace nitro::renderer
             "Depth Prepass",
             {},
             {{depth, rhi::ResourceState::DepthWrite}},
-            {},
+            {
+                {drawCountId, rhi::ResourceState::ShaderRead},
+                {drawCommandsId, rhi::ResourceState::ShaderRead},
+            },
             {},
             [depth, this](const RGResources &resources)
             {
                 m_depthPrepass->bindResources(resources, depth);
             },
-            [depth, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            [depth, drawCommandsId, drawCountId, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
             {
                 DepthPrePassCamera depthCamera;
                 depthCamera.view = ctx.camera->getView();
@@ -252,7 +285,7 @@ namespace nitro::renderer
                 {
                     depthCamera.proj[1][1] *= -1.0f;
                 }
-                m_depthPrepass->execute(cmd, *ctx.scene, depthCamera);
+                m_depthPrepass->execute(cmd, *ctx.scene, resources.getBuffer(drawCommandsId), resources.getBuffer(drawCountId), depthCamera);
             },
         });
 
@@ -262,13 +295,16 @@ namespace nitro::renderer
             "GBuffer",
             {{depth, rhi::ResourceState::DepthRead}},
             {{albedo, rhi::ResourceState::RenderTarget}, {normal, rhi::ResourceState::RenderTarget}, {metallicRoughness, rhi::ResourceState::RenderTarget}, {emissive, rhi::ResourceState::RenderTarget}},
-            {},
+            {
+                {drawCountId, rhi::ResourceState::ShaderRead},
+                {drawCommandsId, rhi::ResourceState::ShaderWrite},
+            },
             {},
             [gBufferIds, this](const RGResources &resources)
             {
                 m_geometryPass->bindResources(resources, gBufferIds);
             },
-            [gBufferIds, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            [gBufferIds, drawCommandsId, drawCountId, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
             {
                 GeometryCameraBuffer geometryCamera;
                 geometryCamera.view = ctx.camera->getView();
@@ -278,7 +314,7 @@ namespace nitro::renderer
                 {
                     geometryCamera.proj[1][1] *= -1.0f;
                 }
-                m_geometryPass->execute(cmd, geometryCamera, *ctx.scene, settings.light);
+                m_geometryPass->execute(cmd, geometryCamera, *ctx.scene, settings.light, resources.getBuffer(drawCommandsId), resources.getBuffer(drawCountId));
             },
         });
 
@@ -426,7 +462,7 @@ namespace nitro::renderer
             {
                 m_csmPass->bindResources(resources, cascadeTextures);
             },
-            [this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            [this, drawCommandsId, drawCountId](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
             {
                 CascadeShadowContext shadowCtx;
                 shadowCtx.aspect = settings.viewportSize.x / settings.viewportSize.y;
@@ -437,7 +473,7 @@ namespace nitro::renderer
                 shadowCtx.cameraView = ctx.camera->getView();
                 shadowCtx.lightView = settings.light.lightCamera.getView();
 
-                m_csmPass->execute(cmd, *ctx.scene, shadowCtx);
+                m_csmPass->execute(cmd, *ctx.scene, shadowCtx, resources.getBuffer(drawCommandsId), resources.getBuffer(drawCountId));
             },
         });
 

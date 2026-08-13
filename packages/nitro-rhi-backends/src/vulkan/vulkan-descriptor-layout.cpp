@@ -16,6 +16,10 @@ namespace nitro::rhi::vulkan
             return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         case RHIDescriptorBinding::Type::StorageImage:
             return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        case RHIDescriptorBinding::Type::SingleSampler:
+            return VK_DESCRIPTOR_TYPE_SAMPLER;
+        case RHIDescriptorBinding::Type::Texture:
+            return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 
         default:
             return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -74,7 +78,7 @@ namespace nitro::rhi::vulkan
 
             if (bindings[i].isBindlessArray)
             {
-                bindingFlags[i] = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
+                bindingFlags[i] = VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT | VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT;
                 hasBindless = true;
             }
             else

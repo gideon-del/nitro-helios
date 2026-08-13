@@ -3,15 +3,20 @@
 #include <nitro-geometry/vertex.h>
 namespace nitro::renderer
 {
-    GeometryPass::GeometryPass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, std::string shaderDir, bool isMetal, std::shared_ptr<MaterialSystem> materialSystem)
+    GeometryPass::GeometryPass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, std::string shaderDir, bool isMetal)
         : m_width(width),
           m_height(height),
-          m_device(device),
-          m_materialSystem(materialSystem)
+          m_device(device)
+
     {
 
         std::vector<rhi::RHIDescriptorBinding> bindings = {
-            {RHIDescriptorBinding::Type::UniformBuffer, RHIDescriptorBinding::ShaderStage::Vertex, 2}};
+            {RHIDescriptorBinding::Type::UniformBuffer, RHIDescriptorBinding::ShaderStage::Vertex, 2},
+            {RHIDescriptorBinding::Type::StorageBuffer, RHIDescriptorBinding::ShaderStage::Both, 3},
+            {RHIDescriptorBinding::Type::StorageBuffer, RHIDescriptorBinding::ShaderStage::Fragment, 4},
+            {RHIDescriptorBinding::Type::Texture, RHIDescriptorBinding::ShaderStage::Fragment, 5, true, 4096},
+            {RHIDescriptorBinding::Type::SingleSampler, RHIDescriptorBinding::ShaderStage::Fragment, 6},
+        };
         m_descriptorLayout = m_device->createDescriptorLayout(bindings);
 
         rhi::PipelineDesc pipelineDesc;
@@ -33,11 +38,10 @@ namespace nitro::renderer
             pipelineDesc.shaders.push_back({"main", shaderPath + ".frag.spv", rhi::ShaderStage::Fragment});
         }
 
-        auto *materialDescriptorLayout = m_materialSystem->getMaterialLayout();
-        pipelineDesc.layouts = {m_descriptorLayout, materialDescriptorLayout};
+        pipelineDesc.layouts = {m_descriptorLayout};
         pipelineDesc.vertexLayout = geometry::Vertex::getVertexLayout();
-        pipelineDesc.hasPushConstant = true;
-        pipelineDesc.pushConstantSize = sizeof(RenderObjectPushConstant);
+        pipelineDesc.hasPushConstant = false;
+
         pipelineDesc.depthAttachmentFormat = rhi::TextureDesc::ImageFormat::Depth32Float;
         pipelineDesc.cullMode = PipelineDesc::CullMode::None;
 
@@ -54,14 +58,18 @@ namespace nitro::renderer
                 GeometryPassResource resource;
                 resource.uniformBuffer = m_device->createBuffer(bufferDesc);
                 resource.descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
-                resource.descriptorSet->writeBuffer(resource.uniformBuffer, 2);
-                resource.descriptorSet->commit();
+
                 return resource;
             });
     }
 
-    void GeometryPass::execute(rhi::RHICommandBuffer *cmd, GeometryCameraBuffer geometryCamera, Scene &scene, LightingSettings &settings)
+    void GeometryPass::execute(rhi::RHICommandBuffer *cmd, GeometryCameraBuffer geometryCamera, Scene &scene, LightingSettings &settings, rhi::RHIBuffer *drawCommandBuffer, rhi::RHIBuffer *drawCountBuffer)
     {
+
+        if (isSceneBuffersStale(scene))
+        {
+            bindSceneBuffers(scene);
+        }
 
         uint32_t frameIdx = m_device->getCurrentFrameIndex();
         auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
@@ -77,15 +85,29 @@ namespace nitro::renderer
         cmd->setScissor(scissor);
         resource.uniformBuffer->upload(&geometryCamera, sizeof(GeometryCameraBuffer));
         cmd->bindDescriptorSet(resource.descriptorSet, 0);
-
-        for (auto &obj : scene.objects)
-        {
-            obj.draw(cmd, nullptr, 0, m_materialSystem->getDefaultMaterial()->descriptorSet);
-        }
-
+        scene.draw(cmd, drawCommandBuffer, drawCountBuffer);
         cmd->endRenderPass();
     };
 
+    void GeometryPass::bindSceneBuffers(Scene &scene)
+    {
+        m_lastMeshInstanceBuffer = scene.meshManager->instanceBuffer();
+        m_lastMaterialBuffer = scene.materialManager->getMaterialBuffer();
+        for (auto &resource : m_resources)
+        {
+            resource.descriptorSet->writeBuffer(resource.uniformBuffer, 2);
+            resource.descriptorSet->writeBuffer(m_lastMeshInstanceBuffer, 3);
+            resource.descriptorSet->writeBuffer(m_lastMaterialBuffer, 4);
+            resource.descriptorSet->writeBindlessTextures(scene.materialManager->getTextures(), 5);
+            resource.descriptorSet->writeSampler(m_device->defaultSamplers().anisotropicRepeat, 6);
+            resource.descriptorSet->commit();
+        }
+    }
+
+    bool GeometryPass::isSceneBuffersStale(Scene &scene)
+    {
+        return m_lastMeshInstanceBuffer != scene.meshManager->instanceBuffer() || m_lastMaterialBuffer != scene.materialManager->getMaterialBuffer();
+    }
     GeometryPass::~GeometryPass()
     {
         for (auto &frameResource : m_resources)

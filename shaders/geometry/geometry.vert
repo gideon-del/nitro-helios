@@ -10,6 +10,7 @@ layout(location = 4) in vec4 aTangent;
 layout(location = 0) out vec2 fragUV;
 layout(location = 1) out vec3 fragNormal;
 layout(location = 2) out vec4 fragTangent;
+layout(location = 3) flat out uint fragInstanceIndex;
 
    struct MeshInstance
     {
@@ -45,4 +46,5 @@ void main() {
 
     fragNormal = normalMatrix * aNormal;
     fragTangent = vec4(normalMatrix * aTangent.xyz, aTangent.w);
+    fragInstanceIndex = gl_InstanceIndex;
 }

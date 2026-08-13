@@ -75,180 +75,144 @@ namespace nitro::renderer
 
         return device->createTexture(textureDesc);
     };
-    std::vector<RenderObject> Scene::loadGltfScene(std::string filePath, std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<MaterialSystem> materialSystem)
+    void Scene::loadGltfScene(std::string filePath, std::shared_ptr<rhi::RHIDevice> device)
     {
         tinygltf::TinyGLTF loader;
         tinygltf::Model model;
-        std::string err;
-        std::string warn;
-        bool success = loader.LoadASCIIFromFile(
-            &model,
-            &err,
-            &warn,
-            filePath);
+        std::string err, warn;
+        bool success = loader.LoadASCIIFromFile(&model, &err, &warn, filePath);
 
         if (!err.empty())
-        {
             std::cout << "Error From Tiny GLTF: " << err << std::endl;
-        }
         if (!warn.empty())
-        {
             std::cout << "Warning From Tiny GLTF: " << warn << std::endl;
-        }
-
         if (!success)
-        {
             throw std::runtime_error("Failed to load tiny gltf file at " + filePath);
-        }
+
         tinygltf::Scene defaultScene = model.scenes[model.defaultScene];
-        std::vector<std::shared_ptr<Material>> materials;
-        std::vector<RenderObject> renderObjects;
+        std::vector<uint32_t> materialIndices;
+
+        for (auto &gltfMaterial : model.materials)
+        {
+            MaterialDesc desc;
+
+            if (gltfMaterial.pbrMetallicRoughness.baseColorTexture.index >= 0)
+                desc.textures.albedo = loadGltfTexture(device, model, gltfMaterial.pbrMetallicRoughness.baseColorTexture, rhi::TextureDesc::ImageFormat::ColorSRGB8);
+
+            if (gltfMaterial.pbrMetallicRoughness.metallicRoughnessTexture.index >= 0)
+                desc.textures.metallicRoughness = loadGltfTexture(device, model, gltfMaterial.pbrMetallicRoughness.metallicRoughnessTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+
+            if (gltfMaterial.normalTexture.index >= 0)
+            {
+                auto normalTexture = model.textures[gltfMaterial.normalTexture.index];
+                desc.textures.normalMap = loadGltfTexture(device, model, normalTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+            }
+
+            if (gltfMaterial.occlusionTexture.index >= 0)
+            {
+                auto occlusionTexture = model.textures[gltfMaterial.occlusionTexture.index];
+                desc.textures.occlusionMap = loadGltfTexture(device, model, occlusionTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+            }
+
+            if (gltfMaterial.emissiveTexture.index >= 0)
+            {
+                auto emissiveTexture = model.textures[gltfMaterial.emissiveTexture.index];
+                desc.textures.emissive = loadGltfTexture(device, model, emissiveTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+            }
+
+            auto &pbr = gltfMaterial.pbrMetallicRoughness;
+            desc.parameters.albedo = glm::vec4(pbr.baseColorFactor[0], pbr.baseColorFactor[1], pbr.baseColorFactor[2], pbr.baseColorFactor[3]);
+            desc.parameters.metallic = static_cast<float>(pbr.metallicFactor);
+            desc.parameters.roughness = static_cast<float>(pbr.roughnessFactor);
+
+            materialIndices.push_back(materialManager->addMaterial(desc));
+        }
 
         std::function<void(int, geometry::MeshTransformation)> walkNode;
         walkNode = [&](int nodeIdx, geometry::MeshTransformation parentTransform)
         {
             const auto &node = model.nodes[nodeIdx];
-            if (node.mesh < 0)
-            {
-                for (auto childrenIdx : node.children)
-                {
-                    walkNode(childrenIdx, parentTransform);
-                }
-                return;
-            }
-            geometry::MeshTransformation transformation;
+
+            geometry::MeshTransformation transformation = parentTransform;
 
             if (node.rotation.size() == 4)
-            {
-                auto rotation = glm::qua{node.rotation[3], node.rotation[0], node.rotation[1], node.rotation[2]};
-
-                transformation.rotate(rotation);
-            }
-
+                transformation.rotate(glm::qua{node.rotation[3], node.rotation[0], node.rotation[1], node.rotation[2]});
             if (node.translation.size() == 3)
-            {
                 transformation.translate(glm::vec3{node.translation[0], node.translation[1], node.translation[2]});
-            }
-
             if (node.scale.size() == 3)
-            {
                 transformation.scale(glm::vec3{node.scale[0], node.scale[1], node.scale[2]});
-            }
 
-            tinygltf::Mesh nodeMesh = model.meshes[node.mesh];
-            for (auto &primitive : nodeMesh.primitives)
+            if (node.mesh >= 0)
             {
-                std::cout << "Loading Primitive " << std::endl;
-                std::vector<geometry::Vertex> vertices;
-                std::vector<uint32_t> indices;
-
-                const auto &positionAccessor = model.accessors[primitive.attributes.at("POSITION")];
-                const auto &normalAccessor = model.accessors[primitive.attributes.at("NORMAL")];
-                const auto &uvAccessor = model.accessors[primitive.attributes.at("TEXCOORD_0")];
-
-                for (int i = 0; i < positionAccessor.count; i++)
+                tinygltf::Mesh nodeMesh = model.meshes[node.mesh];
+                for (auto &primitive : nodeMesh.primitives)
                 {
-                    geometry::Vertex vertex;
+                    std::vector<geometry::Vertex> vertices;
+                    std::vector<uint32_t> indices;
 
-                    vertex.pos = read_vec3(positionAccessor, model, i);
-                    vertex.normal = read_vec3(normalAccessor, model, i);
-                    vertex.uv = read_vec2(uvAccessor, model, i);
-                    if (primitive.attributes.count("TANGENT"))
+                    const auto &positionAccessor = model.accessors[primitive.attributes.at("POSITION")];
+                    const auto &normalAccessor = model.accessors[primitive.attributes.at("NORMAL")];
+                    const auto &uvAccessor = model.accessors[primitive.attributes.at("TEXCOORD_0")];
+
+                    for (int i = 0; i < positionAccessor.count; i++)
                     {
-                        tinygltf::Accessor tangentAccessor = model.accessors[primitive.attributes.at("TANGENT")];
-                        vertex.tangent = read_vec4(tangentAccessor, model, i);
+                        geometry::Vertex vertex;
+                        vertex.pos = read_vec3(positionAccessor, model, i);
+                        vertex.normal = read_vec3(normalAccessor, model, i);
+                        vertex.uv = read_vec2(uvAccessor, model, i);
+                        if (primitive.attributes.count("TANGENT"))
+                            vertex.tangent = read_vec4(model.accessors[primitive.attributes.at("TANGENT")], model, i);
+                        vertices.push_back(vertex);
                     }
 
-                    vertices.push_back(vertex);
-                };
+                    tinygltf::Accessor indicesAccessor = model.accessors[primitive.indices];
+                    tinygltf::BufferView bufferView = model.bufferViews[indicesAccessor.bufferView];
+                    tinygltf::Buffer buffer = model.buffers[bufferView.buffer];
+                    const uint8_t *data = buffer.data.data() + bufferView.byteOffset + indicesAccessor.byteOffset;
 
-                tinygltf::Accessor indicesAccessor = model.accessors[primitive.indices];
-                tinygltf::BufferView bufferView = model.bufferViews[indicesAccessor.bufferView];
-                tinygltf::Buffer buffer = model.buffers[bufferView.buffer];
-
-                const uint8_t *data = buffer.data.data() + bufferView.byteOffset + indicesAccessor.byteOffset;
-                for (size_t i = 0; i < indicesAccessor.count; i++)
-                {
-                    uint32_t index;
-                    switch (indicesAccessor.componentType)
+                    for (size_t i = 0; i < indicesAccessor.count; i++)
                     {
-                    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
-                        index = *reinterpret_cast<const uint8_t *>(data + i * sizeof(uint8_t));
-                        break;
-                    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
-                        index = *reinterpret_cast<const uint16_t *>(data + i * sizeof(uint16_t));
-                        break;
-                    case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
-                        index = *reinterpret_cast<const uint32_t *>(data + i * sizeof(uint32_t));
-                        break;
-                    default:
-                        throw std::runtime_error("Unsupported index component type");
+                        uint32_t index;
+                        switch (indicesAccessor.componentType)
+                        {
+                        case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+                            index = *reinterpret_cast<const uint8_t *>(data + i);
+                            break;
+                        case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+                            index = *reinterpret_cast<const uint16_t *>(data + i * sizeof(uint16_t));
+                            break;
+                        case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
+                            index = *reinterpret_cast<const uint32_t *>(data + i * sizeof(uint32_t));
+                            break;
+                        default:
+                            throw std::runtime_error("Unsupported index component type");
+                        }
+                        indices.push_back(index);
                     }
-                    indices.push_back(index);
-                }
 
-                geometry::Mesh mesh;
-                mesh.vertices = vertices;
-                mesh.indices = indices;
+                    geometry::Mesh mesh;
+                    mesh.vertices = vertices;
+                    mesh.indices = indices;
 
-                std::shared_ptr<MeshRenderer> renderer = std::make_shared<MeshRenderer>(mesh, device);
-                std::shared_ptr<Material> material = nullptr;
-                if (primitive.material >= 0)
-                {
-                    material = materials[primitive.material];
-                }
+                    uint32_t meshId = meshManager->addMesh(mesh);
 
-                renderObjects.push_back(RenderObject(renderer, transformation, material));
-            };
+                    MeshInstance instance;
+                    instance.meshId = meshId;
+                    instance.materialId = (primitive.material >= 0) ? materialIndices[primitive.material] : INVALID_MATERIAL_INDEX;
 
-            std::cout << "Done with Loading Node " << nodeIdx << std::endl;
-            if (!node.children.empty())
-            {
-                for (auto childrenIdx : node.children)
-                {
-                    walkNode(childrenIdx, transformation);
+                    auto transform = transformation.getTransform();
+                    instance.modelTransform = transform.model;
+                    instance.normalTransform = transform.normalMatrix;
+
+                    instanceIds.push_back(meshManager->addMeshInstances(instance));
                 }
             }
+
+            for (auto childIdx : node.children)
+                walkNode(childIdx, transformation);
         };
-        for (auto gltfMaterial : model.materials)
-        {
-            MaterialDesc materialDesc;
-            MaterialTextures textures;
-            auto anisotropicRepeatSampler = device->defaultSamplers().anisotropicRepeat;
-            textures.baseTexture.texture = loadGltfTexture(device, model, gltfMaterial.pbrMetallicRoughness.baseColorTexture, rhi::TextureDesc::ImageFormat::ColorSRGB8);
-            textures.baseTexture.sampler = anisotropicRepeatSampler;
 
-            textures.metallicRoughness.texture = loadGltfTexture(device, model, gltfMaterial.pbrMetallicRoughness.metallicRoughnessTexture,
-                                                                 rhi::TextureDesc::ImageFormat::ColorRGBA8);
-            textures.metallicRoughness.sampler = anisotropicRepeatSampler;
-            {
-                auto normalTexture = model.textures[gltfMaterial.normalTexture.index];
-                textures.normal.texture = loadGltfTexture(device, model, normalTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
-                textures.normal.sampler = anisotropicRepeatSampler;
-                std::cout << "Created Normal Texture" << std::endl;
-            }
-            if (gltfMaterial.occlusionTexture.index > -1)
-            {
-                auto occlusionTexture = model.textures[gltfMaterial.occlusionTexture.index];
-                textures.ao.texture = loadGltfTexture(device, model, occlusionTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
-                textures.ao.sampler = anisotropicRepeatSampler;
-                std::cout << "Created ocllusion Texture" << std::endl;
-            }
-            if (gltfMaterial.emissiveTexture.index > -1)
-            {
-                auto emissiveTexture = model.textures[gltfMaterial.emissiveTexture.index];
-                textures.emissive.texture = loadGltfTexture(device, model, emissiveTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
-                textures.emissive.sampler = anisotropicRepeatSampler;
-                std::cout << "Created emissive Texture" << std::endl;
-            }
-            materialDesc.textures = textures;
-            materials.push_back(materialSystem->createMaterial(materialDesc));
-        }
         for (auto nodeIdx : defaultScene.nodes)
-        {
             walkNode(nodeIdx, geometry::MeshTransformation{});
-        }
-
-        return renderObjects;
     }
 } // namespace nitro::renderer

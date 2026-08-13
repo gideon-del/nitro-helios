@@ -28,7 +28,7 @@ namespace nitro::renderer
 
         m_renderPass = m_device->createRenderPass(shadowRenderPassDesc);
     }
-    void ShadowPass::execute(rhi::RHICommandBuffer *cmd, rhi::RHIPipeline *pipeline, rhi::RHIDescriptorSet *descriptorSet, Scene &scene)
+    void ShadowPass::execute(rhi::RHICommandBuffer *cmd, rhi::RHIPipeline *pipeline, rhi::RHIDescriptorSet *descriptorSet, Scene &scene, rhi::RHIBuffer *drawCommandsBuffer, rhi::RHIBuffer *drawCountBuffer)
     {
 
         cmd->beginRenderPass(m_renderPass);
@@ -43,13 +43,11 @@ namespace nitro::renderer
         scissor.width = ShadowPass::c_ShadowResolution;
         scissor.height = ShadowPass::c_ShadowResolution;
         cmd->setScissor(scissor);
-        for (auto &obj : scene.objects)
-        {
-            ShadowPushConstant shadowPc;
-            shadowPc.model = obj.transformation.getTransform().model;
-            shadowPc.cascadeIndex = cascadeIndex;
-            obj.drawVertexOnly(cmd, &shadowPc, sizeof(ShadowPushConstant));
-        }
+        ShadowPushConstant shadowPc;
+        shadowPc.cascadeIndex = cascadeIndex;
+        cmd->setPushConstant(&shadowPc, sizeof(ShadowPushConstant), 1);
+        scene.draw(cmd, drawCommandsBuffer, drawCountBuffer);
+
         cmd->endRenderPass();
     };
     float ShadowPass::s_getUniformSplit(

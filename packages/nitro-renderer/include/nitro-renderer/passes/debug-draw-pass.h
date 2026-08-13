@@ -2,7 +2,6 @@
 #include <glm/glm.hpp>
 #include <nitro-rhi/rhi.h>
 #include <nitro-renderer/per-frame.h>
-#include <nitro-renderer/material-system.h>
 
 namespace nitro::renderer
 {
@@ -67,5 +66,5 @@ namespace nitro::renderer
         rhi::RHIDescriptorLayout *m_descriptorLayout;
         rhi::RHIPipeline *m_pipeline;
         PerFrame<DebugPassResource> m_resources;
-        };
+    };
 } // namespace nitro::renderer
