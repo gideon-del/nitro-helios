@@ -360,10 +360,15 @@ namespace nitro::renderer
             bufferDesc.size = desc.size;
             bufferDesc.usage = desc.usage;
             bufferDesc.storage = isSharedStorageBuffer(bid) ? rhi::BufferDesc::StorageMode::Shared : rhi::BufferDesc::StorageMode::GPU;
+            auto &allocation = m_allocatedBuffers[bid];
 
-            if (!m_allocatedBuffers.count(bid))
+            allocation.transient = desc.transient;
+
+            uint32_t slotCount = desc.transient ? g_MAX_FRAMES_IN_FLIGHT : 1;
+            for (uint32_t i = 0; i < slotCount; i++)
             {
-                m_allocatedBuffers[bid] = device->createBuffer(bufferDesc);
+                if (!allocation.slots[i])
+                    allocation.slots[i] = device->createBuffer(bufferDesc);
             }
         };
     }
@@ -388,9 +393,16 @@ namespace nitro::renderer
 
     void RenderGraph::deleteBuffers(std::shared_ptr<rhi::RHIDevice> device)
     {
-        for (auto [_, buffer] : m_allocatedBuffers)
+        for (auto [_, allocation] : m_allocatedBuffers)
         {
-            device->destroyBuffer(buffer);
+            for (auto &buffer : allocation.slots)
+            {
+                if (buffer)
+                {
+
+                    device->destroyBuffer(buffer);
+                }
+            }
         }
 
         m_allocatedBuffers.clear();
@@ -444,7 +456,7 @@ namespace nitro::renderer
             pass.bind(resources);
         }
     }
-    void RenderGraph::executeFrameGraph(const RGCompiledFrameGraph &compiledGraph, rhi::RHICommandBuffer *cmd, const RenderContext &ctx, RendererSettings &settings, rhi::RHITimer *timer)
+    void RenderGraph::executeFrameGraph(const RGCompiledFrameGraph &compiledGraph, rhi::RHICommandBuffer *cmd, const RenderContext &ctx, RendererSettings &settings, rhi::RHITimer *timer, uint32_t frameIdx)
     {
 
         auto resources = buildResources();
@@ -455,13 +467,21 @@ namespace nitro::renderer
                 overloaded{
                     [&](const RGTextureBarrier &barrier)
                     {
-                        // std::cout << "[RGTextureBarrier] " << m_textures[barrier.textureId].name << " From " << std::to_string((int)barrier.from) << " To " << std::to_string((int)barrier.to) << "\n";
                         rhi::TextureBarrier textureBarrier;
                         textureBarrier.texture = resources.getTexture(barrier.textureId);
                         textureBarrier.before = barrier.from;
                         textureBarrier.after = barrier.to;
 
                         cmd->textureBarrier(textureBarrier);
+                    },
+                    [&](const RGBufferBarrier &barrier)
+                    {
+                        rhi::BufferBarrier bufferBarrier;
+                        bufferBarrier.buffer = resources.getBuffer(barrier.bufferId, frameIdx);
+                        bufferBarrier.before = barrier.from;
+                        bufferBarrier.after = barrier.to;
+
+                        cmd->bufferBarrier(bufferBarrier);
                     },
                     [&](const int &passIdx)
                     {
@@ -710,10 +730,10 @@ namespace nitro::renderer
 
     const RGCompiledFrameGraph RenderGraph::compileFrameGraph()
     {
-        std::unordered_map<RGTextureID, rhi::ResourceState> currentLayout;
+        std::unordered_map<RGResourceID, rhi::ResourceState> currentLayout;
         RGCompiledFrameGraph compiledGraph;
 
-        auto emitBarrierIfNeeded = [&](const RGResourceAccess &access)
+        auto emitTextureBarrierIfNeeded = [&](const RGResourceAccess &access)
         {
             auto it = currentLayout.find(access.id);
             rhi::ResourceState previousState = (it != currentLayout.end())
@@ -725,17 +745,38 @@ namespace nitro::renderer
 
             currentLayout[access.id] = access.state;
         };
+        auto emitBufferBarrierIfNeeded = [&](const RGResourceAccess &access)
+        {
+            auto it = currentLayout.find(access.id);
+            rhi::ResourceState previousState = (it != currentLayout.end())
+                                                   ? it->second
+                                                   : rhi::ResourceState::ShaderRead;
+
+            if (previousState != access.state)
+                compiledGraph.steps.push_back(RGBufferBarrier{access.id, previousState, access.state});
+
+            currentLayout[access.id] = access.state;
+        };
         for (auto &passIdx : m_executionOrder)
         {
             auto &pass = m_passes[passIdx];
             for (auto &read : pass.reads)
             {
-                emitBarrierIfNeeded(read);
+                emitTextureBarrierIfNeeded(read);
             }
             for (auto &write : pass.writes)
             {
 
-                emitBarrierIfNeeded(write);
+                emitTextureBarrierIfNeeded(write);
+            }
+
+            for (auto &read : pass.readBufs)
+            {
+                emitBufferBarrierIfNeeded(read);
+            }
+            for (auto &writeBuf : pass.writeBufs)
+            {
+                currentLayout[writeBuf.id] = writeBuf.state;
             }
 
             compiledGraph.steps.push_back((int)passIdx);

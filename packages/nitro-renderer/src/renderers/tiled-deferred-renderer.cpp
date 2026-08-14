@@ -205,7 +205,7 @@ namespace nitro::renderer
 
     void TiledDeferredRenderer::execute(rhi::RHICommandBuffer *cmd, const RenderContext &ctx, RendererSettings &settings, rhi::RHITimer *timer)
     {
-        m_renderGraph.executeFrameGraph(m_compiledFrameGraph, cmd, ctx, settings, timer);
+        m_renderGraph.executeFrameGraph(m_compiledFrameGraph, cmd, ctx, settings, timer, m_device->getCurrentFrameIndex());
     }
 
     TiledDeferredRenderer::~TiledDeferredRenderer()
@@ -223,11 +223,12 @@ namespace nitro::renderer
 
         auto drawCountId = m_renderGraph.declareBuffer({"Draw Count",
                                                         sizeof(uint32_t),
-                                                        rhi::BufferDesc::Usage::Indirect});
+                                                        rhi::BufferDesc::Usage::Indirect,
+                                                        true});
         auto drawCommandsId = m_renderGraph.declareBuffer({"Draw Command Buffer",
                                                            sizeof(DrawIndexedIndirectArgs) * Scene::s_MAX_DRAW_COMMANDS,
-
-                                                           rhi::BufferDesc::Usage::Indirect});
+                                                           rhi::BufferDesc::Usage::Indirect,
+                                                           true});
 
         m_renderGraph.addPass({
             "Mesh Compact pass",
@@ -247,7 +248,19 @@ namespace nitro::renderer
                 pc.objectCount = static_cast<uint32_t>(ctx.scene->instanceIds.size());
                 pc.indexSize = static_cast<uint32_t>(sizeof(uint32_t));
                 pc.vertexSize = static_cast<uint32_t>(sizeof(geometry::Vertex));
-                m_meshCompactPass->execute(cmd, *ctx.scene, resources.getBuffer(drawCommandsId), resources.getBuffer(drawCountId), pc);
+
+                DepthPrePassCamera depthCamera;
+                depthCamera.view = ctx.camera->getView();
+                depthCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), settings.viewportSize.x / settings.viewportSize.y, ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
+
+                if (!m_isMetal)
+                {
+                    depthCamera.proj[1][1] *= -1.0f;
+                }
+                auto frameIdx = m_device->getCurrentFrameIndex();
+                MeshCompactUBO ubo;
+                ubo.viewProj = depthCamera.proj * depthCamera.view;
+                m_meshCompactPass->execute(cmd, *ctx.scene, resources.getBuffer(drawCommandsId, frameIdx), resources.getBuffer(drawCountId, frameIdx), pc, ubo);
             },
         });
 
@@ -267,8 +280,8 @@ namespace nitro::renderer
             {},
             {{depth, rhi::ResourceState::DepthWrite}},
             {
-                {drawCountId, rhi::ResourceState::ShaderRead},
-                {drawCommandsId, rhi::ResourceState::ShaderRead},
+                {drawCountId, rhi::ResourceState::IndirectDraw},
+                {drawCommandsId, rhi::ResourceState::IndirectDraw},
             },
             {},
             [depth, this](const RGResources &resources)
@@ -285,7 +298,8 @@ namespace nitro::renderer
                 {
                     depthCamera.proj[1][1] *= -1.0f;
                 }
-                m_depthPrepass->execute(cmd, *ctx.scene, resources.getBuffer(drawCommandsId), resources.getBuffer(drawCountId), depthCamera);
+                auto frameIdx = m_device->getCurrentFrameIndex();
+                m_depthPrepass->execute(cmd, *ctx.scene, resources.getBuffer(drawCommandsId, frameIdx), resources.getBuffer(drawCountId, frameIdx), depthCamera);
             },
         });
 
@@ -296,8 +310,8 @@ namespace nitro::renderer
             {{depth, rhi::ResourceState::DepthRead}},
             {{albedo, rhi::ResourceState::RenderTarget}, {normal, rhi::ResourceState::RenderTarget}, {metallicRoughness, rhi::ResourceState::RenderTarget}, {emissive, rhi::ResourceState::RenderTarget}},
             {
-                {drawCountId, rhi::ResourceState::ShaderRead},
-                {drawCommandsId, rhi::ResourceState::ShaderWrite},
+                {drawCountId, rhi::ResourceState::IndirectDraw},
+                {drawCommandsId, rhi::ResourceState::IndirectDraw},
             },
             {},
             [gBufferIds, this](const RGResources &resources)
@@ -314,7 +328,8 @@ namespace nitro::renderer
                 {
                     geometryCamera.proj[1][1] *= -1.0f;
                 }
-                m_geometryPass->execute(cmd, geometryCamera, *ctx.scene, settings.light, resources.getBuffer(drawCommandsId), resources.getBuffer(drawCountId));
+                auto frameIdx = m_device->getCurrentFrameIndex();
+                m_geometryPass->execute(cmd, geometryCamera, *ctx.scene, settings.light, resources.getBuffer(drawCommandsId, frameIdx), resources.getBuffer(drawCountId, frameIdx));
             },
         });
 
@@ -456,7 +471,10 @@ namespace nitro::renderer
             "Shadow map",
             {},
             {shadowMapWrites},
-            {},
+            {
+                {drawCountId, rhi::ResourceState::IndirectDraw},
+                {drawCommandsId, rhi::ResourceState::IndirectDraw},
+            },
             {},
             [cascadeTextures, this](const RGResources &resources)
             {
@@ -472,8 +490,8 @@ namespace nitro::renderer
                 shadowCtx.lambda = settings.shadow.lambda;
                 shadowCtx.cameraView = ctx.camera->getView();
                 shadowCtx.lightView = settings.light.lightCamera.getView();
-
-                m_csmPass->execute(cmd, *ctx.scene, shadowCtx, resources.getBuffer(drawCommandsId), resources.getBuffer(drawCountId));
+                auto frameIdx = m_device->getCurrentFrameIndex();
+                m_csmPass->execute(cmd, *ctx.scene, shadowCtx, resources.getBuffer(drawCommandsId, frameIdx), resources.getBuffer(drawCountId, frameIdx));
             },
         });
 
@@ -609,7 +627,7 @@ namespace nitro::renderer
             "Particle Compact Pass",
             {},
             {},
-            {{deadListBuffer, rhi::ResourceState::ShaderRead}},
+            {{deadListBuffer, rhi::ResourceState::ShaderWrite}},
 
             {{aliveListBuffer, rhi::ResourceState::ShaderWrite},
              {aliveCountBuffer, rhi::ResourceState::ShaderWrite}},

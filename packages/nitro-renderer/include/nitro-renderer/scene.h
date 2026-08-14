@@ -25,13 +25,14 @@ namespace nitro::renderer
             cmd->bindVertexBuffer(meshManager->getVertexMegaBuffer());
             cmd->bindIndexBuffer(meshManager->getIndexMegaBuffer());
 
-            // auto mapped = drawCountBuffer->map();
+            auto mapped = drawCountBuffer->map();
 
-            // memcpy(&drawCount, mapped, sizeof(uint32_t));
-            // drawCountBuffer->unmap();
+            memcpy(&drawCount, mapped, sizeof(uint32_t));
+            drawCountBuffer->unmap();
 
-            // drawCount = std::min(drawCount, static_cast<uint32_t>(instanceIds.size()));
+            drawCount = std::min(drawCount, static_cast<uint32_t>(instanceIds.size()));
 
+            std::cout << "Draw Count " << drawCount << std::endl;
             cmd->drawIndexedIndirect(
                 drawCommandsBuffer,
                 0,

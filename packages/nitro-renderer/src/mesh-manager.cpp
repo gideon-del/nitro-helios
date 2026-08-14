@@ -38,6 +38,16 @@ namespace nitro::renderer
             info.vertexOffset = prev.vertexOffset + prev.mesh.vertices.size();
             info.indexOffset = prev.indexOffset + prev.mesh.indices.size();
         }
+
+        glm::vec3 aabbMin(FLT_MAX), aabbMax(-FLT_MAX);
+        for (auto &v : mesh.vertices)
+        {
+            aabbMin = glm::min(aabbMin, glm::vec3(v.pos));
+            aabbMax = glm::max(aabbMax, glm::vec3(v.pos));
+        }
+        info.aabbMax = aabbMax;
+        info.aabbMin = aabbMin;
+
         m_meshes.push_back(info);
         return id;
     }
@@ -103,6 +113,8 @@ namespace nitro::renderer
             descriptor.indexOffset = meshInfo.indexOffset;
             descriptor.indexCount = static_cast<uint32_t>(meshInfo.mesh.indices.size());
             descriptor.vertexOffset = meshInfo.vertexOffset;
+            descriptor.aabbMax = meshInfo.aabbMax;
+            descriptor.aabbMin = meshInfo.aabbMin;
 
             descriptors.push_back(std::move(descriptor));
         }

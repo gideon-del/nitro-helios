@@ -209,17 +209,17 @@ int main()
     auto sphereMeshId = meshManager->addMesh(MeshGenerator::createUVSphere(5, 10, 100));
 
     addPBRSphereGrid(pbrScene, sphereMeshId);
-    Mesh plane = MeshGenerator::createPlane(500, 500);
-    plane.calculateNormals();
-    auto planeMeshId = meshManager->addMesh(plane);
+    // Mesh plane = MeshGenerator::createPlane(500, 500);
+    // plane.calculateNormals();
+    // auto planeMeshId = meshManager->addMesh(plane);
 
-    MeshInstance planeInstance;
-    planeInstance.meshId = planeMeshId;
+    // MeshInstance planeInstance;
+    // planeInstance.meshId = planeMeshId;
 
-    mainScene.instanceIds.push_back(meshManager->addMeshInstances(planeInstance));
+    // mainScene.instanceIds.push_back(meshManager->addMeshInstances(planeInstance));
 
     // pbrScene.objects.push_back(RenderObject(planeRenderer));
-    addRandomSpheres(1000, 800, mainScene, sphereMeshId);
+    addRandomSpheres(10000, 3000, mainScene, sphereMeshId);
     Mesh pointLightSphere = MeshGenerator::createUVSphere(1, 10, 100);
     std::shared_ptr<MeshRenderer> pointLightRenderer = std::make_shared<MeshRenderer>(pointLightSphere, device);
     OrbitalCamera camera;

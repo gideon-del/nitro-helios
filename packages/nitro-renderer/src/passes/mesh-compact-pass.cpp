@@ -20,6 +20,9 @@ namespace nitro::renderer
             {rhi::RHIDescriptorBinding::Type::StorageBuffer,
              rhi::RHIDescriptorBinding::ShaderStage::Compute,
              6},
+            {rhi::RHIDescriptorBinding::Type::UniformBuffer,
+             rhi::RHIDescriptorBinding::ShaderStage::Compute,
+             7},
         };
 
         m_descriptorLayout = m_device->createDescriptorLayout(bindings);
@@ -48,35 +51,59 @@ namespace nitro::renderer
 
         m_computePipeline = m_device->createComputePipeline(computePipelineDesc);
 
-        m_descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
+        m_resources.create(
+            g_MAX_FRAMES_IN_FLIGHT,
+            [&](uint32_t frameIdx)
+            {
+                MeshCompactResources resource;
+                rhi::BufferDesc uboDesc;
+                uboDesc.size = sizeof(MeshCompactUBO);
+                uboDesc.storage = rhi::BufferDesc::StorageMode::Shared;
+                uboDesc.usage = rhi::BufferDesc::Usage::Uniform;
+
+                resource.uniformBuffer = m_device->createBuffer(uboDesc);
+
+                resource.descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
+                return resource;
+            });
     }
 
     MeshCompactPass::~MeshCompactPass()
     {
         m_device->destroyComputePipeline(m_computePipeline);
-        m_device->destroyDescriptorSet(m_descriptorSet);
+        for (auto &resource : m_resources)
+        {
+            m_device->destroyDescriptorSet(resource.descriptorSet);
+            m_device->destroyBuffer(resource.uniformBuffer);
+        }
         m_device->destroyDescriptorLayout(m_descriptorLayout);
     }
 
-    void MeshCompactPass::bindSceneBuffer(Scene &scene, rhi::RHIBuffer *drawCommandBuffer, rhi::RHIBuffer *drawCountBuffer)
+    void MeshCompactPass::bindSceneBuffer(Scene &scene, MeshCompactResources &resource, rhi::RHIBuffer *drawCommandBuffer, rhi::RHIBuffer *drawCountBuffer)
     {
 
-        m_lastMeshDescriptorBuffer = scene.meshManager->descriptorBuffer();
-        m_lastMeshInstanceBuffer = scene.meshManager->instanceBuffer();
-        m_lastSceneInstanceIdBuffer = scene.sceneInstanceIdBuffer();
-        m_descriptorSet->writeBuffer(m_lastMeshDescriptorBuffer, 2);
-        m_descriptorSet->writeBuffer(m_lastMeshInstanceBuffer, 3);
-        m_descriptorSet->writeBuffer(drawCountBuffer, 4);
-        m_descriptorSet->writeBuffer(drawCommandBuffer, 5);
-        m_descriptorSet->writeBuffer(m_lastSceneInstanceIdBuffer, 6);
-        m_descriptorSet->commit();
+        resource.lastMeshDescriptorBuffer = scene.meshManager->descriptorBuffer();
+        resource.lastMeshInstanceBuffer = scene.meshManager->instanceBuffer();
+        resource.lastSceneInstanceIdBuffer = scene.sceneInstanceIdBuffer();
+        resource.lastDrawCommandBuffer = drawCommandBuffer;
+        resource.lastDrawCountBuffer = drawCountBuffer;
+
+        resource.descriptorSet->writeBuffer(resource.lastMeshDescriptorBuffer, 2);
+        resource.descriptorSet->writeBuffer(resource.lastMeshInstanceBuffer, 3);
+        resource.descriptorSet->writeBuffer(resource.lastDrawCountBuffer, 4);
+        resource.descriptorSet->writeBuffer(resource.lastDrawCommandBuffer, 5);
+        resource.descriptorSet->writeBuffer(resource.lastSceneInstanceIdBuffer, 6);
+        resource.descriptorSet->writeBuffer(resource.uniformBuffer, 7);
+        resource.descriptorSet->commit();
     }
-    bool MeshCompactPass::isSceneBufferStale(Scene &scene)
+    bool MeshCompactPass::isSceneBufferStale(Scene &scene, MeshCompactResources &resource, rhi::RHIBuffer *drawCommandBuffer, rhi::RHIBuffer *drawCountBuffer)
     {
-        return m_lastMeshDescriptorBuffer != scene.meshManager->descriptorBuffer() || m_lastMeshInstanceBuffer != scene.meshManager->instanceBuffer() || m_lastSceneInstanceIdBuffer != scene.sceneInstanceIdBuffer();
+        return resource.lastMeshDescriptorBuffer != scene.meshManager->descriptorBuffer() || resource.lastMeshInstanceBuffer != scene.meshManager->instanceBuffer() || resource.lastSceneInstanceIdBuffer != scene.sceneInstanceIdBuffer() || resource.lastDrawCommandBuffer != drawCommandBuffer || resource.lastDrawCountBuffer != drawCountBuffer;
+
+        ;
     }
 
-    void MeshCompactPass::execute(rhi::RHICommandBuffer *cmd, Scene &scene, rhi::RHIBuffer *drawCommandBuffer, rhi::RHIBuffer *drawCountBuffer, MeshCompactPushConstant &pc)
+    void MeshCompactPass::execute(rhi::RHICommandBuffer *cmd, Scene &scene, rhi::RHIBuffer *drawCommandBuffer, rhi::RHIBuffer *drawCountBuffer, MeshCompactPushConstant &pc, MeshCompactUBO &ubo)
     {
 
         cmd->fillBuffer(drawCountBuffer, 0, sizeof(uint32_t), 0u);
@@ -87,14 +114,16 @@ namespace nitro::renderer
         barrier.after = rhi::ResourceState::ShaderWrite;
         cmd->bufferBarrier(barrier);
 
-        if (isSceneBufferStale(scene))
+        auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
+        if (isSceneBufferStale(scene, resource, drawCommandBuffer, drawCountBuffer))
         {
-            bindSceneBuffer(scene, drawCommandBuffer, drawCountBuffer);
+            bindSceneBuffer(scene, resource, drawCommandBuffer, drawCountBuffer);
         }
 
+        resource.uniformBuffer->upload(&ubo, sizeof(MeshCompactUBO));
         uint32_t groupSize = (pc.objectCount + 63) / 64;
         cmd->bindComputePipeline(m_computePipeline);
-        cmd->bindComputeDescriptorSet(m_descriptorSet, 0);
+        cmd->bindComputeDescriptorSet(resource.descriptorSet, 0);
         cmd->setPushConstant(&pc, sizeof(MeshCompactPushConstant), 1, true);
         cmd->dispatch(groupSize, 1, 1);
     }

@@ -82,29 +82,24 @@ namespace nitro::renderer
             m_shadowPasses[i].bindResource(resources, textures[i]);
         }
     };
-    bool CascadeShadowMapPass::isSceneBuffersStale(Scene &scene)
+    bool CascadeShadowMapPass::isSceneBuffersStale(Scene &scene, CascadeShadowMapResource &resource)
     {
-        return m_lastMeshInstanceBuffer != scene.meshManager->instanceBuffer();
+        return resource.lastMeshInstanceBuffer != scene.meshManager->instanceBuffer();
     }
-    void CascadeShadowMapPass::bindSceneBuffers(Scene &scene)
+    void CascadeShadowMapPass::bindSceneBuffers(Scene &scene, CascadeShadowMapResource &resource)
     {
-        m_lastMeshInstanceBuffer = scene.meshManager->instanceBuffer();
-
-        for (auto &resource : m_resources)
-        {
-            resource.descriptorSet->writeBuffer(resource.uniformBuffer, 2);
-            resource.descriptorSet->writeBuffer(m_lastMeshInstanceBuffer, 3);
-            resource.descriptorSet->commit();
-        }
+        resource.lastMeshInstanceBuffer = scene.meshManager->instanceBuffer();
+        resource.descriptorSet->writeBuffer(resource.uniformBuffer, 2);
+        resource.descriptorSet->writeBuffer(resource.lastMeshInstanceBuffer, 3);
+        resource.descriptorSet->commit();
     }
     void CascadeShadowMapPass::execute(rhi::RHICommandBuffer *cmd, Scene &scene, CascadeShadowContext ctx, rhi::RHIBuffer *drawCommandsBuffer, rhi::RHIBuffer *drawCountBuffer)
     {
-        if (isSceneBuffersStale(scene))
-        {
-            bindSceneBuffers(scene);
-        }
-
         auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
+        if (isSceneBuffersStale(scene, resource))
+        {
+            bindSceneBuffers(scene, resource);
+        }
 
         LightView lightView;
 

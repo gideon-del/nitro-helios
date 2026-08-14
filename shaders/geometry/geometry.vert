@@ -31,6 +31,7 @@ layout(std430, set=0, binding=3) readonly buffer MeshInstanceBuffer {
 }; 
 
 
+invariant gl_Position;
 
 void main() {
 

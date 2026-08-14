@@ -32,6 +32,8 @@ namespace nitro::renderer
         uint32_t vertexOffset = 0;
         uint32_t indexOffset = 0;
         geometry::Mesh mesh;
+        glm::vec3 aabbMin = glm::vec3(0.0f);
+        glm::vec3 aabbMax = glm::vec3(0.0f);
     };
     class MeshManager
     {

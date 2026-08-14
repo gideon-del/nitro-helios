@@ -17,7 +17,9 @@ namespace nitro::rhi
         DepthRead,
         DepthReadStencilWrite,
 
+        IndirectDraw,
         Present,
+
     };
     enum class ImageLayout
     {

@@ -28,6 +28,7 @@ namespace nitro::renderer
     {
         rhi::RHIBuffer *uniformBuffer;
         rhi::RHIDescriptorSet *descriptorSet;
+        rhi::RHIBuffer *lastMeshInstanceBuffer = nullptr;
     };
     class CascadeShadowMapPass
     {
@@ -48,8 +49,8 @@ namespace nitro::renderer
         rhi::RHIPipeline *m_pipeline;
         rhi::RHIDescriptorLayout *m_descriptorLayout;
         PerFrame<CascadeShadowMapResource> m_resources;
-        rhi::RHIBuffer *m_lastMeshInstanceBuffer = nullptr;
-        bool isSceneBuffersStale(Scene &scene);
-        void bindSceneBuffers(Scene &scene);
+
+        bool isSceneBuffersStale(Scene &scene, CascadeShadowMapResource &resource);
+        void bindSceneBuffers(Scene &scene, CascadeShadowMapResource &resource);
     };
 } // namespace nitro::renderer

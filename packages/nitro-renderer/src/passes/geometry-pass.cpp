@@ -66,13 +66,12 @@ namespace nitro::renderer
     void GeometryPass::execute(rhi::RHICommandBuffer *cmd, GeometryCameraBuffer geometryCamera, Scene &scene, LightingSettings &settings, rhi::RHIBuffer *drawCommandBuffer, rhi::RHIBuffer *drawCountBuffer)
     {
 
-        if (isSceneBuffersStale(scene))
+        auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
+        if (isSceneBuffersStale(scene, resource))
         {
-            bindSceneBuffers(scene);
+            bindSceneBuffers(scene, resource);
         }
 
-        uint32_t frameIdx = m_device->getCurrentFrameIndex();
-        auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
         cmd->beginRenderPass(m_renderPass);
         cmd->bindPipeline(m_pipeline);
         RHIViewport viewport;
@@ -89,24 +88,21 @@ namespace nitro::renderer
         cmd->endRenderPass();
     };
 
-    void GeometryPass::bindSceneBuffers(Scene &scene)
+    void GeometryPass::bindSceneBuffers(Scene &scene, GeometryPassResource &resource)
     {
-        m_lastMeshInstanceBuffer = scene.meshManager->instanceBuffer();
-        m_lastMaterialBuffer = scene.materialManager->getMaterialBuffer();
-        for (auto &resource : m_resources)
-        {
-            resource.descriptorSet->writeBuffer(resource.uniformBuffer, 2);
-            resource.descriptorSet->writeBuffer(m_lastMeshInstanceBuffer, 3);
-            resource.descriptorSet->writeBuffer(m_lastMaterialBuffer, 4);
-            resource.descriptorSet->writeBindlessTextures(scene.materialManager->getTextures(), 5);
-            resource.descriptorSet->writeSampler(m_device->defaultSamplers().anisotropicRepeat, 6);
-            resource.descriptorSet->commit();
-        }
+        resource.lastMeshInstanceBuffer = scene.meshManager->instanceBuffer();
+        resource.lastMaterialBuffer = scene.materialManager->getMaterialBuffer();
+        resource.descriptorSet->writeBuffer(resource.uniformBuffer, 2);
+        resource.descriptorSet->writeBuffer(resource.lastMeshInstanceBuffer, 3);
+        resource.descriptorSet->writeBuffer(resource.lastMaterialBuffer, 4);
+        resource.descriptorSet->writeBindlessTextures(scene.materialManager->getTextures(), 5);
+        resource.descriptorSet->writeSampler(m_device->defaultSamplers().anisotropicRepeat, 6);
+        resource.descriptorSet->commit();
     }
 
-    bool GeometryPass::isSceneBuffersStale(Scene &scene)
+    bool GeometryPass::isSceneBuffersStale(Scene &scene, GeometryPassResource &resource)
     {
-        return m_lastMeshInstanceBuffer != scene.meshManager->instanceBuffer() || m_lastMaterialBuffer != scene.materialManager->getMaterialBuffer();
+        return resource.lastMeshInstanceBuffer != scene.meshManager->instanceBuffer() || resource.lastMaterialBuffer != scene.materialManager->getMaterialBuffer();
     }
     GeometryPass::~GeometryPass()
     {

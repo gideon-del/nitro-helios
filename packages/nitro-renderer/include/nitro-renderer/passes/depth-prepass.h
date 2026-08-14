@@ -10,6 +10,10 @@ namespace nitro::renderer
     {
         rhi::RHIBuffer *uniformBuffer;
         rhi::RHIDescriptorSet *descriptorSet;
+
+        rhi::RHIBuffer *lastMeshInstanceBuffer = nullptr;
+        rhi::RHIBuffer *lastDrawCommandBuffer = nullptr;
+        rhi::RHIBuffer *lastDrawCountBuffer = nullptr;
     };
 
     struct DepthPrePassCamera
@@ -35,8 +39,8 @@ namespace nitro::renderer
         PerFrame<DepthResource> m_resources;
         uint32_t m_width;
         uint32_t m_height;
-        rhi::RHIBuffer *m_lastMeshInstanceBuffer = nullptr;
-        bool isSceneBuffersStale(Scene &scene);
-        void bindSceneBuffers(Scene &scene);
+
+        bool isSceneBuffersStale(Scene &scene, DepthResource &resource);
+        void bindSceneBuffers(Scene &scene, DepthResource &resource);
     };
 } // namespace nitro::renderer

@@ -6,6 +6,7 @@
 #include <nitro-renderer/settings.h>
 #include "graph.h"
 #include <variant>
+#include "per-frame.h"
 namespace nitro::renderer
 {
     using RGResourceID = uint32_t;
@@ -25,7 +26,7 @@ namespace nitro::renderer
         std::string name;
         uint32_t size;
         rhi::BufferDesc::Usage usage;
-        bool transient = true;
+        bool transient = false;
     };
 
     enum class WriteMode
@@ -54,21 +55,27 @@ namespace nitro::renderer
         int lastUsedAt = -1;
     };
 
+    struct RGAllocatedBuffer
+    {
+        std::array<rhi::RHIBuffer *, g_MAX_FRAMES_IN_FLIGHT> slots{};
+        bool transient = false;
+    };
     struct RGResources
     {
         std::unordered_map<RGResourceID, rhi::RHITexture *> allocatedTextures;
-        std::unordered_map<RGResourceID, rhi::RHIBuffer *> allocatedBuffers;
+        std::unordered_map<RGResourceID, RGAllocatedBuffer> allocatedBuffers;
         rhi::RHITexture *getTexture(RGResourceID id) const
         {
             if (!allocatedTextures.count(id))
                 return nullptr;
             return allocatedTextures.at(id);
         }
-        rhi::RHIBuffer *getBuffer(RGResourceID id) const
+        rhi::RHIBuffer *getBuffer(RGResourceID id, uint32_t frameIdx = 0) const
         {
             if (!allocatedBuffers.count(id))
                 return nullptr;
-            return allocatedBuffers.at(id);
+            auto &allocated = allocatedBuffers.at(id);
+            return allocated.transient ? allocated.slots[frameIdx % g_MAX_FRAMES_IN_FLIGHT] : allocated.slots[0];
         }
     };
 
@@ -105,7 +112,7 @@ namespace nitro::renderer
     };
     struct RGCompiledFrameGraph
     {
-        using StepVariant = std::variant<int, RGTextureBarrier>;
+        using StepVariant = std::variant<int, RGTextureBarrier, RGBufferBarrier>;
         std::vector<StepVariant> steps;
     };
 
@@ -123,7 +130,7 @@ namespace nitro::renderer
         std::unordered_map<RGResourceID, RGTextureDesc> m_textures;
         std::unordered_map<RGResourceID, RGBufferDesc> m_buffers;
         std::unordered_map<RGResourceID, rhi::RHITexture *> m_allocatedTextures;
-        std::unordered_map<RGResourceID, rhi::RHIBuffer *> m_allocatedBuffers;
+        std::unordered_map<RGResourceID, RGAllocatedBuffer> m_allocatedBuffers;
         std::vector<RenderPass> m_passes;
         Graph m_depGraph;
         std::vector<NodeID> m_executionOrder;
@@ -145,7 +152,7 @@ namespace nitro::renderer
         void bindPassResources(const RGResources &resources);
 
         const RGCompiledFrameGraph compileFrameGraph();
-        void executeFrameGraph(const RGCompiledFrameGraph &compiledGraph, rhi::RHICommandBuffer *cmd, const RenderContext &ctx, RendererSettings &settings, rhi::RHITimer *timer);
+        void executeFrameGraph(const RGCompiledFrameGraph &compiledGraph, rhi::RHICommandBuffer *cmd, const RenderContext &ctx, RendererSettings &settings, rhi::RHITimer *timer, uint32_t frameIdx = 0);
         std::vector<RGValidationError> validate();
         void drawImGui();
         std::unordered_map<RGResourceID, RGLifetime> computeLifetimes();

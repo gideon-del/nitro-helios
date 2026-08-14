@@ -629,6 +629,9 @@ namespace nitro::rhi::vulkan
         case ResourceState::ShaderWrite:
             return VK_ACCESS_SHADER_WRITE_BIT;
             break;
+        case ResourceState::IndirectDraw:
+            return VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+            break;
 
         default:
             return 0;
@@ -717,6 +720,9 @@ namespace nitro::rhi::vulkan
 
         case ResourceState::ShaderWrite:
             return VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+
+        case ResourceState::IndirectDraw:
+            return VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
         default:
             return VK_PIPELINE_STAGE_NONE;
         }

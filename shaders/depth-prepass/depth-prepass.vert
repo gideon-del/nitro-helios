@@ -22,6 +22,7 @@ layout(std430, set=0, binding=3) readonly buffer MeshInstanceBuffer {
  MeshInstance meshInstances[];
 }; 
 
+invariant gl_Position;
 
 void main() {   
      MeshInstance instance = meshInstances[gl_InstanceIndex];

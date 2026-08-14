@@ -21,6 +21,8 @@ namespace nitro::renderer
     {
         rhi::RHIBuffer *uniformBuffer;
         rhi::RHIDescriptorSet *descriptorSet;
+        rhi::RHIBuffer *lastMeshInstanceBuffer = nullptr;
+        rhi::RHIBuffer *lastMaterialBuffer = nullptr;
     };
 
     struct GeometryCameraBuffer
@@ -57,9 +59,8 @@ namespace nitro::renderer
         rhi::RHIDescriptorLayout *m_descriptorLayout;
         rhi::RHIDescriptorLayout *m_materialDescriptorLayout;
         PerFrame<GeometryPassResource> m_resources;
-        rhi::RHIBuffer *m_lastMeshInstanceBuffer = nullptr;
-        rhi::RHIBuffer *m_lastMaterialBuffer = nullptr;
-        bool isSceneBuffersStale(Scene &scene);
-        void bindSceneBuffers(Scene &scene);
+
+        bool isSceneBuffersStale(Scene &scene, GeometryPassResource &resource);
+        void bindSceneBuffers(Scene &scene, GeometryPassResource &resource);
     };
 }

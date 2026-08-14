@@ -102,30 +102,28 @@ namespace nitro::renderer
         m_renderPass = m_device->createRenderPass(renderPassDesc);
     }
 
-    void DepthPrepass::bindSceneBuffers(Scene &scene)
+    void DepthPrepass::bindSceneBuffers(Scene &scene, DepthResource &resource)
     {
-        m_lastMeshInstanceBuffer = scene.meshManager->instanceBuffer();
-        for (auto &resource : m_resources)
-        {
-            resource.descriptorSet->writeBuffer(resource.uniformBuffer, 2);
-            resource.descriptorSet->writeBuffer(m_lastMeshInstanceBuffer, 3);
-            resource.descriptorSet->commit();
-        }
+        resource.lastMeshInstanceBuffer = scene.meshManager->instanceBuffer();
+
+        resource.descriptorSet->writeBuffer(resource.uniformBuffer, 2);
+        resource.descriptorSet->writeBuffer(resource.lastMeshInstanceBuffer, 3);
+        resource.descriptorSet->commit();
     }
 
-    bool DepthPrepass::isSceneBuffersStale(Scene &scene)
+    bool DepthPrepass::isSceneBuffersStale(Scene &scene, DepthResource &resource)
     {
-        return m_lastMeshInstanceBuffer != scene.meshManager->instanceBuffer();
+        return resource.lastMeshInstanceBuffer != scene.meshManager->instanceBuffer();
     }
 
     void DepthPrepass::execute(rhi::RHICommandBuffer *cmd, Scene &scene, rhi::RHIBuffer *drawCommandBuffer, rhi::RHIBuffer *drawCountBuffer, DepthPrePassCamera camera)
     {
 
-        if (isSceneBuffersStale(scene))
-        {
-            bindSceneBuffers(scene);
-        }
         auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
+        if (isSceneBuffersStale(scene, resource))
+        {
+            bindSceneBuffers(scene, resource);
+        }
         cmd->beginRenderPass(m_renderPass);
         cmd->bindPipeline(m_pipeline);
         resource.uniformBuffer->upload(&camera, sizeof(DepthPrePassCamera));
