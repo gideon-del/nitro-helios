@@ -488,6 +488,42 @@ namespace nitro::geometry
 
             return normalMesh;
         }
+
+        static Mesh createWallMesh(float width, float height, float thickness)
+        {
+            float hw = width * 0.5f;
+            float hh = height * 0.5f;
+            float hd = thickness * 0.5f;
+
+            Mesh mesh;
+
+            auto addFace = [&](glm::vec3 a, glm::vec3 b, glm::vec3 c, glm::vec3 d, glm::vec3 normal)
+            {
+                uint32_t base = static_cast<uint32_t>(mesh.vertices.size());
+
+                mesh.vertices.push_back(Vertex(a, {0.6f, 0.6f, 0.6f}, normal, {0.0f, 0.0f}));
+                mesh.vertices.push_back(Vertex(b, {0.6f, 0.6f, 0.6f}, normal, {1.0f, 0.0f}));
+                mesh.vertices.push_back(Vertex(c, {0.6f, 0.6f, 0.6f}, normal, {1.0f, 1.0f}));
+                mesh.vertices.push_back(Vertex(d, {0.6f, 0.6f, 0.6f}, normal, {0.0f, 1.0f}));
+
+                mesh.indices.push_back(base + 0);
+                mesh.indices.push_back(base + 1);
+                mesh.indices.push_back(base + 2);
+
+                mesh.indices.push_back(base + 2);
+                mesh.indices.push_back(base + 3);
+                mesh.indices.push_back(base + 0);
+            };
+
+            addFace({-hw, -hh, hd}, {hw, -hh, hd}, {hw, hh, hd}, {-hw, hh, hd}, {0, 0, -1});
+            addFace({hw, -hh, -hd}, {-hw, -hh, -hd}, {-hw, hh, -hd}, {hw, hh, -hd}, {0, 0, 1});
+            addFace({hw, -hh, hd}, {hw, -hh, -hd}, {hw, hh, -hd}, {hw, hh, hd}, {1, 0, 0});
+            addFace({-hw, -hh, -hd}, {-hw, -hh, hd}, {-hw, hh, hd}, {-hw, hh, -hd}, {-1, 0, 0});
+            addFace({-hw, hh, hd}, {hw, hh, hd}, {hw, hh, -hd}, {-hw, hh, -hd}, {0, 1, 0});
+            addFace({-hw, -hh, -hd}, {hw, -hh, -hd}, {hw, -hh, hd}, {-hw, -hh, hd}, {0, -1, 0});
+
+            return mesh;
+        }
     };
 
 } // namespace nitro::geometry

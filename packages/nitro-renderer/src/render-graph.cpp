@@ -238,6 +238,7 @@ namespace nitro::renderer
             textureDesc.size.width = desc.width ? desc.width : frameWidth;
             textureDesc.size.height = desc.height ? desc.height : frameHeight;
             textureDesc.isAliased = isAlias;
+            textureDesc.mipmaps = desc.mips;
             return textureDesc;
         };
 
@@ -471,6 +472,7 @@ namespace nitro::renderer
                         textureBarrier.texture = resources.getTexture(barrier.textureId);
                         textureBarrier.before = barrier.from;
                         textureBarrier.after = barrier.to;
+                        textureBarrier.subresource.mipCount = 1 + m_textures.at(barrier.textureId).mips;
 
                         cmd->textureBarrier(textureBarrier);
                     },

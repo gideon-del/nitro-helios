@@ -19,6 +19,7 @@ namespace nitro::renderer
         rhi::TextureDesc::ImageFormat format;
         uint32_t width = 0, height = 0;
         bool isStorage = false;
+        uint32_t mips = 0;
         bool transient = true;
     };
     struct RGBufferDesc

@@ -186,6 +186,26 @@ void addPBRSphereGrid(Scene &pbrScene, uint32_t sphereMeshId)
         }
     }
 };
+
+void addWallTestCluster(Scene &scene, uint32_t sphereMeshId)
+{
+    int rows = 3, cols = 3, spacing = 40;
+    for (int row = 0; row < rows; row++)
+    {
+        for (int col = 0; col < cols; col++)
+        {
+            MeshTransformation t;
+            t.translate(glm::vec3(-40.0f + col * spacing, 10.0f, -40.0f + row * spacing));
+            auto pc = t.getTransform();
+
+            MeshInstance instance;
+            instance.meshId = sphereMeshId;
+            instance.modelTransform = pc.model;
+            instance.normalTransform = pc.normalMatrix;
+            scene.instanceIds.push_back(scene.meshManager->addMeshInstances(instance));
+        }
+    }
+}
 int main()
 {
     glfwInit();
@@ -217,9 +237,21 @@ int main()
     // planeInstance.meshId = planeMeshId;
 
     // mainScene.instanceIds.push_back(meshManager->addMeshInstances(planeInstance));
+    auto wallMeshId = meshManager->addMesh(MeshGenerator::createWallMesh(100, 100, 30));
 
+    MeshTransformation wallTransform;
+    wallTransform.translate(glm::vec3(0.0f, 10.0f, -100.0f));
+    auto wallPc = wallTransform.getTransform();
+
+    MeshInstance wallInstance;
+    wallInstance.meshId = wallMeshId;
+    wallInstance.modelTransform = wallPc.model;
+    wallInstance.normalTransform = wallPc.normalMatrix;
+
+    mainScene.instanceIds.push_back(meshManager->addMeshInstances(wallInstance));
     // pbrScene.objects.push_back(RenderObject(planeRenderer));
-    addRandomSpheres(10000, 3000, mainScene, sphereMeshId);
+    // addRandomSpheres(10000, 3000, mainScene, sphereMeshId);
+    addWallTestCluster(mainScene, sphereMeshId);
     Mesh pointLightSphere = MeshGenerator::createUVSphere(1, 10, 100);
     std::shared_ptr<MeshRenderer> pointLightRenderer = std::make_shared<MeshRenderer>(pointLightSphere, device);
     OrbitalCamera camera;

@@ -31,6 +31,13 @@ namespace nitro::rhi::metal
 
         m_tempDescriptorSet.storageTextureBindings[mtTexture->getFace(subresource.baseLayer, subresource.baseMip)] = binding;
     }
+    void MetalDescriptorSet::writeTextureMip(const TextureBinding &textureBinding, uint32_t binding, ImageLayout imageLayout, TextureSubresource subresource)
+    {
+
+        MetalTexture *mtTexture = reinterpret_cast<MetalTexture *>(textureBinding.texture);
+
+        m_tempDescriptorSet.storageTextureBindings[mtTexture->getFace(subresource.baseLayer, subresource.baseMip)] = binding;
+    }
 
     void MetalDescriptorSet::commit()
     {

@@ -26,6 +26,7 @@ namespace nitro::rhi::metal
         void writeBuffer(RHIBuffer *buffer, uint32_t binding) override;
         void writeTexture(const TextureBinding &textureBinding, uint32_t binding, ImageLayout imageLayout) override;
         void writeStorageImage(RHITexture *texture, uint32_t binding, ImageLayout imageLayout, TextureSubresource subresource) override;
+        void writeTextureMip(const TextureBinding &textureBinding, uint32_t binding, ImageLayout imageLayout, TextureSubresource subresource = TextureSubresource{}) override;
         void writeBindlessTextures(const std::vector<RHITexture *> &textures, uint32_t binding) override;
         void writeSampler(RHISamplerHandle sampler, uint32_t binding) override;
         void commit() override;

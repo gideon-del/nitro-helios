@@ -48,6 +48,11 @@ namespace nitro::renderer
         info.aabbMax = aabbMax;
         info.aabbMin = aabbMin;
 
+        std::cout << "Mesh id: " << id << std::endl;
+        std::cout << "Mesh AABB min x " << aabbMin.x << " y " << aabbMin.y << " z " << aabbMin.z << std::endl;
+        std::cout << "Mesh AABB max x " << aabbMax.x << " y " << aabbMax.y << " z " << aabbMax.z << std::endl;
+
+        info.boundingSphereRadius = glm::length(info.aabbMax - info.aabbMin) * 0.5f;
         m_meshes.push_back(info);
         return id;
     }
@@ -115,6 +120,7 @@ namespace nitro::renderer
             descriptor.vertexOffset = meshInfo.vertexOffset;
             descriptor.aabbMax = meshInfo.aabbMax;
             descriptor.aabbMin = meshInfo.aabbMin;
+            descriptor.boundingSphereRadius = meshInfo.boundingSphereRadius;
 
             descriptors.push_back(std::move(descriptor));
         }

@@ -178,6 +178,8 @@ namespace nitro::renderer
         m_particleCompactPass = std::make_unique<ParticleCompactPass>(m_device, shaderDir, isMetal);
         m_particleIndirectPass = std::make_unique<ParticleIndirectPass>(m_device, shaderDir, isMetal);
         m_meshCompactPass = std::make_unique<MeshCompactPass>(m_device, shaderDir, isMetal);
+        m_hizMipPass = std::make_unique<HiZMipPass>(m_device, shaderDir, isMetal);
+        m_occlusionCullPass = std::make_unique<OcclusionCullingPass>(m_device, shaderDir, isMetal);
         m_particleBillboardPass = std::make_unique<ParticleBillboardPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
 
         buildRenderGraph();
@@ -265,7 +267,7 @@ namespace nitro::renderer
         });
 
         auto depth = m_renderGraph.declareTexture({"GBuffer Depth",
-                                                   rhi::TextureDesc::ImageFormat::Depth32Float});
+                                                   rhi::TextureDesc::ImageFormat::Depth32Float, 0, 0});
         auto albedo = m_renderGraph.declareTexture({"GBuffer Albedo",
                                                     rhi::TextureDesc::ImageFormat::ColorRGBA8});
         auto normal = m_renderGraph.declareTexture({"GBuffer Normal",
@@ -303,6 +305,96 @@ namespace nitro::renderer
             },
         });
 
+        auto hizTex = m_renderGraph.declareTexture({"Hiz Depth",
+                                                    rhi::TextureDesc::ImageFormat::Depth32Float, 0, 0, true, HIZ_MIP_COUNT});
+
+        m_renderGraph.addPass(
+            {"Copy Depth to Hi-Z",
+
+             {{depth, rhi::ResourceState::CopySrc}},
+             {{hizTex, rhi::ResourceState::CopyDst, WriteMode::Producer}},
+             {},
+             {},
+             [](const RGResources &resources) {},
+             [depth, hizTex, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+             {
+                 cmd->copyTextureToTexture(resources.getTexture(depth), resources.getTexture(hizTex));
+             }}
+
+        );
+        m_renderGraph.addPass(
+            {"Hi-Z Mip generation",
+
+             {},
+             {{hizTex, rhi::ResourceState::ShaderRead, WriteMode::Extend}},
+             {},
+             {},
+             [this, hizTex](const RGResources &resources)
+             {
+                 m_hizMipPass->bindResources(resources, hizTex);
+             },
+             [hizTex, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+             {
+                 m_hizMipPass->execute(cmd, m_swapchain->getWidth(), m_swapchain->getHeight(), resources.getTexture(hizTex));
+             }}
+
+        );
+
+        auto hizDrawCountId = m_renderGraph.declareBuffer({" Hi-z Draw Count",
+                                                           sizeof(uint32_t),
+                                                           rhi::BufferDesc::Usage::Indirect,
+                                                           true});
+        auto hizDrawCommandsId = m_renderGraph.declareBuffer({"Hi-z Draw Command Buffer",
+                                                              sizeof(DrawIndexedIndirectArgs) * Scene::s_MAX_DRAW_COMMANDS,
+                                                              rhi::BufferDesc::Usage::Indirect,
+                                                              true});
+
+        m_renderGraph.addPass(
+            {"Hi-Z Mip generation",
+
+             {{hizTex, rhi::ResourceState::ShaderRead}},
+             {},
+             {{drawCountId, rhi::ResourceState::ShaderRead},
+              {drawCommandsId, rhi::ResourceState::ShaderRead}
+
+             },
+             {
+                 {
+                     {hizDrawCountId, rhi::ResourceState::ShaderWrite},
+                     {hizDrawCommandsId, rhi::ResourceState::ShaderWrite},
+                 },
+             },
+             [](const RGResources &resources) {},
+             [hizTex, hizDrawCommandsId, hizDrawCountId, drawCountId, drawCommandsId, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+             {
+                 DepthPrePassCamera depthCamera;
+                 depthCamera.view = ctx.camera->getView();
+                 depthCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), settings.viewportSize.x / settings.viewportSize.y, ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
+
+                 if (!m_isMetal)
+                 {
+                     depthCamera.proj[1][1] *= -1.0f;
+                 }
+                 OcclusionCullPushConstant pc;
+                 pc.screenHeight = std::max(m_swapchain->getHeight(), m_swapchain->getWidth());
+                 pc.depthScaleA = ctx.CAMERA_FAR / std::max(ctx.CAMERA_FAR - ctx.CAMERA_NEAR, 0.0001f);
+                 pc.view = depthCamera.view;
+                 pc.proj = depthCamera.proj;
+                 pc.maxMip = HIZ_MIP_COUNT;
+                 pc.projScaleY = std::abs(depthCamera.proj[1][1]);
+
+                 uint32_t frameIdx = m_device->getCurrentFrameIndex();
+                 OcclusionCullRGResource rgResources;
+                 rgResources.hizDepthTex = resources.getTexture(hizTex);
+                 rgResources.hiZDrawCommands = resources.getBuffer(hizDrawCommandsId, frameIdx);
+                 rgResources.hiZDrawCount = resources.getBuffer(hizDrawCountId, frameIdx);
+                 rgResources.sceneDrawCommands = resources.getBuffer(drawCommandsId, frameIdx);
+                 rgResources.sceneDrawCount = resources.getBuffer(drawCountId, frameIdx);
+
+                 m_occlusionCullPass->execute(cmd, pc, *ctx.scene, rgResources);
+             }}
+
+        );
         GBuffer gBufferIds{albedo, normal, metallicRoughness, emissive, depth};
 
         m_renderGraph.addPass({
@@ -310,15 +402,15 @@ namespace nitro::renderer
             {{depth, rhi::ResourceState::DepthRead}},
             {{albedo, rhi::ResourceState::RenderTarget}, {normal, rhi::ResourceState::RenderTarget}, {metallicRoughness, rhi::ResourceState::RenderTarget}, {emissive, rhi::ResourceState::RenderTarget}},
             {
-                {drawCountId, rhi::ResourceState::IndirectDraw},
-                {drawCommandsId, rhi::ResourceState::IndirectDraw},
+                {hizDrawCountId, rhi::ResourceState::IndirectDraw},
+                {hizDrawCommandsId, rhi::ResourceState::IndirectDraw},
             },
             {},
             [gBufferIds, this](const RGResources &resources)
             {
                 m_geometryPass->bindResources(resources, gBufferIds);
             },
-            [gBufferIds, drawCommandsId, drawCountId, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            [gBufferIds, hizDrawCommandsId, hizDrawCountId, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
             {
                 GeometryCameraBuffer geometryCamera;
                 geometryCamera.view = ctx.camera->getView();
@@ -329,7 +421,7 @@ namespace nitro::renderer
                     geometryCamera.proj[1][1] *= -1.0f;
                 }
                 auto frameIdx = m_device->getCurrentFrameIndex();
-                m_geometryPass->execute(cmd, geometryCamera, *ctx.scene, settings.light, resources.getBuffer(drawCommandsId, frameIdx), resources.getBuffer(drawCountId, frameIdx));
+                m_geometryPass->execute(cmd, geometryCamera, *ctx.scene, settings.light, resources.getBuffer(hizDrawCommandsId, frameIdx), resources.getBuffer(hizDrawCountId, frameIdx));
             },
         });
 
@@ -472,15 +564,15 @@ namespace nitro::renderer
             {},
             {shadowMapWrites},
             {
-                {drawCountId, rhi::ResourceState::IndirectDraw},
-                {drawCommandsId, rhi::ResourceState::IndirectDraw},
+                {hizDrawCountId, rhi::ResourceState::IndirectDraw},
+                {hizDrawCommandsId, rhi::ResourceState::IndirectDraw},
             },
             {},
             [cascadeTextures, this](const RGResources &resources)
             {
                 m_csmPass->bindResources(resources, cascadeTextures);
             },
-            [this, drawCommandsId, drawCountId](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            [this, hizDrawCommandsId, hizDrawCountId](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
             {
                 CascadeShadowContext shadowCtx;
                 shadowCtx.aspect = settings.viewportSize.x / settings.viewportSize.y;
@@ -491,7 +583,7 @@ namespace nitro::renderer
                 shadowCtx.cameraView = ctx.camera->getView();
                 shadowCtx.lightView = settings.light.lightCamera.getView();
                 auto frameIdx = m_device->getCurrentFrameIndex();
-                m_csmPass->execute(cmd, *ctx.scene, shadowCtx, resources.getBuffer(drawCommandsId, frameIdx), resources.getBuffer(drawCountId, frameIdx));
+                m_csmPass->execute(cmd, *ctx.scene, shadowCtx, resources.getBuffer(hizDrawCommandsId, frameIdx), resources.getBuffer(hizDrawCountId, frameIdx));
             },
         });
 

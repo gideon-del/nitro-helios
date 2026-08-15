@@ -23,8 +23,8 @@ namespace nitro::renderer
         pipelineDesc.hasColorAttachment = true;
         pipelineDesc.colorAttachments = {rhi::TextureDesc::ImageFormat::ColorRGBA8, rhi::TextureDesc::ImageFormat::ColorRGBA16, rhi::TextureDesc::ImageFormat::ColorRGBA8,
                                          rhi::TextureDesc::ImageFormat::ColorRGBA16};
-        pipelineDesc.depthWrite = false;
-        pipelineDesc.depthTest = rhi::CompareOp::Equal;
+        pipelineDesc.depthWrite = true;
+        pipelineDesc.depthTest = rhi::CompareOp::LessOrEqual;
         std::string shaderPath = shaderDir + "/geometry/geometry";
 
         if (isMetal)
@@ -43,7 +43,7 @@ namespace nitro::renderer
         pipelineDesc.hasPushConstant = false;
 
         pipelineDesc.depthAttachmentFormat = rhi::TextureDesc::ImageFormat::Depth32Float;
-        pipelineDesc.cullMode = PipelineDesc::CullMode::None;
+        pipelineDesc.cullMode = PipelineDesc::CullMode::Back;
 
         m_pipeline = m_device->createPipeline(pipelineDesc);
 
@@ -139,10 +139,10 @@ namespace nitro::renderer
         renderPassDesc.colorAttachments.push_back(colorAttachment);
 
         rhi::RenderPassDesc::Attachment depthAttachment;
-        depthAttachment.load = rhi::RenderPassDesc::LoadOp::Load;
-        depthAttachment.store = rhi::RenderPassDesc::StoreOp::DontCare;
+        depthAttachment.load = rhi::RenderPassDesc::LoadOp::Clear;
+        depthAttachment.store = rhi::RenderPassDesc::StoreOp::Store;
         depthAttachment.texture = resources.getTexture(gBuffer.depth);
-        depthAttachment.depthWrite = false;
+        depthAttachment.depthWrite = true;
         depthAttachment.stencilWrite = false;
 
         renderPassDesc.depthAttachment = &depthAttachment;

@@ -16,6 +16,7 @@ namespace nitro::rhi::vulkan
         void writeStorageImage(RHITexture *texture, uint32_t binding, ImageLayout imageLayout, TextureSubresource subresource) override;
         void commit() override;
         void writeBindlessTextures(const std::vector<RHITexture *> &textures, uint32_t binding) override;
+        void writeTextureMip(const TextureBinding &textureBinding, uint32_t binding, ImageLayout imageLayout, TextureSubresource subresource = TextureSubresource{}) override;
         void writeSampler(RHISamplerHandle sampler, uint32_t binding) override;
         VkDescriptorSet descriptorSet;
 

@@ -8,6 +8,7 @@ uint vertexOffset;
         uint indexOffset;
         uint indexCount;
        vec3 aabbMin;
+       float boundingSphereRadius;
        vec3 aabbMax;
 };
 
@@ -126,9 +127,11 @@ bool aabbInFrustum(vec3 center, vec3 halfExtent, Frustum frustum) {
 
     vec3 p = center + halfExtent * sign(n);
 
-    if(dot(n, p) + d < 0.0){
-        return false;
-    }
+    float dist = dot(n, p) + d;
+float epsilon = 0.01;
+
+if(dist < -epsilon)
+    return false;
  }
 
  return true;
@@ -174,7 +177,7 @@ bool visible = aabbInFrustum(aabbCenter, aabbHalfExtent, cascadeFrustum);
 
 DrawIndexedIndirectCommand cmd;
 cmd.indexCount = desc.indexCount;
-cmd.instanceCount = visible ? 1u : 0u;
+cmd.instanceCount = 1u;
 cmd.firstIndex = desc.indexOffset;
 cmd.vertexOffset = int(desc.vertexOffset) ;
 cmd.firstInstance = globalInstanceId;

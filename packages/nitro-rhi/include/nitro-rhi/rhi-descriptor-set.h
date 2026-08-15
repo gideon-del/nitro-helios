@@ -21,6 +21,7 @@ namespace nitro::rhi
         virtual ~RHIDescriptorSet() = default;
         virtual void writeBuffer(RHIBuffer *buffer, uint32_t binding) = 0;
         virtual void writeTexture(const TextureBinding &textureBinding, uint32_t binding, ImageLayout imageLayout) = 0;
+        virtual void writeTextureMip(const TextureBinding &textureBinding, uint32_t binding, ImageLayout imageLayout, TextureSubresource subresource = TextureSubresource{}) = 0;
         virtual void writeStorageImage(RHITexture *texture, uint32_t binding, ImageLayout imageLayout, TextureSubresource subresource) = 0;
         virtual void writeBindlessTextures(const std::vector<RHITexture *> &textures, uint32_t binding) = 0;
         virtual void writeSampler(RHISamplerHandle sampler, uint32_t binding) = 0;

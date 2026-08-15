@@ -45,6 +45,8 @@ add_library(nitro-renderer STATIC
  src/mesh-manager.cpp
  src/material-manager.cpp
  src/passes/mesh-compact-pass.cpp
+ src/passes/hiz-mip-pass.cpp
+ src/passes/occlusion-culling-pass.cpp
 )
 
 find_package(glm REQUIRED)

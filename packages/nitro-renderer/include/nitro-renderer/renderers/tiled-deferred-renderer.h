@@ -42,6 +42,8 @@ namespace nitro::renderer
         std::unique_ptr<ParticleCompactPass> m_particleCompactPass;
         std::unique_ptr<ParticleIndirectPass> m_particleIndirectPass;
         std::unique_ptr<MeshCompactPass> m_meshCompactPass;
+        std::unique_ptr<HiZMipPass> m_hizMipPass;
+        std::unique_ptr<OcclusionCullingPass> m_occlusionCullPass;
 
         rhi::RHITexture *m_cubemapTexture;
         rhi::RHITexture *m_irradianceTexture;

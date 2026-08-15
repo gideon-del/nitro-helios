@@ -25,3 +25,5 @@
 #include "particle-compact-pass.h"
 #include "particle-indirect-pass.h"
 #include "mesh-compace-pass.h"
+#include "hiz-mip-pass.h"
+#include "occlusion-culling-pass.h"

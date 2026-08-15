@@ -76,6 +76,26 @@ namespace nitro::rhi::vulkan
 
         m_writes.push_back(std::move(descriptorWriteTexture));
     }
+    void VulkanDescriptorSet::writeTextureMip(const TextureBinding &textureBinding, uint32_t binding, ImageLayout imageLayout, TextureSubresource subresource)
+    {
+        VulkanTexture *vulkanTexture = reinterpret_cast<VulkanTexture *>(textureBinding.texture);
+
+        VkDescriptorImageInfo imageInfo{};
+        imageInfo.imageLayout = toVkImageLayout(imageLayout);
+        imageInfo.imageView = vulkanTexture->getFace(subresource.baseLayer, subresource.baseMip);
+        imageInfo.sampler = m_device->get(textureBinding.sampler).sampler;
+
+        m_imageInfos.push_back(std::move(imageInfo));
+        VkWriteDescriptorSet descriptorWriteTexture{};
+        descriptorWriteTexture.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWriteTexture.descriptorCount = 1;
+        descriptorWriteTexture.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWriteTexture.dstSet = descriptorSet;
+        descriptorWriteTexture.dstBinding = binding;
+        descriptorWriteTexture.dstArrayElement = 0;
+
+        m_writes.push_back(std::move(descriptorWriteTexture));
+    }
 
     void VulkanDescriptorSet::commit()
     {

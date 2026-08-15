@@ -13,10 +13,11 @@ namespace nitro::renderer
         uint32_t vertexOffset;
         uint32_t indexOffset;
         uint32_t indexCount;
-        glm::vec3 aabbMin = glm::vec3(0);
         float _pad1;
+        glm::vec3 aabbMin = glm::vec3(0);
+        float boundingSphereRadius = 0.0f;
         glm::vec3 aabbMax = glm::vec3(0);
-        float _pad2[2];
+        float _pad2;
     };
     struct MeshInstance
     {
@@ -34,6 +35,7 @@ namespace nitro::renderer
         geometry::Mesh mesh;
         glm::vec3 aabbMin = glm::vec3(0.0f);
         glm::vec3 aabbMax = glm::vec3(0.0f);
+        float boundingSphereRadius = 0.0f;
     };
     class MeshManager
     {

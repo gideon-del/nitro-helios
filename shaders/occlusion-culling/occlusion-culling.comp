@@ -1,0 +1,174 @@
+#version 450
+#define FLT_MAX 3.402823466e+38
+layout(local_size_x=64) in;
+
+struct MeshDescriptor {
+uint vertexOffset;
+        uint indexOffset;
+        uint indexCount;
+       vec3 aabbMin;
+       float boundingSphereRadius;
+       vec3 aabbMax;
+};
+
+   struct MeshInstance
+    {
+        uint meshId;
+        uint materialId;
+        mat4 modelTransform;
+        mat4 normalTransform;           
+    };
+
+struct DrawIndexedIndirectCommand {
+uint indexCount;
+uint instanceCount;
+uint firstIndex;
+int vertexOffset;
+uint firstInstance;
+};
+
+layout(std430, set=0, binding=2)  buffer DescriptorBuffer {
+ MeshDescriptor meshDescriptors[];
+};    
+layout(std430, set=0, binding=3)  buffer MeshInstanceBuffer {
+ MeshInstance meshInstances[];
+};
+
+layout(std430, set=0,binding = 4) buffer DrawCount {
+    uint count;
+};
+layout(std430, set=0,binding = 5) buffer DrawCommands {
+    DrawIndexedIndirectCommand commands[];
+};
+
+layout(std430, set=0,binding = 6) buffer HiZDrawCount {
+    uint hiZCount;
+};
+layout(std430, set=0,binding = 7) buffer HiZDrawCommands {
+    DrawIndexedIndirectCommand hiZCommands[];
+};
+
+
+layout( set=0,binding = 8) uniform sampler2D hizDepth;
+
+layout(push_constant) uniform PushConstant {
+     mat4 view;
+     mat4 proj;
+    float projScaleY;
+    float depthScaleA;
+    float screenHeight;
+    int maxMip;
+};
+bool isOccluded(
+    vec3 center,
+    float radius,
+    sampler2D hizBuffer
+) {
+vec4 clip = proj * view * vec4(center, 1.0);
+if (clip.w <= 0.0) return false;
+vec3 ndc = clip.xyz / clip.w;
+vec2 centerUV = ndc.xy * 0.5 + 0.5;
+
+
+
+
+float projRadius = (projScaleY * radius * screenHeight) / (clip.w * 2.0);
+
+vec2 screenSize = vec2(
+        textureSize(hizBuffer, 0)
+    );
+
+    vec2 radiusUV =
+        vec2(projRadius) / screenSize;
+
+ vec2 uvMin = centerUV - radiusUV;
+    vec2 uvMax = centerUV + radiusUV;
+    if (uvMax.x < 0.0 ||
+        uvMin.x > 1.0 ||
+        uvMax.y < 0.0 ||
+        uvMin.y > 1.0)
+    {
+        return false;
+    }
+
+    uvMin = clamp(uvMin, vec2(0.0), vec2(1.0));
+    uvMax = clamp(uvMax, vec2(0.0), vec2(1.0));
+
+float mip = log2(max(projRadius, 1.0));
+mip = clamp(mip,0.0, float(maxMip));
+
+
+
+float d0 = textureLod(hizBuffer, vec2(uvMin.x, uvMin.y), mip).r;
+float d1 = textureLod(hizBuffer, vec2(uvMax.x, uvMin.y), mip).r;
+float d2 = textureLod(hizBuffer, vec2(uvMin.x, uvMax.y), mip).r;
+float d3 = textureLod(hizBuffer, vec2(uvMax.x, uvMax.y), mip).r;
+
+float hizDepth = max(max(d0, d1), max(d2, d3));
+
+vec4 viewCenter = view * vec4(center,1.0);
+
+float nearestCenter = viewCenter.z + radius;
+vec4 nearestClip = proj * vec4(viewCenter.xy, nearestCenter,1.0);
+
+//  float objDepth =(clip.z - depthScaleA* radius) /clip.w;\
+
+float objDepth = nearestClip.z / nearestClip.w;
+
+ return objDepth > hizDepth;
+
+}
+
+void main() {
+    uint id = gl_GlobalInvocationID.x;
+
+    if(id >= count) return;
+
+    DrawIndexedIndirectCommand command = commands[id];
+    uint instanceId = command.firstInstance;
+    MeshInstance instance = meshInstances[instanceId];
+    MeshDescriptor desc = meshDescriptors[instance.meshId];
+
+vec3 worldMin= vec3(FLT_MAX);
+vec3 worldMax = vec3(-FLT_MAX);
+
+vec3 corners[8] = {
+ vec3(desc.aabbMin.x, desc.aabbMin.y, desc.aabbMin.z),
+ vec3(desc.aabbMin.x, desc.aabbMax.y, desc.aabbMin.z),
+ vec3(desc.aabbMin.x, desc.aabbMax.y, desc.aabbMax.z),
+ vec3(desc.aabbMin.x, desc.aabbMin.y, desc.aabbMax.z),
+
+ vec3(desc.aabbMax.x, desc.aabbMin.y, desc.aabbMin.z),
+ vec3(desc.aabbMax.x, desc.aabbMax.y, desc.aabbMin.z),
+ vec3(desc.aabbMax.x, desc.aabbMax.y, desc.aabbMax.z),
+ vec3(desc.aabbMax.x, desc.aabbMin.y, desc.aabbMax.z),
+
+};
+
+for(int i =0; i < 8; i++){
+    vec3 w = (instance.modelTransform * vec4(corners[i], 1.0)).xyz;
+    worldMin = min(w, worldMin);
+    worldMax = max(w, worldMax);
+}
+
+
+vec3 aabbCenter = (worldMin + worldMax) * 0.5;
+vec3 scale = vec3(
+    length(instance.modelTransform[0].xyz),
+    length(instance.modelTransform[1].xyz),
+    length(instance.modelTransform[2].xyz)
+);
+float maxScale = max(scale.x, max(scale.y, scale.z));
+float worldRadius = desc.boundingSphereRadius * maxScale;
+bool visible = !isOccluded(aabbCenter, worldRadius, hizDepth);
+
+// visible = true;
+
+if(!visible) return;
+
+ uint slot = atomicAdd(hiZCount, 1u);
+ 
+ hiZCommands[slot] = command;
+
+    
+}
