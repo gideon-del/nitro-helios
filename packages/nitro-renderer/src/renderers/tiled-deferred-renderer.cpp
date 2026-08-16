@@ -250,6 +250,8 @@ namespace nitro::renderer
                 pc.objectCount = static_cast<uint32_t>(ctx.scene->instanceIds.size());
                 pc.indexSize = static_cast<uint32_t>(sizeof(uint32_t));
                 pc.vertexSize = static_cast<uint32_t>(sizeof(geometry::Vertex));
+                pc.frustumCullEnabled = settings.frustumCullEnabled ? 1 : 0;
+                pc.lodEnabled = settings.lodEnabled ? 1 : 0;
 
                 DepthPrePassCamera depthCamera;
                 depthCamera.view = ctx.camera->getView();
@@ -262,6 +264,8 @@ namespace nitro::renderer
                 auto frameIdx = m_device->getCurrentFrameIndex();
                 MeshCompactUBO ubo;
                 ubo.viewProj = depthCamera.proj * depthCamera.view;
+                ubo.projScaleY = std::abs(depthCamera.proj[1][1]);
+
                 m_meshCompactPass->execute(cmd, *ctx.scene, resources.getBuffer(drawCommandsId, frameIdx), resources.getBuffer(drawCountId, frameIdx), pc, ubo);
             },
         });
@@ -382,6 +386,7 @@ namespace nitro::renderer
                  pc.proj = depthCamera.proj;
                  pc.maxMip = HIZ_MIP_COUNT;
                  pc.projScaleY = std::abs(depthCamera.proj[1][1]);
+                 pc.occlusionCullEnabled = settings.occlusionCullEnabled ? 1 : 0;
 
                  uint32_t frameIdx = m_device->getCurrentFrameIndex();
                  OcclusionCullRGResource rgResources;

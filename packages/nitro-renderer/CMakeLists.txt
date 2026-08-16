@@ -62,4 +62,5 @@ PUBLIC nitro-geometry
 PUBLIC glm::glm
 PRIVATE imgui-core
 PRIVATE imnodes
+PRIVATE meshoptimizer
 )

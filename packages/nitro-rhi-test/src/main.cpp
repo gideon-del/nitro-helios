@@ -237,21 +237,21 @@ int main()
     // planeInstance.meshId = planeMeshId;
 
     // mainScene.instanceIds.push_back(meshManager->addMeshInstances(planeInstance));
-    auto wallMeshId = meshManager->addMesh(MeshGenerator::createWallMesh(100, 100, 30));
+    // auto wallMeshId = meshManager->addMesh(MeshGenerator::createWallMesh(100, 100, 30));
 
-    MeshTransformation wallTransform;
-    wallTransform.translate(glm::vec3(0.0f, 10.0f, -100.0f));
-    auto wallPc = wallTransform.getTransform();
+    // MeshTransformation wallTransform;
+    // wallTransform.translate(glm::vec3(0.0f, 10.0f, -100.0f));
+    // auto wallPc = wallTransform.getTransform();
 
-    MeshInstance wallInstance;
-    wallInstance.meshId = wallMeshId;
-    wallInstance.modelTransform = wallPc.model;
-    wallInstance.normalTransform = wallPc.normalMatrix;
+    // MeshInstance wallInstance;
+    // wallInstance.meshId = wallMeshId;
+    // wallInstance.modelTransform = wallPc.model;
+    // wallInstance.normalTransform = wallPc.normalMatrix;
 
-    mainScene.instanceIds.push_back(meshManager->addMeshInstances(wallInstance));
+    // mainScene.instanceIds.push_back(meshManager->addMeshInstances(wallInstance));
     // pbrScene.objects.push_back(RenderObject(planeRenderer));
-    // addRandomSpheres(10000, 3000, mainScene, sphereMeshId);
-    addWallTestCluster(mainScene, sphereMeshId);
+    addRandomSpheres(10000, 3000, mainScene, sphereMeshId);
+    // addWallTestCluster(mainScene, sphereMeshId);
     Mesh pointLightSphere = MeshGenerator::createUVSphere(1, 10, 100);
     std::shared_ptr<MeshRenderer> pointLightRenderer = std::make_shared<MeshRenderer>(pointLightSphere, device);
     OrbitalCamera camera;

@@ -8,7 +8,23 @@ namespace nitro::renderer
 {
 
     static constexpr uint32_t INVALID_MATERIAL_INDEX = 0xFFFFFFFFu;
-    struct MeshDescriptor
+    static constexpr uint32_t MESH_LOD_COUT = 4;
+    struct MeshLOD
+    {
+        std::vector<uint32_t> indices;
+        size_t indexOffset;
+        float screenThreshold;
+        float _pad;
+    };
+
+    struct alignas(16) MeshLODDescriptor
+    {
+        uint32_t indexOffset;
+        uint32_t indexCount;
+        float screenThreshold;
+        float _pad;
+    };
+    struct alignas(16) MeshDescriptor
     {
         uint32_t vertexOffset;
         uint32_t indexOffset;
@@ -18,6 +34,7 @@ namespace nitro::renderer
         float boundingSphereRadius = 0.0f;
         glm::vec3 aabbMax = glm::vec3(0);
         float _pad2;
+        MeshLODDescriptor lod[MESH_LOD_COUT];
     };
     struct MeshInstance
     {
@@ -32,11 +49,18 @@ namespace nitro::renderer
     {
         uint32_t vertexOffset = 0;
         uint32_t indexOffset = 0;
+        uint32_t indexCount = 0;
+        MeshLOD meshLod[MESH_LOD_COUT];
         geometry::Mesh mesh;
         glm::vec3 aabbMin = glm::vec3(0.0f);
         glm::vec3 aabbMax = glm::vec3(0.0f);
         float boundingSphereRadius = 0.0f;
     };
+    static_assert(sizeof(MeshLODDescriptor) == 16);
+    static_assert(alignof(MeshLODDescriptor) == 16);
+
+    static_assert(sizeof(MeshDescriptor) == 112);
+    static_assert(alignof(MeshDescriptor) == 16);
     class MeshManager
     {
     public:

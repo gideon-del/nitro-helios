@@ -2,13 +2,25 @@
 #define FLT_MAX 3.402823466e+38
 layout(local_size_x=64) in;
 
+struct MeshLOD {
+    uint indexOffset;
+    uint indexCount;
+    float screenThreshold;
+     float _pad;
+};
+
 struct MeshDescriptor {
-uint vertexOffset;
-        uint indexOffset;
-        uint indexCount;
-       vec3 aabbMin;
-       float boundingSphereRadius;
-       vec3 aabbMax;
+ uint vertexOffset;
+    uint indexOffset;
+    uint indexCount;
+    float _pad1;
+
+    vec3 aabbMin;
+    float boundingSphereRadius;
+
+    vec3 aabbMax;
+    float _pad2;
+        MeshLOD lods[4];
 };
 
    struct MeshInstance
@@ -58,6 +70,7 @@ layout(push_constant) uniform PushConstant {
     float depthScaleA;
     float screenHeight;
     int maxMip;
+    uint occlusionCullEnabled;
 };
 bool isOccluded(
     vec3 center,
@@ -160,9 +173,9 @@ vec3 scale = vec3(
 );
 float maxScale = max(scale.x, max(scale.y, scale.z));
 float worldRadius = desc.boundingSphereRadius * maxScale;
-bool visible = !isOccluded(aabbCenter, worldRadius, hizDepth);
+bool visible = occlusionCullEnabled == 1 ? !isOccluded(aabbCenter, worldRadius, hizDepth) : true;
 
-// visible = true;
+
 
 if(!visible) return;
 

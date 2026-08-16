@@ -32,6 +32,8 @@ namespace nitro::renderer
         float depthScaleA;
         float screenHeight;
         int maxMip;
+        uint occlusionCullEnabled = 1;
+        float _pads[3];
     };
     class OcclusionCullingPass
     {

@@ -11,7 +11,9 @@ namespace nitro::renderer
         uint32_t objectCount;
         uint32_t indexSize;
         uint32_t vertexSize;
-        float _pad;
+        uint lodEnabled = 1;
+        uint frustumCullEnabled = 1;
+        float _pads[3];
     };
 
     struct MeshCompactBuffers
@@ -35,6 +37,8 @@ namespace nitro::renderer
     struct MeshCompactUBO
     {
         glm::mat4 viewProj;
+        float projScaleY;
+        float _pads[3];
     };
     class MeshCompactPass
     {

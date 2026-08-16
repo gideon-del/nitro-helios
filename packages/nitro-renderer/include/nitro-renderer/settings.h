@@ -81,7 +81,7 @@ namespace nitro::renderer
         bool enable = true;
     };
 
-      struct StatSettings
+    struct StatSettings
     {
         float fps;
         float frameTime;
@@ -138,6 +138,9 @@ namespace nitro::renderer
         LightMode selectedLightMode = LightMode::CookTorrenceStub;
         RendererScenes selectedScene = RendererScenes::DamageHelmet;
         glm::vec2 viewportSize{0.0f, 0.0f};
+        bool lodEnabled = true;
+        bool frustumCullEnabled = true;
+        bool occlusionCullEnabled = true;
     };
 
 } // namespace nitro::renderer

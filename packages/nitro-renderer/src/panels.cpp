@@ -176,6 +176,10 @@ namespace nitro::renderer
         {
             settings.selectedScene = static_cast<RendererScenes>(currentScene);
         }
+
+        ImGui::Checkbox("Mesh LOD", &settings.lodEnabled);
+        ImGui::Checkbox("Frustum Culling", &settings.frustumCullEnabled);
+        ImGui::Checkbox("Occlusion Culling", &settings.occlusionCullEnabled);
     }
     void StatPanel::draw(StatSettings &stats)
     {
