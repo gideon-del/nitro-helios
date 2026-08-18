@@ -25,7 +25,7 @@ namespace nitro::rhi::vulkan
 
     private:
         VulkanDevice *m_device;
-        VkQueryPool m_queryPool;
+        std::vector<VkQueryPool> m_queryPools;
         float m_timestampPeriod;
         uint32_t m_maxTimers;
         uint32_t m_queryCount;

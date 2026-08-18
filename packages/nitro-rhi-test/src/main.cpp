@@ -288,7 +288,7 @@ int main()
     // ForwardRenderer forwardRenderer = ForwardRenderer(device, swapchain, std::string(SHADER_DIR), isMetal);
     // DeferredRenderer deferredRenderer = DeferredRenderer(device, swapchain, std::string(SHADER_DIR), isMetal, materialSystem);
     TiledDeferredRenderer tileDeferredRenderer = TiledDeferredRenderer(device, swapchain, std::string(SHADER_DIR), isMetal);
-    helmetScene.loadGltfScene("./assets/DamagedHelmet/DamagedHelmet.gltf", device);
+    helmetScene.loadGltfScene("./assets/Sponza/Sponza.gltf", device);
 
     renderContext.scene = &helmetScene;
     renderContext.ssaoSamples.generate();

@@ -17,26 +17,37 @@ namespace nitro::rhi::vulkan
         info.queryType = VK_QUERY_TYPE_TIMESTAMP;
         info.queryCount = m_queryCount;
 
-        checkVkResult(vkCreateQueryPool(m_device->device, &info, nullptr, &m_queryPool),
-                      "Failed to create timer query pool");
+        for (int i = 0; i < VulkanDevice::MAX_FRAMES_IN_FLIGHT; i++)
+        {
+            VkQueryPool queryPool;
+            checkVkResult(vkCreateQueryPool(m_device->device, &info, nullptr, &queryPool),
+                          "Failed to create timer query pool");
+            m_queryPools.push_back(std::move(queryPool));
+        }
     }
 
     VulkanTimer::~VulkanTimer()
     {
-        if (m_queryPool != VK_NULL_HANDLE)
-            vkDestroyQueryPool(m_device->device, m_queryPool, nullptr);
+        for (auto &queryPool : m_queryPools)
+        {
+            vkDestroyQueryPool(m_device->device, queryPool, nullptr);
+        }
     }
 
     void VulkanTimer::beginFrame(RHICommandBuffer *cmd)
     {
+
+        auto &queryPool = m_queryPools[m_device->getCurrentFrameIndex()];
         auto *vkCmd = reinterpret_cast<VulkanCommandBuffer *>(cmd);
-        vkCmdResetQueryPool(vkCmd->cmd, m_queryPool, 0, m_queryCount);
+        // vkCmdResetQueryPool(vkCmd->cmd, queryPool, 0, m_queryCount);
+        vkResetQueryPool(m_device->device, queryPool, 0, m_queryCount);
         m_nextIndex = 0;
         m_nameToIndex.clear();
     }
 
     void VulkanTimer::begin(RHICommandBuffer *cmd, const std::string &name)
     {
+        auto &queryPool = m_queryPools[m_device->getCurrentFrameIndex()];
         auto *vkCmd = reinterpret_cast<VulkanCommandBuffer *>(cmd);
 
         if (m_nameToIndex.find(name) == m_nameToIndex.end())
@@ -48,11 +59,12 @@ namespace nitro::rhi::vulkan
         uint32_t idx = m_nameToIndex[name];
         vkCmdWriteTimestamp(vkCmd->cmd,
                             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                            m_queryPool, idx);
+                            queryPool, idx);
     }
 
     void VulkanTimer::end(RHICommandBuffer *cmd, const std::string &name)
     {
+        auto &queryPool = m_queryPools[m_device->getCurrentFrameIndex()];
         auto *vkCmd = reinterpret_cast<VulkanCommandBuffer *>(cmd);
 
         auto it = m_nameToIndex.find(name);
@@ -62,7 +74,7 @@ namespace nitro::rhi::vulkan
         uint32_t idx = it->second;
         vkCmdWriteTimestamp(vkCmd->cmd,
                             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-                            m_queryPool, idx + 1);
+                            queryPool, idx + 1);
     }
 
     void VulkanTimer::endFrame()
@@ -71,9 +83,10 @@ namespace nitro::rhi::vulkan
         if (m_nextIndex == 0)
             return;
 
+        auto &queryPool = m_queryPools[m_device->getCurrentFrameIndex()];
         vkGetQueryPoolResults(
             m_device->device,
-            m_queryPool, 0, m_nextIndex,
+            queryPool, 0, m_nextIndex,
             sizeof(uint64_t) * m_nextIndex,
             m_timestamps.data(),
             sizeof(uint64_t),

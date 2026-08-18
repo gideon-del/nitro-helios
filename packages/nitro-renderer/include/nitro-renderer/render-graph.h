@@ -7,6 +7,7 @@
 #include "graph.h"
 #include <variant>
 #include "per-frame.h"
+
 namespace nitro::renderer
 {
     using RGResourceID = uint32_t;

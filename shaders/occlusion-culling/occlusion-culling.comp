@@ -86,6 +86,7 @@ vec2 centerUV = ndc.xy * 0.5 + 0.5;
 
 
 float projRadius = (projScaleY * radius * screenHeight) / (clip.w * 2.0);
+// float projRadius = (projScaleY * radius) / (clip.w);
 
 vec2 screenSize = vec2(
         textureSize(hizBuffer, 0)
@@ -116,17 +117,19 @@ float d0 = textureLod(hizBuffer, vec2(uvMin.x, uvMin.y), mip).r;
 float d1 = textureLod(hizBuffer, vec2(uvMax.x, uvMin.y), mip).r;
 float d2 = textureLod(hizBuffer, vec2(uvMin.x, uvMax.y), mip).r;
 float d3 = textureLod(hizBuffer, vec2(uvMax.x, uvMax.y), mip).r;
+float d4 = textureLod(hizBuffer, centerUV, mip).r;
 
-float hizDepth = max(max(d0, d1), max(d2, d3));
+float hizDepth = max(max(max(d0, d1), max(d2, d3)), d4);
 
 vec4 viewCenter = view * vec4(center,1.0);
 
-float nearestCenter = viewCenter.z + radius;
-vec4 nearestClip = proj * vec4(viewCenter.xy, nearestCenter,1.0);
 
-//  float objDepth =(clip.z - depthScaleA* radius) /clip.w;\
 
-float objDepth = nearestClip.z / nearestClip.w;
+vec4 nearestPSClip = proj * vec4(viewCenter.xy,  viewCenter.z + radius,1.0);
+vec4 nearestBSClip = proj * vec4(viewCenter.xy,  viewCenter.z - radius,1.0);
+
+//  float objDepth =(clip.z - depthScaleA* radius) /clip.w;
+float objDepth = min(min(nearestPSClip.z / nearestPSClip.w, nearestBSClip.z / nearestBSClip.w), clip.z / clip.w);
 
  return objDepth > hizDepth;
 
@@ -172,7 +175,7 @@ vec3 scale = vec3(
     length(instance.modelTransform[2].xyz)
 );
 float maxScale = max(scale.x, max(scale.y, scale.z));
-float worldRadius = desc.boundingSphereRadius * maxScale;
+float worldRadius = length(worldMax - worldMin) * 0.5;
 bool visible = occlusionCullEnabled == 1 ? !isOccluded(aabbCenter, worldRadius, hizDepth) : true;
 
 

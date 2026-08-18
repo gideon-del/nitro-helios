@@ -21,22 +21,13 @@ namespace nitro::renderer
         void draw(rhi::RHICommandBuffer *cmd, rhi::RHIBuffer *drawCommandsBuffer, rhi::RHIBuffer *drawCountBuffer)
         {
 
-            uint32_t drawCount = static_cast<uint32_t>(instanceIds.size());
             cmd->bindVertexBuffer(meshManager->getVertexMegaBuffer());
             cmd->bindIndexBuffer(meshManager->getIndexMegaBuffer());
 
-            auto mapped = drawCountBuffer->map();
-
-            memcpy(&drawCount, mapped, sizeof(uint32_t));
-            drawCountBuffer->unmap();
-
-            drawCount = std::min(drawCount, static_cast<uint32_t>(instanceIds.size()));
-
-            std::cout << "Draw Count " << drawCount << std::endl;
             cmd->drawIndexedIndirect(
                 drawCommandsBuffer,
                 0,
-                drawCount,
+                static_cast<uint32_t>(instanceIds.size()),
                 sizeof(rhi::DrawIndexedIndirectArgs));
 
             // cmd->drawIndexedIndirectCount(

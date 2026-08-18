@@ -1,14 +1,15 @@
 #define TINYGLTF_NO_STB_IMAGE_WRITE
 #include "../vendor/tiny_gltf.h"
 #include <nitro-renderer/scene.h>
+#include <chrono>
 
 namespace nitro::renderer
 {
 
     glm::vec2 read_vec2(const tinygltf::Accessor accessor, const tinygltf::Model &model, int i)
     {
-        tinygltf::BufferView bufferView = model.bufferViews[accessor.bufferView];
-        tinygltf::Buffer buffer = model.buffers[bufferView.buffer];
+        const tinygltf::BufferView &bufferView = model.bufferViews[accessor.bufferView];
+        const tinygltf::Buffer &buffer = model.buffers[bufferView.buffer];
 
         const uint8_t *data = buffer.data.data() + bufferView.byteOffset + accessor.byteOffset;
         const int stride = accessor.ByteStride(bufferView);
@@ -92,6 +93,7 @@ namespace nitro::renderer
         tinygltf::Scene defaultScene = model.scenes[model.defaultScene];
         std::vector<uint32_t> materialIndices;
 
+        auto t0 = std::chrono::high_resolution_clock::now();
         for (auto &gltfMaterial : model.materials)
         {
             MaterialDesc desc;
@@ -127,7 +129,11 @@ namespace nitro::renderer
 
             materialIndices.push_back(materialManager->addMaterial(desc));
         }
-
+        auto t1 = std::chrono::high_resolution_clock::now();
+        auto ms = [](auto a, auto b)
+        {
+            return std::chrono::duration<double, std::milli>(b - a).count();
+        };
         std::function<void(int, geometry::MeshTransformation)> walkNode;
         walkNode = [&](int nodeIdx, geometry::MeshTransformation parentTransform)
         {
@@ -147,6 +153,7 @@ namespace nitro::renderer
                 tinygltf::Mesh nodeMesh = model.meshes[node.mesh];
                 for (auto &primitive : nodeMesh.primitives)
                 {
+
                     std::vector<geometry::Vertex> vertices;
                     std::vector<uint32_t> indices;
 
@@ -154,47 +161,102 @@ namespace nitro::renderer
                     const auto &normalAccessor = model.accessors[primitive.attributes.at("NORMAL")];
                     const auto &uvAccessor = model.accessors[primitive.attributes.at("TEXCOORD_0")];
 
+                    std::vector<glm::vec3> positions(positionAccessor.count);
+                    std::vector<glm::vec3> normals(normalAccessor.count);
+                    std::vector<glm::vec2> uvs(uvAccessor.count);
+                    auto positionT0 = std::chrono::high_resolution_clock::now();
+                    for (int i = 0; i < positionAccessor.count; i++)
+                        positions[i] = read_vec3(positionAccessor, model, i);
+                    auto positionT1 = std::chrono::high_resolution_clock::now();
+
+                    std::cout << "Postion Load : " << ms(positionT0, positionT1) << " ms\n";
+
+                    auto normalT0 = std::chrono::high_resolution_clock::now();
+                    for (int i = 0; i < normalAccessor.count; i++)
+                        normals[i] = read_vec3(normalAccessor, model, i);
+                    auto normalT1 = std::chrono::high_resolution_clock::now();
+                    std::cout << "Normal Load : " << ms(normalT0, normalT1) << " ms\n";
+
+                    auto uvT0 = std::chrono::high_resolution_clock::now();
+                    for (int i = 0; i < uvAccessor.count; i++)
+                        uvs[i] = read_vec2(uvAccessor, model, i);
+                    auto uvT1 = std::chrono::high_resolution_clock::now();
+
+                    std::cout << "UV Load : " << ms(uvT0, uvT1) << " ms\n";
+
+                    bool hasTangent = primitive.attributes.count("TANGENT");
+                    std::vector<glm::vec4> tangents;
+                    if (hasTangent)
+                    {
+                        tangents.resize(model.accessors[primitive.attributes.at("TANGENT")].count);
+                        auto tangentT0 = std::chrono::high_resolution_clock::now();
+                        for (int i = 0; i < tangents.size(); i++)
+                            tangents[i] = read_vec4(model.accessors[primitive.attributes.at("TANGENT")], model, i);
+                        auto tangentT1 = std::chrono::high_resolution_clock::now();
+                        std::cout << "Tangent Load : " << ms(tangentT0, tangentT1) << " ms\n";
+                    }
+
+                    vertices.reserve(positionAccessor.count);
+                    auto vertexT0 = std::chrono::high_resolution_clock::now();
                     for (int i = 0; i < positionAccessor.count; i++)
                     {
                         geometry::Vertex vertex;
-                        vertex.pos = read_vec3(positionAccessor, model, i);
-                        vertex.normal = read_vec3(normalAccessor, model, i);
-                        vertex.uv = read_vec2(uvAccessor, model, i);
-                        if (primitive.attributes.count("TANGENT"))
-                            vertex.tangent = read_vec4(model.accessors[primitive.attributes.at("TANGENT")], model, i);
+                        vertex.pos = glm::vec4(positions[i], 1.0);
+                        vertex.normal = normals[i];
+                        vertex.uv = uvs[i];
+                        if (hasTangent)
+                            vertex.tangent = tangents[i];
                         vertices.push_back(vertex);
                     }
-
+                    auto vertexT1 = std::chrono::high_resolution_clock::now();
+                    std::cout << "Vertex Copy : " << ms(vertexT0, vertexT1) << " ms\n";
                     tinygltf::Accessor indicesAccessor = model.accessors[primitive.indices];
                     tinygltf::BufferView bufferView = model.bufferViews[indicesAccessor.bufferView];
                     tinygltf::Buffer buffer = model.buffers[bufferView.buffer];
                     const uint8_t *data = buffer.data.data() + bufferView.byteOffset + indicesAccessor.byteOffset;
 
-                    for (size_t i = 0; i < indicesAccessor.count; i++)
+                    indices.resize(indicesAccessor.count);
+                    auto indexT0 = std::chrono::high_resolution_clock::now();
+
+                    if (indicesAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT)
                     {
-                        uint32_t index;
-                        switch (indicesAccessor.componentType)
-                        {
-                        case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
-                            index = *reinterpret_cast<const uint8_t *>(data + i);
-                            break;
-                        case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
-                            index = *reinterpret_cast<const uint16_t *>(data + i * sizeof(uint16_t));
-                            break;
-                        case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
-                            index = *reinterpret_cast<const uint32_t *>(data + i * sizeof(uint32_t));
-                            break;
-                        default:
-                            throw std::runtime_error("Unsupported index component type");
-                        }
-                        indices.push_back(index);
+                        memcpy(indices.data(), data, indicesAccessor.count * sizeof(uint32_t));
                     }
+                    else
+                    {
+                        for (size_t i = 0; i < indicesAccessor.count; i++)
+                        {
+                            uint32_t index;
+                            switch (indicesAccessor.componentType)
+                            {
+                            case TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE:
+                                index = *reinterpret_cast<const uint8_t *>(data + i);
+                                break;
+                            case TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT:
+                                index = *reinterpret_cast<const uint16_t *>(data + i * sizeof(uint16_t));
+                                break;
+                            case TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT:
+                                index = *reinterpret_cast<const uint32_t *>(data + i * sizeof(uint32_t));
+                                break;
+                            default:
+                                throw std::runtime_error("Unsupported index component type");
+                            }
+                            indices.push_back(index);
+                        }
+                    }
+                    auto indexT1 = std::chrono::high_resolution_clock::now();
+                    std::cout << "Index Copy : " << ms(indexT0, indexT1) << " ms\n";
 
                     geometry::Mesh mesh;
                     mesh.vertices = vertices;
                     mesh.indices = indices;
+                    auto meshT0 = std::chrono::high_resolution_clock::now();
 
                     uint32_t meshId = meshManager->addMesh(mesh);
+                    auto meshT1 = std::chrono::high_resolution_clock::now();
+
+                    std::cout << "Mesh Id : " << meshId << " Load time: " << ms(meshT0, meshT1) << " ms\n";
+                    std::cout << "Vertex Count: " << vertices.size() << "\n";
 
                     MeshInstance instance;
                     instance.meshId = meshId;
@@ -212,7 +274,13 @@ namespace nitro::renderer
                 walkNode(childIdx, transformation);
         };
 
+        auto t2 = std::chrono::high_resolution_clock::now();
         for (auto nodeIdx : defaultScene.nodes)
             walkNode(nodeIdx, geometry::MeshTransformation{});
+
+        auto t3 = std::chrono::high_resolution_clock::now();
+
+        std::cout << "Material setup : " << ms(t0, t1) << " ms\n";
+        std::cout << "Mesh parsing   : " << ms(t2, t3) << " ms\n";
     }
 } // namespace nitro::renderer

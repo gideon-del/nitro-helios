@@ -344,19 +344,19 @@ namespace nitro::rhi::vulkan
         presentInfo.pImageIndices = &m_imageIdx;
         VkResult presentResult = vkQueuePresentKHR(m_device->presentQueue, &presentInfo);
 
-        uint64_t timestamps[2];
+        // uint64_t timestamps[2];
 
-        vkGetQueryPoolResults(
-            m_device->device,
-            m_device->queryPool,
-            0,
-            2,
-            sizeof(timestamps),
-            timestamps,
-            sizeof(uint64_t),
-            VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT
+        // vkGetQueryPoolResults(
+        //     m_device->device,
+        //     m_device->queryPool,
+        //     0,
+        //     2,
+        //     sizeof(timestamps),
+        //     timestamps,
+        //     sizeof(uint64_t),
+        //     VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT
 
-        );
+        // );
 
         // float gpuMs = (timestamps[1] - timestamps[0]) * m_device->timestampPeriod / 1e6f;
         // std::cout << "Main Pass: " << gpuMs << " ms" << std::endl;

@@ -32,6 +32,7 @@ namespace nitro::renderer
         std::unordered_map<RGTextureID, std::vector<int>> textureExtenderOf;
         std::unordered_map<RGBufferID, int> bufferProducerOf;
         std::unordered_map<RGBufferID, std::vector<int>> bufferExtenderOf;
+
         for (int i = 0; i < m_passes.size(); i++)
         {
             m_depGraph.addNode(i);
