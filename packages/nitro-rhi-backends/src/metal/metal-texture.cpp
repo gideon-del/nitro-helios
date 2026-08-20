@@ -9,10 +9,16 @@ namespace nitro::rhi::metal
         {
         case TextureDesc::ImageFormat::ColorRGBA8:
             return MTL::PixelFormatRGBA8Unorm;
+        case TextureDesc::ImageFormat::ColorRG8U:
+            return MTL::PixelFormatRG8Unorm;
         case TextureDesc::ImageFormat::ColorRGBA16:
             return MTL::PixelFormatRGBA16Float;
+        case TextureDesc::ImageFormat::ColorRG16F:
+            return MTL::PixelFormatRG16Float;
         case TextureDesc::ImageFormat::ColorRGBA32:
             return MTL::PixelFormatRGBA32Float;
+        case TextureDesc::ImageFormat::ColorR32:
+            return MTL::PixelFormatR32Float;
         case TextureDesc::ImageFormat::ColorSRGB8:
             return MTL::PixelFormatRGBA8Unorm_sRGB;
         case TextureDesc::ImageFormat::Depth32Float:

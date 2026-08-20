@@ -13,15 +13,15 @@ namespace nitro::rhi
             GPU
         } storage;
 
-        enum class Usage
+        enum class Usage : uint32_t
         {
-            Vertex,
-            Index,
-            Uniform,
-            Storage,
-            Staging,
-            TransferDst,
-            Indirect
+            Vertex = 1 << 0,
+            Index = 1 << 1,
+            Uniform = 1 << 2,
+            Storage = 1 << 3,
+            Staging = 1 << 4,
+            TransferDst = 1 << 5,
+            Indirect = 1 << 6
         } usage;
 
         size_t size;
@@ -46,4 +46,25 @@ namespace nitro::rhi
         ResourceState before;
         ResourceState after;
     };
+
+    inline BufferDesc::Usage operator|(BufferDesc::Usage a, BufferDesc::Usage b)
+    {
+        return static_cast<BufferDesc::Usage>(
+            static_cast<uint32_t>(a) |
+            static_cast<uint32_t>(b));
+    };
+
+    inline BufferDesc::Usage &operator|=(BufferDesc::Usage &a,
+                                         BufferDesc::Usage b)
+    {
+        a = a | b;
+        return a;
+    }
+
+    inline bool hasBufferUsageFlag(BufferDesc::Usage value,
+                                   BufferDesc::Usage flag)
+    {
+        return (static_cast<uint32_t>(value) &
+                static_cast<uint32_t>(flag)) != 0;
+    }
 }

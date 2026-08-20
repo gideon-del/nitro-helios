@@ -47,7 +47,7 @@ namespace nitro::renderer
             desc.initialData = instanceIds.data();
             desc.size = sizeof(uint32_t) * instanceIds.size();
             desc.storage = rhi::BufferDesc::StorageMode::GPU;
-            desc.usage = rhi::BufferDesc::Usage::Storage;
+            desc.usage = rhi::BufferDesc::Usage::Storage | rhi::BufferDesc::Usage::TransferDst;
 
             if (m_sceneInstanceIdBuffer)
                 m_device->destroyBuffer(m_sceneInstanceIdBuffer);

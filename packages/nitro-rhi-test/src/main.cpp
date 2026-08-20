@@ -316,12 +316,12 @@ int main()
         renderContext.lastFrameTime = currentTime;
         ImGuiIO &io = ImGui::GetIO();
 
-        if (!io.WantCaptureKeyboard)
+        if (rendererSettings.viewportInputState.focused)
         {
             handleKeyboard(window, camera);
         }
 
-        if (!io.WantCaptureMouse)
+        if (rendererSettings.viewportInputState.hovered)
         {
             handleMouse(window, appState, io);
         }

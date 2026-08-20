@@ -215,12 +215,14 @@ namespace nitro::rhi::vulkan
             "VK_KHR_portability_subset",
             VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME};
 
-        VkPhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeatures{};
-        descriptorIndexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
-        descriptorIndexingFeatures.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
-        descriptorIndexingFeatures.runtimeDescriptorArray = VK_TRUE;
-        descriptorIndexingFeatures.descriptorBindingPartiallyBound = VK_TRUE;
-        descriptorIndexingFeatures.descriptorBindingVariableDescriptorCount = VK_TRUE;
+        VkPhysicalDeviceVulkan12Features vulkan12Features{};
+        vulkan12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+        vulkan12Features.hostQueryReset = VK_TRUE;
+        vulkan12Features.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+        vulkan12Features.runtimeDescriptorArray = VK_TRUE;
+        vulkan12Features.descriptorBindingPartiallyBound = VK_TRUE;
+        vulkan12Features.descriptorBindingVariableDescriptorCount = VK_TRUE;
+        vulkan12Features.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
 
         VkPhysicalDeviceVulkan13Features vulkan13Features{};
         vulkan13Features.sType =
@@ -228,7 +230,8 @@ namespace nitro::rhi::vulkan
         vulkan13Features.synchronization2 = VK_TRUE;
         vulkan13Features.dynamicRendering = VK_TRUE;
         vulkan13Features.descriptorBindingInlineUniformBlockUpdateAfterBind = VK_TRUE;
-        vulkan13Features.pNext = &descriptorIndexingFeatures;
+
+        vulkan13Features.pNext = &vulkan12Features;
 
         VkDeviceCreateInfo deviceInfo{};
 
@@ -239,6 +242,7 @@ namespace nitro::rhi::vulkan
         deviceInfo.ppEnabledExtensionNames = deviceExtensions.data();
         VkPhysicalDeviceFeatures deviceFeatures{};
         deviceFeatures.multiDrawIndirect = VK_TRUE;
+        deviceFeatures.samplerAnisotropy = VK_TRUE;
 
         deviceInfo.pEnabledFeatures = &deviceFeatures;
         deviceInfo.pNext = &vulkan13Features;
@@ -404,7 +408,7 @@ namespace nitro::rhi::vulkan
 
         vkGetDeviceQueue(device, m_queueFamilyIndices.graphicsFamily.value(), 0, &graphicsQueue);
         vkGetDeviceQueue(device, m_queueFamilyIndices.presentFamily.value(), 0, &presentQueue);
-
+        checkMutableComparisonSampler();
         allocator = create_allocator(m_instance, physicalDevice, device);
         commandPool = create_command_pool(device, m_queueFamilyIndices);
         m_surfaceFormat = query_device_format(physicalDevice, surface->surface);
@@ -427,7 +431,7 @@ namespace nitro::rhi::vulkan
         (void)io;
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
-        // io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
         ImGui::StyleColorsDark();
 
@@ -461,19 +465,9 @@ namespace nitro::rhi::vulkan
             &colorFormat;
         init_info.UseDynamicRendering = true;
         init_info.PipelineInfoMain.PipelineRenderingCreateInfo = pipelineInfo;
-        init_info.CheckVkResultFn = [](VkResult err)
-        {
-            if (err != VK_SUCCESS)
-            {
-                std::cerr << "[ImGui Vulkan] VkResult = " << err << std::endl;
-                if (err < 0)
-                    std::abort();
-            }
-        };
+
         ImGui_ImplVulkan_Init(&init_info);
-        std::cout << "Init MinAllocationSize = "
-                  << init_info.MinAllocationSize
-                  << std::endl;
+
         ImNodes::CreateContext();
     }
 
@@ -940,6 +934,20 @@ namespace nitro::rhi::vulkan
         auto *vkHeap = static_cast<VulkanHeap *>(heap);
         vkFreeMemory(device, vkHeap->memory, nullptr);
         delete heap;
+    }
+
+    void VulkanDevice::checkMutableComparisonSampler()
+    {
+        VkPhysicalDevicePortabilitySubsetFeaturesKHR portabilityFeatures{};
+        portabilityFeatures.sType =
+            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR;
+
+        VkPhysicalDeviceFeatures2 features{};
+        features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+        features.pNext = &portabilityFeatures;
+
+        vkGetPhysicalDeviceFeatures2(physicalDevice, &features);
+        m_mutableComparisonSamplers = portabilityFeatures.mutableComparisonSamplers == VK_TRUE;
     }
 
 }

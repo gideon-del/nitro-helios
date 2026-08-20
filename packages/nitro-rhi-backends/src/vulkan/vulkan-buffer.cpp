@@ -35,26 +35,43 @@ namespace nitro::rhi::vulkan
     }
     VkBufferUsageFlags convertToBufferUsage(const BufferDesc::Usage &usage)
     {
+        VkBufferUsageFlags flag = 0;
 
-        switch (usage)
+        if (hasBufferUsageFlag(usage, BufferDesc::Usage::Index))
         {
-        case BufferDesc::Usage::Index:
-            return VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-        case BufferDesc::Usage::Vertex:
-            return VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-        case BufferDesc::Usage::Uniform:
-            return VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-        case BufferDesc::Usage::Storage:
-            return VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-        case BufferDesc::Usage::Staging:
-            return VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-        case BufferDesc::Usage::TransferDst:
-            return VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-        case BufferDesc::Usage::Indirect:
-            return VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-        default:
-            return VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+            flag |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
         }
+
+        if (hasBufferUsageFlag(usage, BufferDesc::Usage::Vertex))
+        {
+            flag |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        }
+
+        if (hasBufferUsageFlag(usage, BufferDesc::Usage::Uniform))
+        {
+            flag |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+        }
+
+        if (hasBufferUsageFlag(usage, BufferDesc::Usage::Storage))
+        {
+            flag |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+        }
+        if (hasBufferUsageFlag(usage, BufferDesc::Usage::Staging))
+        {
+            flag |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        }
+
+        if (hasBufferUsageFlag(usage, BufferDesc::Usage::TransferDst))
+        {
+            flag |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        }
+
+        if (hasBufferUsageFlag(usage, BufferDesc::Usage::Indirect))
+        {
+            flag |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+        }
+
+        return flag;
     }
     VulkanBuffer::VulkanBuffer(VulkanDevice *device, const BufferDesc &desc) : m_device(device), m_size(desc.size)
     {

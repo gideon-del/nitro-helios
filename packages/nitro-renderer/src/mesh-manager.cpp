@@ -101,7 +101,7 @@ namespace nitro::renderer
         lod0.indexOffset = info.indexOffset;
         lod0.screenThreshold = LOD_SCREEN_THRESHOLDS[0];
         info.indexCount = mesh.indices.size();
-        std::cout << "Mesh ID " << id << std::endl;
+
         info.meshLod[0] = std::move(lod0);
 
         for (int i = 1; i < MESH_LOD_COUT; i++)
@@ -110,8 +110,6 @@ namespace nitro::renderer
             info.meshLod[i].indexOffset = info.meshLod[i - 1].indexOffset + info.meshLod[i - 1].indices.size();
             info.indexCount += info.meshLod[i].indices.size();
             info.meshLod[i].screenThreshold = LOD_SCREEN_THRESHOLDS[i];
-
-            std::cout << "Mesh LOD " << i << " Index Offset " << info.meshLod[i].indexOffset << std::endl;
         };
         m_meshes.push_back(info);
         return id;
@@ -202,7 +200,7 @@ namespace nitro::renderer
         descriptorDesc.initialData = descriptors.data();
         descriptorDesc.size = sizeof(MeshDescriptor) * descriptors.size();
         descriptorDesc.storage = rhi::BufferDesc::StorageMode::GPU;
-        descriptorDesc.usage = rhi::BufferDesc::Usage::Storage;
+        descriptorDesc.usage = rhi::BufferDesc::Usage::Storage | rhi::BufferDesc::Usage::TransferDst;
 
         if (m_meshDescriptorBuffer)
         {
@@ -215,7 +213,7 @@ namespace nitro::renderer
         instanceDesc.initialData = m_instances.data();
         instanceDesc.size = sizeof(MeshInstance) * m_instances.size();
         instanceDesc.storage = rhi::BufferDesc::StorageMode::GPU;
-        instanceDesc.usage = rhi::BufferDesc::Usage::Storage;
+        instanceDesc.usage = rhi::BufferDesc::Usage::Storage | rhi::BufferDesc::Usage::TransferDst;
 
         if (m_meshInstanceBuffer)
             m_device->destroyBuffer(m_meshInstanceBuffer);

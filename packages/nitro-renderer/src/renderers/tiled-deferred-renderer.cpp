@@ -181,6 +181,7 @@ namespace nitro::renderer
         m_hizMipPass = std::make_unique<HiZMipPass>(m_device, shaderDir, isMetal);
         m_occlusionCullPass = std::make_unique<OcclusionCullingPass>(m_device, shaderDir, isMetal);
         m_particleBillboardPass = std::make_unique<ParticleBillboardPass>(m_device, m_swapchain->getWidth(), m_swapchain->getHeight(), shaderDir, isMetal);
+        m_copyHizDepthPass = std::make_unique<CopyHizDepthPass>(m_device, shaderDir, isMetal);
 
         buildRenderGraph();
     }
@@ -238,7 +239,7 @@ namespace nitro::renderer
                                                            rhi::BufferDesc::Usage::Indirect,
                                                            true});
         auto hizTex = m_renderGraph.declareTexture({"Hiz Depth",
-                                                    rhi::TextureDesc::ImageFormat::Depth32Float, 0, 0, true, HIZ_MIP_COUNT});
+                                                    rhi::TextureDesc::ImageFormat::ColorR32, 0, 0, true, HIZ_MIP_COUNT});
 
         m_renderGraph.addPass({
             "Mesh Compact pass",
@@ -284,7 +285,7 @@ namespace nitro::renderer
         auto albedo = m_renderGraph.declareTexture({"GBuffer Albedo",
                                                     rhi::TextureDesc::ImageFormat::ColorRGBA8});
         auto normal = m_renderGraph.declareTexture({"GBuffer Normal",
-                                                    rhi::TextureDesc::ImageFormat::ColorRGBA16});
+                                                    rhi::TextureDesc::ImageFormat::ColorRG8U});
         auto metallicRoughness = m_renderGraph.declareTexture({"GBuffer Metallic Roughness",
                                                                rhi::TextureDesc::ImageFormat::ColorRGBA8});
         auto emissive = m_renderGraph.declareTexture({"GBuffer Emissive",
@@ -314,6 +315,7 @@ namespace nitro::renderer
                     depthCamera.proj[1][1] *= -1.0f;
                 }
                 auto frameIdx = m_device->getCurrentFrameIndex();
+
                 m_depthPrepass->execute(cmd, *ctx.scene, resources.getBuffer(drawCommandsId, frameIdx), resources.getBuffer(drawCountId, frameIdx), depthCamera);
             },
         });
@@ -321,14 +323,21 @@ namespace nitro::renderer
         m_renderGraph.addPass(
             {"Copy Depth to Hi-Z",
 
-             {{depth, rhi::ResourceState::CopySrc}},
-             {{hizTex, rhi::ResourceState::CopyDst, WriteMode::Producer}},
+             {{depth, rhi::ResourceState::ShaderRead}},
+             {{hizTex, rhi::ResourceState::ShaderWrite, WriteMode::Producer}},
              {},
              {},
              [](const RGResources &resources) {},
              [depth, hizTex, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
              {
-                 cmd->copyTextureToTexture(resources.getTexture(depth), resources.getTexture(hizTex));
+                 CopyHizDepthPushConstant pc;
+                 pc.textureSize = settings.viewportSize;
+
+                 CopyHizDepthRGResource rgResource;
+                 rgResource.hizTexture = resources.getTexture(hizTex);
+                 rgResource.depthTexture = resources.getTexture(depth);
+
+                 m_copyHizDepthPass->execute(cmd, pc, rgResource);
              }}
 
         );
@@ -468,7 +477,7 @@ namespace nitro::renderer
                 ssaoPc.textureSize = settings.viewportSize;
                 ssaoPc.totalSamples = static_cast<uint>(ctx.ssaoSamples.samples.size());
                 ssaoPc.radius = settings.ssao.radius;
-                m_ssaoPass->execute(cmd, ssaoPc, resources, ssaoTextures.ssaoTex, ctx.ssaoSamples.samples, settings.ssao.depthSigma);
+                // m_ssaoPass->execute(cmd, ssaoPc, resources, ssaoTextures.ssaoTex, ctx.ssaoSamples.samples, settings.ssao.depthSigma);
             },
         });
 
@@ -691,10 +700,10 @@ namespace nitro::renderer
                                                             rhi::BufferDesc::Usage::Storage});
         auto aliveCountBuffer = m_renderGraph.declareBuffer({"Alive Count Buffer",
                                                              (sizeof(uint32_t)),
-                                                             rhi::BufferDesc::Usage::Storage});
+                                                             rhi::BufferDesc::Usage::Storage | rhi::BufferDesc::Usage::TransferDst});
         auto emitterBuffer = m_renderGraph.declareBuffer({"Emitter Buffer",
                                                           (sizeof(EmitterDesc) * ParticleEmitterSystem::s_MAX_EMITTERS),
-                                                          rhi::BufferDesc::Usage::Storage});
+                                                          rhi::BufferDesc::Usage::Storage | rhi::BufferDesc::Usage::TransferDst});
 
         auto indirectDrawBuffer = m_renderGraph.declareBuffer({"Indirect Draw Buffer",
                                                                sizeof(rhi::DrawIndirectArgs),
@@ -994,17 +1003,17 @@ namespace nitro::renderer
             [](const RGResources &resources) {
 
             },
-            [this, emitterBuffer](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            [this, emitterBuffer, fxaaTexture](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
             {
                 rhi::RHIRenderPassDesc rpDesc{};
-                rpDesc.clearColor[0] = 0.3f;
-                rpDesc.clearColor[1] = 0.3f;
-                rpDesc.clearColor[2] = 0.3f;
+                rpDesc.clearColor[0] = 0.0f;
+                rpDesc.clearColor[1] = 0.0f;
+                rpDesc.clearColor[2] = 0.0f;
                 rpDesc.clearColor[3] = 1.0f;
                 rpDesc.clearDepth = 1.0f;
                 rpDesc.hasDepth = true;
 
-                m_mainScenePass->execute(cmd, rpDesc, settings, resources.getTexture(m_currentSceneTextureID), m_renderGraph, m_emitterSystem, resources.getBuffer(emitterBuffer));
+                m_mainScenePass->execute(cmd, rpDesc, settings, resources.getTexture(m_currentSceneTextureID), m_renderGraph, m_emitterSystem, resources.getBuffer(emitterBuffer), ctx);
             },
         });
 

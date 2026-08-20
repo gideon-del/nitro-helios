@@ -49,12 +49,14 @@ namespace nitro::renderer
         m_device->destroyDescriptorLayout(m_descriptorLayout);
     }
 
-    void MainScenePass::execute(rhi::RHICommandBuffer *cmd, rhi::RHIRenderPassDesc &desc, RendererSettings &settings, rhi::RHITexture *inputTexture, RenderGraph &renderGraph, ParticleEmitterSystem &system, rhi::RHIBuffer *emitterBuffer)
+    void MainScenePass::execute(rhi::RHICommandBuffer *cmd, rhi::RHIRenderPassDesc &desc, RendererSettings &settings, rhi::RHITexture *inputTexture, RenderGraph &renderGraph, ParticleEmitterSystem &system, rhi::RHIBuffer *emitterBuffer,
+                                const RenderContext &ctx)
     {
         auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
 
         if (resource.lastInputTexture != inputTexture)
         {
+
             resource.lastInputTexture = inputTexture;
             rhi::TextureBinding textureBinding;
             textureBinding.texture = inputTexture;
@@ -63,22 +65,23 @@ namespace nitro::renderer
             resource.descriptorSet->commit();
         }
         cmd->beginRenderPass(desc);
-        cmd->bindPipeline(m_pipeline);
+        // cmd->bindPipeline(m_pipeline);
+        // cmd->bindDescriptorSet(resource.descriptorSet, 0);
+        // RHIViewScale swapchainViewScale = m_swapchain->getViewScale();
+        // rhi::RHIViewport viewport;
+        // viewport.width = m_swapchain->getWidth() * swapchainViewScale.x;
+        // viewport.height = m_swapchain->getHeight() * swapchainViewScale.y;
 
-        RHIViewScale swapchainViewScale = m_swapchain->getViewScale();
-        rhi::RHIViewport viewport;
-        viewport.width = m_swapchain->getWidth() * swapchainViewScale.x;
-        viewport.height = m_swapchain->getHeight() * swapchainViewScale.y;
+        // cmd->setViewPort(viewport);
 
-        cmd->setViewPort(viewport);
-
-        rhi::RHIScissor scissor;
-        scissor.width = m_swapchain->getWidth() * swapchainViewScale.x;
-        scissor.height = m_swapchain->getHeight() * swapchainViewScale.y;
-        cmd->setScissor(scissor);
-        cmd->draw(3);
+        // rhi::RHIScissor scissor;
+        // scissor.width = m_swapchain->getWidth() * swapchainViewScale.x;
+        // scissor.height = m_swapchain->getHeight() * swapchainViewScale.y;
+        // cmd->setScissor(scissor);
+        // cmd->draw(3);
         m_device->beginImGuiFrame();
-        // ImGui::DockSpaceOverViewport();
+        ImGui::DockSpaceOverViewport();
+        ImGui::Begin("Settings");
         m_lightPanel.draw(settings.light);
         m_shadowPanel.draw(settings.shadow);
         m_rendererPanel.draw(settings);
@@ -88,28 +91,42 @@ namespace nitro::renderer
         m_colorGradePanel.draw(settings.colorGrading);
         m_ssaoPanel.draw(settings.ssao);
         m_emitterPanel.draw(system, emitterBuffer);
+
+        ImGui::End();
         // renderGraph.drawImGui();
-        // ImGui::Begin("Viewport");
+        ImGui::Begin("Viewport");
 
-        // ImGuiViewport *vp = ImGui::GetWindowViewport();
+        ImGuiViewport *vp = ImGui::GetWindowViewport();
 
-        // ImVec2 size = ImGui::GetContentRegionAvail();
+        ImVec2 size = ImGui::GetContentRegionAvail();
 
-        // size.x *= vp->DpiScale;
-        // size.y *= vp->DpiScale;
+        size.y *= vp->DpiScale;
+        size.x *= vp->DpiScale;
 
-        // if (size.x < 100 || size.y < 100)
-        // {
-        //     size.x = settings.viewportSize.x;
-        //     size.y = settings.viewportSize.y;
-        // }
-        // else
-        // {
-        //     settings.viewportSize = {size.x, size.y};
-        // }
+        if (size.x < 100 || size.y < 100)
+        {
+            size.x = settings.imaguiDockWindow.x;
+            size.y = settings.imaguiDockWindow.y;
+        }
+        else
+        {
+            settings.imaguiDockWindow = {size.x, size.y};
+        }
 
-        // ImGui::Image((ImTextureID)m_device->getImGuiTextureRef(inputTexture), size);
-        // ImGui::End();
+        bool viewportHovered = ImGui::IsWindowHovered();
+        bool viewportFocused = ImGui::IsWindowFocused();
+
+        if (viewportHovered && ImGui::IsMouseDown(ImGuiMouseButton_Left))
+        {
+            ImVec2 delta = ImGui::GetIO().MouseDelta;
+
+            ctx.camera->onMouseMove(delta.x, delta.y);
+        }
+
+        settings.viewportInputState.focused = viewportFocused;
+        settings.viewportInputState.hovered = viewportHovered;
+        ImGui::Image((ImTextureID)m_device->getImGuiTextureRef(inputTexture), size);
+        ImGui::End();
         m_device->endImGuiFrame();
         m_device->drawImGui(cmd);
         cmd->endRenderPass();

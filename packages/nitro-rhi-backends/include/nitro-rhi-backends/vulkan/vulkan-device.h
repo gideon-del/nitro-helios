@@ -1,7 +1,9 @@
 #pragma once
 #include <nitro-rhi/rhi-device.h>
 #include <nitro-rhi/rhi-pool.h>
+#define VK_ENABLE_BETA_EXTENSIONS
 #include <vulkan/vulkan.h>
+
 #include <optional>
 #include "vulkan-surface.h"
 #include <vector>
@@ -95,6 +97,7 @@ namespace nitro::rhi::vulkan
         void destroyHeap(RHIHeap *heap) override;
         RHITexture *createTextureFromHeap(RHIHeap *heap, const TextureDesc &desc, size_t offset) override;
         VkFormat getSurfaceFormat() const;
+        bool supportsSamplerComparison() const { return m_mutableComparisonSamplers; };
         VkDevice device;
         VmaAllocator allocator;
         VkCommandPool commandPool;
@@ -121,5 +124,7 @@ namespace nitro::rhi::vulkan
         VulkanSamplerCache m_samplerCache;
         DefaultSamplers m_defaultSamplers;
         std::unordered_map<VulkanTexture *, VkDescriptorSet> m_imguiTextureCache;
+        bool m_mutableComparisonSamplers = false;
+        void checkMutableComparisonSampler();
     };
 }

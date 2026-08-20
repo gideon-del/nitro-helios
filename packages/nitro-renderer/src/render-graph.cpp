@@ -261,6 +261,7 @@ namespace nitro::renderer
                     textureBarrier.texture = m_allocatedTextures[tid];
                     textureBarrier.before = rhi::ResourceState::Undefined;
                     textureBarrier.after = rhi::ResourceState::ShaderRead;
+                    textureBarrier.subresource.mipCount = 1 + textureDesc.mipmaps;
                     cmd->textureBarrier(textureBarrier);
                 }
                 continue;
@@ -324,6 +325,11 @@ namespace nitro::renderer
             if (isDepthFormat(desc.format))
             {
                 textureDesc.usage = rhi::TextureDesc::Usage::ShaderRead | rhi::TextureDesc::Usage::DepthStencil;
+
+                if (desc.isStorage)
+                {
+                    textureDesc.usage |= rhi::TextureDesc::Usage::Storage;
+                }
             }
             else if (desc.isStorage)
             {
@@ -348,6 +354,8 @@ namespace nitro::renderer
             textureBarrier.texture = m_allocatedTextures[tid];
             textureBarrier.before = rhi::ResourceState::Undefined;
             textureBarrier.after = rhi::ResourceState::ShaderRead;
+            textureBarrier.subresource.mipCount = 1 + desc.mips;
+
             cmd->textureBarrier(textureBarrier);
         };
         device->endCommandBuffer(cmd);
@@ -489,6 +497,7 @@ namespace nitro::renderer
                     [&](const int &passIdx)
                     {
                         auto &pass = m_passes[passIdx];
+
                         timer->begin(cmd, pass.name);
                         pass.execute(cmd, resources, ctx, settings);
                         timer->end(cmd, pass.name);

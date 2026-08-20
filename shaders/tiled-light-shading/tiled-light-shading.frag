@@ -38,7 +38,7 @@ layout(std430,set=0, binding=6) readonly buffer TileLightCounts {
 layout(std430,set=0, binding=7) readonly buffer TileLightIndices {
     uint tileLightIndices[];
 };
-layout(std430,set=0, binding=8) buffer TileDebugBuffer {
+layout(std430,set=0, binding=8) readonly buffer TileDebugBuffer {
     TileDebug debugTiles[];
 };
 

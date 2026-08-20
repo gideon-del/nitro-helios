@@ -47,6 +47,7 @@ add_library(nitro-renderer STATIC
  src/passes/mesh-compact-pass.cpp
  src/passes/hiz-mip-pass.cpp
  src/passes/occlusion-culling-pass.cpp
+ src/passes/copy-hiz-depth.cpp
 )
 
 find_package(glm REQUIRED)

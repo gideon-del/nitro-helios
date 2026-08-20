@@ -124,6 +124,12 @@ namespace nitro::renderer
         float x;
         float y;
     };
+
+    struct ViewportInputState
+    {
+        bool hovered = false;
+        bool focused = false;
+    };
     struct RendererSettings
     {
         ShadowSettings shadow;
@@ -138,9 +144,11 @@ namespace nitro::renderer
         LightMode selectedLightMode = LightMode::CookTorrenceStub;
         RendererScenes selectedScene = RendererScenes::DamageHelmet;
         glm::vec2 viewportSize{0.0f, 0.0f};
+        glm::vec2 imaguiDockWindow{0.0f, 0.0f};
         bool lodEnabled = true;
         bool frustumCullEnabled = true;
         bool occlusionCullEnabled = true;
+        ViewportInputState viewportInputState;
     };
 
 } // namespace nitro::renderer

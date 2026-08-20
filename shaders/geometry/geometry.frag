@@ -58,7 +58,7 @@ layout(set=0, binding=6) uniform sampler defaultSampler;
 
 
 layout(location =0) out vec4 gAlbedo;
-layout(location =1) out vec4 gNormal;
+layout(location =1) out vec2 gNormal;
 layout(location = 2) out vec4 gMaterial;  
 layout(location = 3) out vec4 gEmissive;
 
@@ -80,7 +80,7 @@ void main() {
     mat3 TBN = mat3(T,B,N);
     if(instance.materialId == INVALID_MATERIAL_INDEX){
         gAlbedo = vec4(1.0,0.0,0.0,1.0);
-         gNormal = vec4(encodeNormal(fragNormal), 0.0,1.0);
+         gNormal = encodeNormal(fragNormal);
          gMaterial = vec4(1.0, 0.0,0.0, 1.0);
           gEmissive = vec4(vec3(0.0),1.0);
 
@@ -98,13 +98,13 @@ void main() {
     }
 
     if(material.textures.normalMap == INVALID_TEXTURE_INDEX){
-        gNormal = vec4(encodeNormal(fragNormal), 0.0,1.0);
+        gNormal = encodeNormal(fragNormal);
     } else {
 
          vec3 tangentNormal = texture(sampler2D(allTextures[nonuniformEXT(material.textures.normalMap)], defaultSampler), fragUV).rgb * 2.0 - 1.0;
     tangentNormal = normalize(tangentNormal);
     vec3 worldNormal = normalize(TBN * tangentNormal);
-       gNormal = vec4(encodeNormal(worldNormal), 0.0,1.0);
+       gNormal = encodeNormal(worldNormal);
         
     }
     float ao = 1.0;

@@ -17,6 +17,13 @@ namespace nitro::renderer
         rhi::RHITexture *output;
     };
 
+    struct ToneMapPassResource
+    {
+        rhi::RHIDescriptorSet *descriptorSet;
+        rhi::RHITexture *lastHdrTexture = nullptr;
+        rhi::RHITexture *lastOutputTexture = nullptr;
+    };
+
     class ToneMapPass
     {
     public:
@@ -38,7 +45,7 @@ namespace nitro::renderer
         rhi::RHIPipeline *m_pipeline;
         rhi::RHIDescriptorLayout *m_descriptorLayout;
         rhi::RHIRenderPass *m_renderPass = nullptr;
-        rhi::RHIDescriptorSet *m_descriptorSet;
+        PerFrame<ToneMapPassResource> m_resources;
         uint32_t m_width, m_height;
     };
 } // namespace nitro::renderer

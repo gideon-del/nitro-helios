@@ -71,8 +71,9 @@ namespace nitro::rhi::vulkan
 
         samplerInfo.anisotropyEnable = desc.anisotropy ? VK_TRUE : VK_FALSE;
         samplerInfo.borderColor = convertBorderColor(desc.borderColor);
-        samplerInfo.compareEnable = desc.compareEnabled ? VK_TRUE : VK_FALSE;
+        samplerInfo.compareEnable = desc.compareEnabled && !device.supportsSamplerComparison() ? VK_TRUE : VK_FALSE;
         samplerInfo.compareOp = convertToCompareOp(desc.compareOp);
+        samplerInfo.maxAnisotropy = desc.maxAnisotropy;
 
         samplerInfo.unnormalizedCoordinates = VK_FALSE;
         samplerInfo.magFilter = convertToFilter(desc.magFilter);

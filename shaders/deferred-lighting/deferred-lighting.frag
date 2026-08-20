@@ -323,7 +323,8 @@ void main() {
 float ao = material.r;
 
   vec3 finalColor; 
-  vec3 PLColor = texture(lightShading, fragUV).rgb;
+  // vec3 PLColor = texture(lightShading, fragUV).rgb;
+  vec3 PLColor = vec3(0.0);
 
 vec3 L =  normalize(frameUbo.lightPosition.xyz - worldPos);
 vec3 V = normalize(frameUbo.cameraPosition.xyz - worldPos);
@@ -336,7 +337,8 @@ vec3 F0 = mix(dielectricF0, albedo, metallic);
 float D = distributionGGX(N, H,roughness);
 vec3 F = fresnelSchlick(F0, max(dot(N,V),0.0));
 float G = geometrySmith(N, L, V,roughness);
-vec3 ambientFactor = vec3(1.0 - texture(ssaoTexture, fragUV).r);
+// vec3 ambientFactor = vec3(1.0 - texture(ssaoTexture, fragUV).r);
+vec3 ambientFactor = vec3(1.0);
 vec3 ambient = diffuseIBL(N, albedo, metallic, irradianceTex) * ao * ambientFactor;
 vec3 specularIBLColor = specularIBL(N, V, roughness, F0, prefilterMap, brdfLUT) * ao * ambientFactor;
 switch(int(frameUbo.lightMode)) {

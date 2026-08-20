@@ -27,3 +27,4 @@
 #include "mesh-compace-pass.h"
 #include "hiz-mip-pass.h"
 #include "occlusion-culling-pass.h"
+#include "copy-hiz-depth.h"

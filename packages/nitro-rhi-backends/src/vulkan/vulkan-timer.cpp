@@ -39,8 +39,8 @@ namespace nitro::rhi::vulkan
 
         auto &queryPool = m_queryPools[m_device->getCurrentFrameIndex()];
         auto *vkCmd = reinterpret_cast<VulkanCommandBuffer *>(cmd);
-        // vkCmdResetQueryPool(vkCmd->cmd, queryPool, 0, m_queryCount);
-        vkResetQueryPool(m_device->device, queryPool, 0, m_queryCount);
+        vkCmdResetQueryPool(vkCmd->cmd, queryPool, 0, m_queryCount);
+        // vkResetQueryPool(m_device->device, queryPool, 0, m_queryCount);
         m_nextIndex = 0;
         m_nameToIndex.clear();
     }

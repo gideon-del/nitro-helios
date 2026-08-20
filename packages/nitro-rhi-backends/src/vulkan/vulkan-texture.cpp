@@ -51,12 +51,18 @@ namespace nitro::rhi::vulkan
         {
         case TextureDesc::ImageFormat::ColorRGBA8:
             return VK_FORMAT_R8G8B8A8_UNORM;
+        case TextureDesc::ImageFormat::ColorRG8U:
+            return VK_FORMAT_R8G8_UNORM;
         case TextureDesc::ImageFormat::ColorSRGB8:
             return VK_FORMAT_R8G8B8A8_SRGB;
         case TextureDesc::ImageFormat::ColorRGBA16:
             return VK_FORMAT_R16G16B16A16_SFLOAT;
+        case TextureDesc::ImageFormat::ColorRG16F:
+            return VK_FORMAT_R16G16_SFLOAT;
         case TextureDesc::ImageFormat::ColorRGBA32:
             return VK_FORMAT_R32G32B32A32_SFLOAT;
+        case TextureDesc::ImageFormat::ColorR32:
+            return VK_FORMAT_R32_SFLOAT;
         case TextureDesc::ImageFormat::Depth32Float:
             return VK_FORMAT_D32_SFLOAT;
         case TextureDesc::ImageFormat::Depth32FloatStencil8:
@@ -163,6 +169,10 @@ namespace nitro::rhi::vulkan
         if (desc.isAliased)
         {
             imageInfo.flags |= VK_IMAGE_CREATE_ALIAS_BIT;
+        }
+        if (desc.type == TextureDesc::Type::Cube)
+        {
+            imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
         }
 
         return imageInfo;

@@ -43,12 +43,24 @@ namespace nitro::renderer
 
         m_pipeline = m_device->createPipeline(pipelineDesc);
 
-        m_descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
+        m_resources.create(
+            g_MAX_FRAMES_IN_FLIGHT,
+            [&](uint32_t frameIdx)
+            {
+                ToneMapPassResource resource;
+
+                resource.descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
+
+                return resource;
+            });
     };
 
     ToneMapPass::~ToneMapPass()
     {
-        m_device->destroyDescriptorSet(m_descriptorSet);
+        for (auto &resource : m_resources)
+        {
+            m_device->destroyDescriptorSet(resource.descriptorSet);
+        }
         m_device->destroyPipeline(m_pipeline);
         m_device->destroyDescriptorLayout(m_descriptorLayout);
         m_device->destroyRenderPass(m_renderPass);
@@ -85,14 +97,20 @@ namespace nitro::renderer
 
     void ToneMapPass::execute(rhi::RHICommandBuffer *cmd, ToneMapPassUBO ubo, rhi::RHITexture *hdrTexture)
     {
+        auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
         cmd->beginRenderPass(m_renderPass);
         cmd->bindPipeline(m_pipeline);
-        rhi::TextureBinding textureBinding;
-        textureBinding.texture = hdrTexture;
-        textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
-        m_descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
-        m_descriptorSet->commit();
-        cmd->bindDescriptorSet(m_descriptorSet, 0);
+        if (resource.lastHdrTexture != hdrTexture)
+        {
+            resource.lastHdrTexture = hdrTexture;
+
+            rhi::TextureBinding textureBinding;
+            textureBinding.texture = hdrTexture;
+            textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+            resource.descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
+            resource.descriptorSet->commit();
+        }
+        cmd->bindDescriptorSet(resource.descriptorSet, 0);
         cmd->setPushConstant(&ubo, sizeof(ToneMapPassUBO), 1);
         rhi::RHIViewport viewport;
         viewport.width = m_width;

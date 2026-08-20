@@ -14,8 +14,11 @@ namespace nitro::rhi
         enum class ImageFormat
         {
             ColorRGBA8,
+            ColorRG8U,
             ColorRGBA16,
+            ColorRG16F,
             ColorRGBA32,
+            ColorR32,
             ColorSRGB8,
             Depth32Float,
             Depth32FloatStencil8
@@ -27,7 +30,7 @@ namespace nitro::rhi
             RenderTarget = 1 << 0,
             ShaderRead = 1 << 1,
             DepthStencil = 1 << 2,
-            Storage = 1 << 3,
+            Storage = 1 << 3
         } usage = Usage::None;
 
         struct Size
@@ -63,6 +66,12 @@ namespace nitro::rhi
             static_cast<uint32_t>(a) |
             static_cast<uint32_t>(b));
     };
+    inline TextureDesc::Usage &operator|=(TextureDesc::Usage &a,
+                                          TextureDesc::Usage b)
+    {
+        a = a | b;
+        return a;
+    }
 
     struct TextureSubresource
     {
@@ -88,8 +97,14 @@ namespace nitro::rhi
         {
         case TextureDesc::ImageFormat::ColorRGBA16:
             return 8;
+        case TextureDesc::ImageFormat::ColorRG16F:
+            return 4;
+        case TextureDesc::ImageFormat::ColorRG8U:
+            return 2;
         case TextureDesc::ImageFormat::ColorRGBA32:
             return 16;
+        case TextureDesc::ImageFormat::ColorR32:
+            return 4;
         case TextureDesc::ImageFormat::Depth32Float:
             return 4;
         case TextureDesc::ImageFormat::Depth32FloatStencil8:

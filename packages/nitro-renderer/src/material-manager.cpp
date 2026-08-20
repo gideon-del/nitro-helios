@@ -54,7 +54,7 @@ namespace nitro::renderer
         desc.initialData = m_materials.data();
         desc.size = sizeof(Material) * m_materials.size();
         desc.storage = rhi::BufferDesc::StorageMode::GPU;
-        desc.usage = rhi::BufferDesc::Usage::Storage;
+        desc.usage = rhi::BufferDesc::Usage::Storage | rhi::BufferDesc::Usage::TransferDst;
 
         if (m_materialBuffer)
         {

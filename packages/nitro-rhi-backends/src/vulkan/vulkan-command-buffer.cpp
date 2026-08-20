@@ -577,8 +577,8 @@ namespace nitro::rhi::vulkan
 
         VkImageMemoryBarrier secondImageBarrier{};
         secondImageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        secondImageBarrier.srcAccessMask = 0;
-        secondImageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        secondImageBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        secondImageBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
         secondImageBarrier.image = vulkanTexture->image;
         secondImageBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         secondImageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
@@ -587,7 +587,7 @@ namespace nitro::rhi::vulkan
         vkCmdPipelineBarrier(
             cmd,
             VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
             0,
             0,
             nullptr,
