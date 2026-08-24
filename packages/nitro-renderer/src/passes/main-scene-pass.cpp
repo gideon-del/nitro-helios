@@ -94,6 +94,8 @@ namespace nitro::renderer
 
         ImGui::End();
         // renderGraph.drawImGui();
+        m_inspectorPanel.draw(ctx);
+        m_heirarchyPanel.draw(ctx);
         ImGui::Begin("Viewport");
 
         ImGuiViewport *vp = ImGui::GetWindowViewport();
@@ -142,9 +144,22 @@ namespace nitro::renderer
                 ctx.scene->pickMeshInstance(ray);
             }
         }
+        auto &selectedInstance = ctx.scene->selectedInstance();
+        if (!ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_F) && selectedInstance.has_value() && selectedInstance.value().isValid())
+        {
+            auto instance = ctx.scene->meshManager->getMeshInstance(selectedInstance.value());
+
+            const auto &mn = instance->worldAABBMin;
+            const auto &mx = instance->worldAABBMax;
+            glm::vec3 size = mx - mn;
+            glm::vec3 center = (mn + mx) * 0.5f;
+
+            ctx.camera->focus(center, glm::length(size) * 0.5f);
+        }
         ImGui::End();
         m_device->endImGuiFrame();
         m_device->drawImGui(cmd);
         cmd->endRenderPass();
     }
+
 } // namespace nitro::renderer

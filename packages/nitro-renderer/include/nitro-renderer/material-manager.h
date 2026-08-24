@@ -57,6 +57,7 @@ namespace nitro::renderer
         const std::vector<Material> &getMaterials() { return m_materials; }
         rhi::RHIBuffer *getMaterialBuffer() { return m_materialBuffer; }
         void buildMegaMaterialBuffer();
+        Material *getMaterial(const MaterialHandle &handle);
 
     private:
         std::shared_ptr<rhi::RHIDevice> m_device;

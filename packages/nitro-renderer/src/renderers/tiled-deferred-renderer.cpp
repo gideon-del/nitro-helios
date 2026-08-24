@@ -980,7 +980,13 @@ namespace nitro::renderer
                         }
                     }
                 }
+                auto selectedHandle = ctx.scene->selectedInstance();
 
+                if (selectedHandle.has_value() && selectedHandle.value().isValid())
+                {
+                    auto instance = ctx.scene->meshManager->getMeshInstance(selectedHandle.value());
+                    m_debugDrawPass->drawAABB(instance->worldAABBMin, instance->worldAABBMax, DebugColor::Selected);
+                }
                 m_debugDrawPass->execute(cmd, ctx.camera->viewProj());
                 m_currentSceneTextureID = debugTexture;
             },

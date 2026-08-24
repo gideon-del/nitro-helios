@@ -50,6 +50,43 @@ namespace nitro::geometry
             }
         }
 
+        void setTranslation(const glm::vec3 &translation)
+        {
+            m_translate = glm::translate(glm::mat4(1.0f), translation);
+        }
+        void setScale(const glm::vec3 &scale)
+        {
+
+            m_scale = glm::scale(glm::mat4(1.0f), scale);
+        }
+        void setRotation(const glm::quat &q)
+        {
+            m_rotate = glm::mat4_cast(q);
+        }
+
+        void setRotationEuler(const glm::vec3 &degrees)
+        {
+            m_rotate = glm::mat4_cast(glm::quat(glm::radians(degrees)));
+        }
+
+        glm::vec3 baseTranslation() const
+        {
+            return glm::vec3(m_translate[3]);
+        }
+        glm::vec3 baseScale() const
+        {
+            return glm::vec3(m_scale[0][0], m_scale[1][1], m_scale[2][2]);
+        }
+        glm::quat baseRotation() const
+        {
+            return glm::quat_cast(m_rotate);
+        }
+
+        glm::vec3 baseRotationEuler() const
+        {
+            return glm::degrees(glm::eulerAngles(glm::quat_cast(m_rotate)));
+        }
+
     private:
         glm::mat4 m_translate = glm::mat4(1.0f);
         glm::mat4 m_scale = glm::mat4(1.0f);

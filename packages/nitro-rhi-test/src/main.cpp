@@ -315,7 +315,7 @@ int main()
     while (!glfwWindowShouldClose(window))
     {
 
-              glfwPollEvents();
+        glfwPollEvents();
 
         auto currentTime = glfwGetTime();
         renderContext.deltaTime = std::max(currentTime - renderContext.lastFrameTime, 0.0001);

@@ -144,6 +144,15 @@ namespace nitro::geometry
 
             return ray;
         };
+        void focus(const glm::vec3 &center, float extent)
+        {
+            m_target = center;
+            m_radius = extent * 2;
+
+            calculateView();
+            calculateViewProj();
+            calculateInvViewProj();
+        };
         const float near() const
         {
             return m_near;
@@ -235,4 +244,5 @@ namespace nitro::geometry
             m_view = glm::lookAt(getEye(), m_target, glm::vec3(0.0f, 1.0f, 0.0f));
         }
     };
+
 }

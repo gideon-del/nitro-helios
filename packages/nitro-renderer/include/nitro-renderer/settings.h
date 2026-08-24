@@ -78,7 +78,7 @@ namespace nitro::renderer
     {
         float threshold = 0.4;
         float intensity = 0.5;
-        bool enable = true;
+        bool enable = false;
     };
 
     struct StatSettings
@@ -103,7 +103,7 @@ namespace nitro::renderer
     {
         float exposure = 0.4;
         ToneMapMode mode = ToneMapMode::ACES;
-        bool autoExposure = true;
+        bool autoExposure = false;
     };
 
     struct ColorGradingSettings
@@ -111,7 +111,7 @@ namespace nitro::renderer
         glm::vec3 lift = glm::vec3(0.0f);
         glm::vec3 gain = glm::vec3(1.0f);
         glm::vec3 gamma = glm::vec3(1.0f);
-        bool enable = true;
+        bool enable = false;
     };
     struct SSAOSettings
     {

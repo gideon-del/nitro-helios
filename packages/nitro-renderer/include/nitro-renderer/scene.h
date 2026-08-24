@@ -83,6 +83,11 @@ namespace nitro::renderer
         }
 
         const PickDebug &lastPick() const { return m_lastPick; }
+
+        void setSelectedInstance(const MeshInstanceHandle &handle)
+        {
+            m_selectedInstance = handle;
+        }
         const OptionalMeshInstanceHandle &selectedInstance() const { return m_selectedInstance; }
         void loadGltfScene(std::string filePath, std::shared_ptr<rhi::RHIDevice> device);
         void addMeshInstance(const MeshInstanceHandle &handle);

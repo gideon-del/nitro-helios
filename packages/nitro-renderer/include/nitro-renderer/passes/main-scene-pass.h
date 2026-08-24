@@ -30,6 +30,8 @@ namespace nitro::renderer
         ColorGradingPanel m_colorGradePanel;
         SSAOPanel m_ssaoPanel;
         EmitterPanel m_emitterPanel;
+        InspectorPanel m_inspectorPanel;
+        HierarchyPanel m_heirarchyPanel;
         std::shared_ptr<rhi::RHIDevice> m_device;
         std::shared_ptr<rhi::RHISwapchain> m_swapchain;
         rhi::RHIPipeline *m_pipeline;

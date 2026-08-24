@@ -1,11 +1,12 @@
 #pragma once
 #include "vertex.h"
 #include <cstdint>
-
+#include <string>
 namespace nitro::geometry
 {
     struct Mesh
     {
+        std::string name = "";
         std::vector<Vertex> vertices;
         std::vector<uint32_t> indices;
 

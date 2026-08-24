@@ -153,6 +153,7 @@ namespace nitro::renderer
             if (node.mesh >= 0)
             {
                 tinygltf::Mesh nodeMesh = model.meshes[node.mesh];
+                int primitiveIdx = 0;
                 for (auto &primitive : nodeMesh.primitives)
                 {
 
@@ -237,7 +238,12 @@ namespace nitro::renderer
                     geometry::Mesh mesh;
                     mesh.vertices = vertices;
                     mesh.indices = indices;
+                    mesh.name = nodeMesh.name;
 
+                    if (mesh.name.empty())
+                    {
+                        mesh.name = "Primitive " + std::to_string(primitiveIdx) + " [mat " + std::to_string(primitive.material) + "]";
+                    }
                     auto meshId = meshManager->addMesh(mesh);
 
                     MeshInstance instance;
@@ -247,6 +253,8 @@ namespace nitro::renderer
                     instance.transformation = transformation;
 
                     addMeshInstance(meshManager->addMeshInstances(instance));
+
+                    primitiveIdx++;
                 }
             }
 
@@ -309,14 +317,13 @@ namespace nitro::renderer
         }
 
         m_lastPick.best = bestInstance;
-
+        m_selectedInstance = bestInstance;
         if (!bestInstance.isValid())
         {
             return std::nullopt;
         }
 
         OptionalMeshInstanceHandle result = bestInstance;
-        m_selectedInstance = result;
 
         return result;
     }

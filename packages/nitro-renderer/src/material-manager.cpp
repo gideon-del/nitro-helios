@@ -61,4 +61,14 @@ namespace nitro::renderer
         }
         m_materialBuffer = m_device->createBuffer(desc);
     };
+
+    Material *MaterialManager::getMaterial(const MaterialHandle &handle)
+    {
+        if (!handle.isValid() || handle.id >= m_materials.size())
+        {
+            return nullptr;
+        }
+
+        return &m_materials[handle.id];
+    };
 } // namespace nitro::renderer

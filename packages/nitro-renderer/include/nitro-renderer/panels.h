@@ -1,5 +1,6 @@
 #pragma once
 #include "settings.h"
+#include "context.h"
 #include "particle-emitter-system.h"
 #include <nitro-rhi/rhi.h>
 namespace nitro::renderer
@@ -41,5 +42,14 @@ namespace nitro::renderer
     struct EmitterPanel
     {
         void draw(ParticleEmitterSystem &system, rhi::RHIBuffer *emitterBuffer);
+    };
+
+    struct InspectorPanel
+    {
+        void draw(const RenderContext &ctx);
+    };
+    struct HierarchyPanel
+    {
+        void draw(const RenderContext &ctx);
     };
 } // namespace nitro::renderer
