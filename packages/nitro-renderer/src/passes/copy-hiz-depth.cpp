@@ -100,7 +100,9 @@ namespace nitro::renderer
         cmd->setPushConstant(&pc, sizeof(CopyHizDepthPushConstant), 1, true);
 
         uint32_t groupSizeX = (pc.textureSize.x + 15) / 16;
+        groupSizeX = std::max(groupSizeX, 1u);
         uint32_t groupSizeY = (pc.textureSize.y + 15) / 16;
+        groupSizeY = std::max(groupSizeY, 1u);
 
         cmd->dispatch(groupSizeX, groupSizeY, 1);
     };

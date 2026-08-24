@@ -2,7 +2,7 @@
 #include <glm/glm.hpp>
 #include <nitro-rhi/rhi.h>
 #include <nitro-renderer/per-frame.h>
-
+#include <nitro-renderer/render-graph.h>
 namespace nitro::renderer
 {
 
@@ -54,7 +54,9 @@ namespace nitro::renderer
             glm::vec3 axisB,
             float radius,
             glm::vec3 color);
-        void execute(rhi::RHICommandBuffer *cmd, glm::mat4 &viewProj);
+        void bindResources(const RGResources &resources, const RGTextureID output);
+        void resize(uint32_t width, uint32_t height);
+        void execute(rhi::RHICommandBuffer *cmd, const glm::mat4 &viewProj);
 
         void clear() { m_vertices.clear(); };
         uint32_t getVertexCount() const { return static_cast<uint32_t>(m_vertices.size()); };
@@ -65,6 +67,7 @@ namespace nitro::renderer
         std::vector<DebugVertex> m_vertices;
         rhi::RHIDescriptorLayout *m_descriptorLayout;
         rhi::RHIPipeline *m_pipeline;
+        rhi::RHIRenderPass *m_renderPass = nullptr;
         PerFrame<DebugPassResource> m_resources;
     };
 } // namespace nitro::renderer

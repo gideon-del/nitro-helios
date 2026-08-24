@@ -3,7 +3,8 @@
 #include <nitro-geometry/mesh-transformation.h>
 #include <nitro-rhi/rhi.h>
 #include <glm/glm.hpp>
-
+#include "spatial-grid-coord.h"
+#include "handles.h"
 namespace nitro::renderer
 {
 
@@ -38,6 +39,15 @@ namespace nitro::renderer
     };
     struct MeshInstance
     {
+        MeshHandle mesh;
+        MaterialHandle material;
+        geometry::MeshTransformation transformation;
+        std::vector<GridCellCoord> cells;
+        glm::vec3 worldAABBMin;
+        glm::vec3 worldAABBMax;
+    };
+    struct MeshInstanceDesc
+    {
         uint32_t meshId;
         uint32_t materialId = INVALID_MATERIAL_INDEX;
         uint32_t _pad0[2] = {0, 0};
@@ -66,14 +76,16 @@ namespace nitro::renderer
     public:
         MeshManager(std::shared_ptr<rhi::RHIDevice> device);
         ~MeshManager();
-        uint32_t addMesh(geometry::Mesh mesh);
-        uint32_t addMeshInstances(MeshInstance &instance);
+        MeshHandle addMesh(geometry::Mesh mesh);
+        MeshInstanceHandle addMeshInstances(MeshInstance &instance);
         rhi::RHIBuffer *getVertexMegaBuffer() { return m_vertexMegaBuffer; }
         rhi::RHIBuffer *getIndexMegaBuffer() { return m_indexMegaBuffer; }
         rhi::RHIBuffer *instanceBuffer() { return m_meshInstanceBuffer; }
         rhi::RHIBuffer *descriptorBuffer() { return m_meshDescriptorBuffer; }
         uint32_t instanceCount() { return static_cast<uint32_t>(m_instances.size()); }
         void buildMegaBuffers();
+        MeshInfo *getMesh(const MeshHandle &handle);
+        MeshInstance *getMeshInstance(const MeshInstanceHandle handle);
 
     private:
         std::shared_ptr<rhi::RHIDevice> m_device;

@@ -22,12 +22,11 @@ namespace nitro::renderer
             return INVALID_TEXTURE_INDEX;
 
         uint32_t id = static_cast<uint32_t>(m_textures.size());
-        std::cout << "Material texture added: " << id << "\n";
         m_textures.push_back(texture);
         return id;
     }
 
-    uint32_t MaterialManager::addMaterial(const MaterialDesc &desc)
+    MaterialHandle MaterialManager::addMaterial(const MaterialDesc &desc)
     {
         Material material;
 
@@ -41,11 +40,11 @@ namespace nitro::renderer
         material.parameters.metallic = desc.parameters.metallic;
         material.parameters.roughness = desc.parameters.roughness;
 
-        uint32_t id = static_cast<uint32_t>(m_materials.size());
+        HandleValueType id = static_cast<HandleValueType>(m_materials.size());
 
         m_materials.push_back(std::move(material));
 
-        return id;
+        return MaterialHandle{id};
     };
 
     void MaterialManager::buildMegaMaterialBuffer()

@@ -48,6 +48,7 @@ add_library(nitro-renderer STATIC
  src/passes/hiz-mip-pass.cpp
  src/passes/occlusion-culling-pass.cpp
  src/passes/copy-hiz-depth.cpp
+ src/spatial-grid.cpp
 )
 
 find_package(glm REQUIRED)
@@ -61,6 +62,7 @@ target_link_libraries(nitro-renderer
 PUBLIC nitro-rhi
 PUBLIC nitro-geometry
 PUBLIC glm::glm
+PUBLIC nitro-core
 PRIVATE imgui-core
 PRIVATE imnodes
 PRIVATE meshoptimizer

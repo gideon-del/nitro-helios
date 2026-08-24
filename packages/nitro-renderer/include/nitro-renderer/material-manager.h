@@ -1,6 +1,7 @@
 #pragma once
 #include <nitro-rhi/rhi.h>
 #include <glm/glm.hpp>
+#include "handles.h"
 namespace nitro::renderer
 {
 
@@ -49,9 +50,9 @@ namespace nitro::renderer
     class MaterialManager
     {
     public:
-                MaterialManager(std::shared_ptr<rhi::RHIDevice> device);
+        MaterialManager(std::shared_ptr<rhi::RHIDevice> device);
         ~MaterialManager();
-        uint32_t addMaterial(const MaterialDesc &desc);
+        MaterialHandle addMaterial(const MaterialDesc &desc);
         const std::vector<rhi::RHITexture *> &getTextures() { return m_textures; }
         const std::vector<Material> &getMaterials() { return m_materials; }
         rhi::RHIBuffer *getMaterialBuffer() { return m_materialBuffer; }

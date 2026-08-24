@@ -92,21 +92,18 @@ void handleKeyboard(GLFWwindow *window, OrbitalCamera &camera)
     }
 }
 
-void addRandomSpheres(uint32_t count, float areaSize, Scene &scene, uint32_t meshId)
+void addRandomSpheres(uint32_t count, float areaSize, Scene &scene, MeshHandle mesh)
 {
     std::mt19937 rng(50); // fixed seed
     std::uniform_real_distribution<float> pos(-areaSize, areaSize);
 
     for (int i = 0; i < count; i++)
     {
-        auto transform = MeshTransformation(glm::translate(glm::mat4(1.0f), glm::vec3(pos(rng), 10.0f, pos(rng))));
-        auto pc = transform.getTransform();
 
         MeshInstance instance;
-        instance.meshId = meshId;
-        instance.modelTransform = pc.model;
-        instance.normalTransform = pc.normalMatrix;
-        scene.instanceIds.push_back(scene.meshManager->addMeshInstances(instance));
+        instance.mesh = mesh;
+        instance.transformation = MeshTransformation(glm::translate(glm::mat4(1.0f), glm::vec3(pos(rng), 10.0f, pos(rng))));
+        scene.addMeshInstance(scene.meshManager->addMeshInstances(instance));
     }
 }
 void handleMouse(
@@ -149,7 +146,7 @@ void handleMouse(
         state.mousePressed = false;
     }
 }
-void addPBRSphereGrid(Scene &pbrScene, uint32_t sphereMeshId)
+void addPBRSphereGrid(Scene &pbrScene, MeshHandle sphereMeshId)
 {
 
     int areaWidth = 200;
@@ -172,22 +169,20 @@ void addPBRSphereGrid(Scene &pbrScene, uint32_t sphereMeshId)
             materialDesc.parameters.roughness = roughness;
             materialDesc.parameters.albedo = glm::vec4(0.4f, 0.9f, 1.0f, 1.0f);
 
-            uint32_t materialId = pbrScene.materialManager->addMaterial(materialDesc);
+            auto material = pbrScene.materialManager->addMaterial(materialDesc);
             MeshTransformation transformation;
             transformation.translate(glm::vec3(xPos, yPos, 0.0f));
             auto pc = transformation.getTransform();
             MeshInstance instance;
-            instance.meshId = sphereMeshId;
-            instance.materialId = materialId;
-            instance.modelTransform = pc.model;
-            instance.normalTransform = pc.normalMatrix;
-
-            pbrScene.instanceIds.push_back(pbrScene.meshManager->addMeshInstances(instance));
+            instance.mesh = sphereMeshId;
+            instance.material = material;
+            instance.transformation = transformation;
+            pbrScene.addMeshInstance(pbrScene.meshManager->addMeshInstances(instance));
         }
     }
 };
 
-void addWallTestCluster(Scene &scene, uint32_t sphereMeshId)
+void addWallTestCluster(Scene &scene, MeshHandle sphereMeshId)
 {
     int rows = 3, cols = 3, spacing = 40;
     for (int row = 0; row < rows; row++)
@@ -199,10 +194,9 @@ void addWallTestCluster(Scene &scene, uint32_t sphereMeshId)
             auto pc = t.getTransform();
 
             MeshInstance instance;
-            instance.meshId = sphereMeshId;
-            instance.modelTransform = pc.model;
-            instance.normalTransform = pc.normalMatrix;
-            scene.instanceIds.push_back(scene.meshManager->addMeshInstances(instance));
+            instance.mesh = sphereMeshId;
+            instance.transformation = t;
+            scene.addMeshInstance(scene.meshManager->addMeshInstances(instance));
         }
     }
 }
@@ -257,11 +251,11 @@ int main()
     OrbitalCamera camera;
     // camera.radius = 10.0f;
 
-    camera.radius = 20.0f;
+    camera.setRadius(20.0f);
     OrbitalCamera light;
-    light.radius = 200.0f;
-    light.theta = glm::radians(30.0f);
-    light.phi = glm::radians(40.0f);
+    light.setRadius(200.0f);
+    light.setTheta(glm::radians(30.0f));
+    light.setPhi(glm::radians(40.0f));
     AppState appState{
         .camera = &camera};
 
@@ -284,21 +278,32 @@ int main()
 
     rendererSettings.light.lightCamera = light;
     rendererSettings.light.pointLightRenderer = pointLightRenderer;
+
+    camera.setLens(
+        60.0f,
+        renderContext.CAMERA_NEAR,
+        renderContext.CAMERA_FAR);
     // helmetScene.objects = Scene::loadGltfScene("./assets/buster_drone/scene.gltf", device, materialSystem);
     // ForwardRenderer forwardRenderer = ForwardRenderer(device, swapchain, std::string(SHADER_DIR), isMetal);
     // DeferredRenderer deferredRenderer = DeferredRenderer(device, swapchain, std::string(SHADER_DIR), isMetal, materialSystem);
     TiledDeferredRenderer tileDeferredRenderer = TiledDeferredRenderer(device, swapchain, std::string(SHADER_DIR), isMetal);
     helmetScene.loadGltfScene("./assets/Sponza/Sponza.gltf", device);
+    helmetScene.spatialGrid().debugPrint();
 
     renderContext.scene = &helmetScene;
     renderContext.ssaoSamples.generate();
+
+    camera.setFlipY(!isMetal);
     // IRenderer *currentRenderer = &deferredRenderer;
 
     int cachedWindowWidth, cachedWindowHeight;
     glfwGetFramebufferSize(window, &cachedWindowWidth, &cachedWindowHeight);
     uint32_t cachedViewportWidth = (uint32_t)rendererSettings.viewportSize.x;
     uint32_t cachedViewportHeight = (uint32_t)rendererSettings.viewportSize.y;
-
+    glm::vec2 pendingViewport{0.0f};
+    double pendingSince = 0.0;
+    bool resizePending = false;
+    glm::vec2 currentViewport{0.0f};
     // Build scene buffers
     helmetScene.buildSceneInstanceId();
     mainScene.buildSceneInstanceId();
@@ -306,15 +311,43 @@ int main()
 
     materialManager->buildMegaMaterialBuffer();
     meshManager->buildMegaBuffers();
-
+    rendererSettings.viewportSize = {(float)cachedViewportWidth, (float)cachedViewportHeight};
     while (!glfwWindowShouldClose(window))
     {
-        glfwPollEvents();
+
+              glfwPollEvents();
 
         auto currentTime = glfwGetTime();
         renderContext.deltaTime = std::max(currentTime - renderContext.lastFrameTime, 0.0001);
         renderContext.lastFrameTime = currentTime;
+
         ImGuiIO &io = ImGui::GetIO();
+
+        glm::vec2 panel = rendererSettings.imGuiDockWindow;
+
+        if (panel.x > 0.0f && panel.y > 0.0f && panel != currentViewport)
+        {
+            if (panel != pendingViewport)
+            {
+                pendingViewport = panel;
+                pendingSince = currentTime;
+                resizePending = true;
+            }
+            else if (resizePending && currentTime - pendingSince > 0.15)
+            {
+                device->waitIdle();
+                rendererSettings.oldImGuiDockWindow = rendererSettings.imGuiDockWindow;
+                rendererSettings.viewportSize = rendererSettings.imGuiDockWindow;
+
+                camera.setViewPort(rendererSettings.imGuiDockWindow.x, rendererSettings.imGuiDockWindow.y);
+
+                tileDeferredRenderer.resize(rendererSettings.imGuiDockWindow.x, rendererSettings.imGuiDockWindow.y);
+
+                currentViewport = pendingViewport;
+                resizePending = false;
+                std::cout << "Resized textures worked" << std::endl;
+            }
+        }
 
         if (rendererSettings.viewportInputState.focused)
         {
@@ -332,11 +365,10 @@ int main()
         {
             device->waitIdle();
             swapchain->resize(windowWidth, windowHeight);
-            tileDeferredRenderer.resize(windowWidth, windowHeight);
+
             cachedWindowWidth = windowWidth;
             cachedWindowHeight = windowHeight;
         }
-        rendererSettings.viewportSize = {(float)windowWidth, (float)windowHeight};
 
         RHICommandBuffer *cmd = device->beginFrame();
         cmd->resetFrameStats();

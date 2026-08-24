@@ -8,23 +8,17 @@ namespace nitro::renderer
 
         if (ImGui::CollapsingHeader("Light Camera"))
         {
-            ImGui::SliderFloat(
-                "Phi",
-                &settings.lightCamera.phi,
-                0.0f,
-                2 * M_PI);
+            float phi = settings.lightCamera.phi();
+            if (ImGui::SliderFloat("Phi", &phi, 0.0f, glm::two_pi<float>()))
+                settings.lightCamera.setPhi(phi);
 
-            ImGui::SliderFloat(
-                "Theta",
-                &settings.lightCamera.theta,
-                0.0f,
-                M_PI);
+            float theta = settings.lightCamera.theta();
+            if (ImGui::SliderFloat("Theta", &theta, 0.01f, glm::pi<float>() - 0.01f))
+                settings.lightCamera.setTheta(theta);
 
-            ImGui::SliderFloat(
-                "Radius",
-                &settings.lightCamera.radius,
-                0.0f,
-                100.0f);
+            float radius = settings.lightCamera.radius();
+            if (ImGui::SliderFloat("Radius", &radius, 0.1f, 100.0f))
+                settings.lightCamera.setRadius(radius);
         }
     };
 
@@ -128,6 +122,8 @@ namespace nitro::renderer
             ImGui::Checkbox("Mesh LOD", &settings.lodEnabled);
             ImGui::Checkbox("Frustum Culling", &settings.frustumCullEnabled);
             ImGui::Checkbox("Occlusion Culling", &settings.occlusionCullEnabled);
+            ImGui::Checkbox("Draw Debug Picking", &settings.debugDrawPicking);
+            ImGui::Checkbox("Draw Debug Test Boxes", &settings.debugDrawTestedBoxes);
         }
     }
     void StatPanel::draw(StatSettings &stats)

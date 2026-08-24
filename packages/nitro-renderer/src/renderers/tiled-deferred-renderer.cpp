@@ -201,6 +201,7 @@ namespace nitro::renderer
         m_autoExposurePass->resize(width, height);
         m_colorGradingPass->resize(width, height);
         m_particleBillboardPass->resize(width, height);
+        m_debugDrawPass->resize(width, height);
 
         m_renderGraph.allocateTextures(m_device, width, height);
         m_renderGraph.bindPassResources(m_renderGraph.buildResources());
@@ -223,12 +224,6 @@ namespace nitro::renderer
 
     void TiledDeferredRenderer::buildRenderGraph()
     {
-
-        /*
-        Note to Future Self
-        SSAO is 47% of the frame, half-res is the fix. Render graph is parked on whether addPass returns handles.
-        Cull merge needs the computeAliases fix first.
-        */
 
         auto drawCountId = m_renderGraph.declareBuffer({"Draw Count",
                                                         sizeof(uint32_t),
@@ -255,25 +250,17 @@ namespace nitro::renderer
             },
             [drawCommandsId, drawCountId, hizTex, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
             {
-                DepthPrePassCamera depthCamera;
-                depthCamera.view = ctx.camera->getView();
-                depthCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), settings.viewportSize.x / settings.viewportSize.y, ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
-
-                if (!m_isMetal)
-                {
-                    depthCamera.proj[1][1] *= -1.0f;
-                }
                 auto frameIdx = m_device->getCurrentFrameIndex();
 
                 MeshCompactPushConstant pc;
-                pc.objectCount = static_cast<uint32_t>(ctx.scene->instanceIds.size());
+                pc.objectCount = static_cast<uint32_t>(ctx.scene->instanceIds().size());
 
                 pc.frustumCullEnabled = settings.frustumCullEnabled ? 1 : 0;
                 pc.lodEnabled = settings.lodEnabled ? 1 : 0;
-                pc.proj = depthCamera.proj;
-                pc.view = depthCamera.view;
-                pc.projScaleY = depthCamera.proj[1][1];
-                pc.screenHeight = m_swapchain->getHeight();
+                pc.proj = ctx.camera->proj();
+                pc.view = ctx.camera->view();
+                pc.projScaleY = ctx.camera->proj()[1][1];
+                pc.screenHeight = settings.viewportSize.y;
                 pc.occlusionCullEnabled = settings.occlusionCullEnabled ? 1 : 0;
 
                 m_meshCompactPass->execute(cmd, *ctx.scene, resources.getBuffer(drawCommandsId, frameIdx), resources.getBuffer(drawCountId, frameIdx), pc, resources.getTexture(hizTex));
@@ -307,13 +294,9 @@ namespace nitro::renderer
             [depth, drawCommandsId, drawCountId, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
             {
                 DepthPrePassCamera depthCamera;
-                depthCamera.view = ctx.camera->getView();
-                depthCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), settings.viewportSize.x / settings.viewportSize.y, ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
+                depthCamera.view = ctx.camera->view();
+                depthCamera.proj = ctx.camera->proj();
 
-                if (!m_isMetal)
-                {
-                    depthCamera.proj[1][1] *= -1.0f;
-                }
                 auto frameIdx = m_device->getCurrentFrameIndex();
 
                 m_depthPrepass->execute(cmd, *ctx.scene, resources.getBuffer(drawCommandsId, frameIdx), resources.getBuffer(drawCountId, frameIdx), depthCamera);
@@ -354,7 +337,7 @@ namespace nitro::renderer
              },
              [hizTex, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
              {
-                 m_hizMipPass->execute(cmd, m_swapchain->getWidth(), m_swapchain->getHeight(), resources.getTexture(hizTex));
+                 m_hizMipPass->execute(cmd, settings.viewportSize.x, settings.viewportSize.y, resources.getTexture(hizTex));
              }}
 
         );
@@ -386,21 +369,15 @@ namespace nitro::renderer
              [](const RGResources &resources) {},
              [hizTex, hizDrawCommandsId, hizDrawCountId, drawCountId, drawCommandsId, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
              {
-                 DepthPrePassCamera depthCamera;
-                 depthCamera.view = ctx.camera->getView();
-                 depthCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), settings.viewportSize.x / settings.viewportSize.y, ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
-
-                 if (!m_isMetal)
-                 {
-                     depthCamera.proj[1][1] *= -1.0f;
-                 }
                  OcclusionCullPushConstant pc;
+                 auto near = ctx.camera->near();
+                 auto far = ctx.camera->far();
                  pc.screenHeight = m_swapchain->getHeight();
-                 pc.depthScaleA = ctx.CAMERA_FAR / std::max(ctx.CAMERA_FAR - ctx.CAMERA_NEAR, 0.0001f);
-                 pc.view = depthCamera.view;
-                 pc.proj = depthCamera.proj;
+                 pc.depthScaleA = far / std::max(far - near, 0.0001f);
+                 pc.view = ctx.camera->view();
+                 pc.proj = ctx.camera->proj();
                  pc.maxMip = HIZ_MIP_COUNT;
-                 pc.projScaleY = std::abs(depthCamera.proj[1][1]);
+                 pc.projScaleY = std::abs(ctx.camera->proj()[1][1]);
                  pc.occlusionCullEnabled = settings.occlusionCullEnabled ? 1 : 0;
 
                  uint32_t frameIdx = m_device->getCurrentFrameIndex();
@@ -433,13 +410,9 @@ namespace nitro::renderer
             [gBufferIds, drawCommandsId, drawCountId, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
             {
                 GeometryCameraBuffer geometryCamera;
-                geometryCamera.view = ctx.camera->getView();
-                geometryCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), settings.viewportSize.x / settings.viewportSize.y, ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
+                geometryCamera.view = ctx.camera->view();
+                geometryCamera.proj = ctx.camera->proj();
 
-                if (!m_isMetal)
-                {
-                    geometryCamera.proj[1][1] *= -1.0f;
-                }
                 auto frameIdx = m_device->getCurrentFrameIndex();
                 m_geometryPass->execute(cmd, geometryCamera, *ctx.scene, settings.light, resources.getBuffer(drawCommandsId, frameIdx), resources.getBuffer(drawCountId, frameIdx));
             },
@@ -461,19 +434,10 @@ namespace nitro::renderer
             },
             [ssaoTextures, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
             {
-                GeometryCameraBuffer geometryCamera;
-                geometryCamera.view = ctx.camera->getView();
-                geometryCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), settings.viewportSize.x / settings.viewportSize.y, ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
-
-                if (!m_isMetal)
-                {
-                    geometryCamera.proj[1][1] *= -1.0f;
-                }
-
                 SSAOPushConstant ssaoPc;
-                ssaoPc.invProj = glm::inverse(geometryCamera.proj);
-                ssaoPc.view = geometryCamera.view;
-                ssaoPc.proj = geometryCamera.proj;
+                ssaoPc.invProj = glm::inverse(ctx.camera->proj());
+                ssaoPc.view = ctx.camera->view();
+                ssaoPc.proj = ctx.camera->proj();
                 ssaoPc.textureSize = settings.viewportSize;
                 ssaoPc.totalSamples = static_cast<uint>(ctx.ssaoSamples.samples.size());
                 ssaoPc.radius = settings.ssao.radius;
@@ -498,31 +462,22 @@ namespace nitro::renderer
             },
             [tileLightTextures, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
             {
-                GeometryCameraBuffer geometryCamera;
-                geometryCamera.view = ctx.camera->getView();
-                geometryCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), settings.viewportSize.x / settings.viewportSize.y, ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
-
-                if (!m_isMetal)
-                {
-                    geometryCamera.proj[1][1] *= -1.0f;
-                }
-
                 TiledCameraUBO computeUBO;
-                computeUBO.farPlane = ctx.CAMERA_FAR;
-                computeUBO.nearPlane = ctx.CAMERA_NEAR;
+                computeUBO.farPlane = ctx.camera->far();
+                computeUBO.nearPlane = ctx.camera->near();
                 computeUBO.screenSize = settings.viewportSize;
-                computeUBO.invProj = glm::inverse(geometryCamera.proj);
-                computeUBO.view = geometryCamera.view;
+                computeUBO.invProj = glm::inverse(ctx.camera->proj());
+                computeUBO.view = ctx.camera->view();
                 computeUBO.totalLightCount = static_cast<uint>(settings.light.pointLights.size());
 
                 m_tileComputePass->execute(cmd, settings.light, computeUBO);
 
                 TiledLightPassUBO lightPassUBO;
 
-                lightPassUBO.invViewProj = glm::inverse(geometryCamera.proj * geometryCamera.view);
-                lightPassUBO.view = geometryCamera.view;
+                lightPassUBO.invViewProj = ctx.camera->invViewProj();
+                lightPassUBO.view = ctx.camera->view();
                 lightPassUBO.numTilesX = static_cast<uint32_t>(
-                    std::ceil(float(m_swapchain->getWidth()) / 16.0f));
+                    std::ceil(float(settings.viewportSize.x) / 16.0f));
                 lightPassUBO.screenSize = settings.viewportSize;
                 lightPassUBO.showHeatMap = settings.selectedDebugMode == DebugMode::HeatMap ? 1 : 0;
                 m_tileLightPass->execute(cmd, lightPassUBO);
@@ -545,18 +500,9 @@ namespace nitro::renderer
             },
             [this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
             {
-                GeometryCameraBuffer geometryCamera;
-                geometryCamera.view = ctx.camera->getView();
-                geometryCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), (float)m_swapchain->getWidth() / (float)m_swapchain->getHeight(), ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
-
-                if (!m_isMetal)
-                {
-                    geometryCamera.proj[1][1] *= -1.0f;
-                }
-
                 SkyboxPassUBO skyboxUbo;
-                glm::mat4 viewNoTranslation = glm::mat4(glm::mat3(geometryCamera.view));
-                skyboxUbo.viewProj = glm::inverse(geometryCamera.proj * viewNoTranslation);
+                glm::mat4 viewNoTranslation = glm::mat4(glm::mat3(ctx.camera->view()));
+                skyboxUbo.viewProj = glm::inverse(ctx.camera->proj() * viewNoTranslation);
                 skyboxUbo.screenSize = settings.viewportSize;
                 m_skyboxPass->execute(cmd, skyboxUbo);
             },
@@ -598,10 +544,10 @@ namespace nitro::renderer
                 shadowCtx.aspect = settings.viewportSize.x / settings.viewportSize.y;
                 shadowCtx.cameraFar = ctx.CAMERA_FAR;
                 shadowCtx.cameraNear = ctx.CAMERA_NEAR;
-                shadowCtx.fov = glm::radians(60.0f);
+                shadowCtx.fov = ctx.camera->fov();
                 shadowCtx.lambda = settings.shadow.lambda;
-                shadowCtx.cameraView = ctx.camera->getView();
-                shadowCtx.lightView = settings.light.lightCamera.getView();
+                shadowCtx.cameraView = ctx.camera->view();
+                shadowCtx.lightView = settings.light.lightCamera.view();
                 auto frameIdx = m_device->getCurrentFrameIndex();
                 m_csmPass->execute(cmd, *ctx.scene, shadowCtx, resources.getBuffer(drawCommandsId, frameIdx), resources.getBuffer(drawCountId, frameIdx));
             },
@@ -647,15 +593,6 @@ namespace nitro::renderer
             },
             [this, lightShadedTex](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
             {
-                GeometryCameraBuffer geometryCamera;
-                geometryCamera.view = ctx.camera->getView();
-                geometryCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), settings.viewportSize.x / settings.viewportSize.y, ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
-
-                if (!m_isMetal)
-                {
-                    geometryCamera.proj[1][1] *= -1.0f;
-                }
-
                 DeferredLightingFrameData frameData;
                 frameData.ambient = settings.light.ambient;
                 frameData.Ka = settings.light.Ka;
@@ -667,8 +604,8 @@ namespace nitro::renderer
                 {
                     frameData.lightViewProj[i] = m_csmPass->lightViewProj[i];
                 }
-                frameData.invViewProj = glm::inverse(geometryCamera.proj * geometryCamera.view);
-                frameData.view = geometryCamera.view;
+                frameData.invViewProj = ctx.camera->invViewProj();
+                frameData.view = ctx.camera->view();
                 frameData.cameraPosition = glm::vec4(ctx.camera->getEye(), 1.0f);
 
                 frameData.lightPosition = glm::vec4(settings.light.lightCamera.getEye(), 1.0f);
@@ -679,10 +616,10 @@ namespace nitro::renderer
                 frameData.debugMode = static_cast<float>(settings.selectedDebugMode);
                 frameData.lightMode = static_cast<float>(settings.selectedLightMode);
                 frameData.roughness = settings.light.roughness;
-                for (int i = 0; i < settings.light.pointLights.size(); i++)
-                {
-                    frameData.pointLights[i] = settings.light.pointLights[i];
-                }
+                // for (int i = 0; i < settings.light.pointLights.size(); i++)
+                // {
+                //     frameData.pointLights[i] = settings.light.pointLights[i];
+                // }
 
                 m_deferredLightingPass->execute(cmd, frameData);
                 m_currentSceneTextureID = lightShadedTex;
@@ -850,20 +787,11 @@ namespace nitro::renderer
             },
             [indirectDrawBuffer, particleTexture, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
             {
-                GeometryCameraBuffer geometryCamera;
-                geometryCamera.view = ctx.camera->getView();
-                geometryCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), settings.viewportSize.x / settings.viewportSize.y, ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
-
-                if (!m_isMetal)
-                {
-                    geometryCamera.proj[1][1] *= -1.0f;
-                }
-
-                glm::mat4 inverseView = glm::inverse(geometryCamera.view);
+                glm::mat4 inverseView = glm::inverse(ctx.camera->view());
 
                 ParticleBillboardUBO ubo;
-                ubo.view = geometryCamera.view;
-                ubo.proj = geometryCamera.proj;
+                ubo.view = ctx.camera->view();
+                ubo.proj = ctx.camera->proj();
                 ubo.right = inverseView[0];
                 ubo.up = inverseView[1];
 
@@ -884,15 +812,6 @@ namespace nitro::renderer
             [](const RGResources &resources) {},
             [bloomTexture, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
             {
-                GeometryCameraBuffer geometryCamera;
-                geometryCamera.view = ctx.camera->getView();
-                geometryCamera.proj = glm::perspectiveRH_ZO(glm::radians(60.0f), settings.viewportSize.x / settings.viewportSize.y, ctx.CAMERA_NEAR, ctx.CAMERA_FAR);
-
-                if (!m_isMetal)
-                {
-                    geometryCamera.proj[1][1] *= -1.0f;
-                }
-
                 if (!settings.bloom.enable)
                     return;
 
@@ -979,7 +898,7 @@ namespace nitro::renderer
         m_renderGraph.addPass({
             "FXAA",
             {{tonemapTexture, rhi::ResourceState::ShaderRead}},
-            {{fxaaTexture, rhi::ResourceState::ShaderWrite}},
+            {{fxaaTexture, rhi::ResourceState::ShaderWrite, WriteMode::Producer}},
             {},
             {},
             [](const RGResources &resources) {
@@ -994,16 +913,88 @@ namespace nitro::renderer
                 m_currentSceneTextureID = fxaaTexture;
             },
         });
+
+        auto debugTexture = m_renderGraph.declareTexture({"Debug Draw",
+                                                          rhi::TextureDesc::ImageFormat::ColorRGBA8, 0, 0, false});
+        m_renderGraph.addPass({
+            "Copy FXAA Pass",
+            {{fxaaTexture, rhi::ResourceState::CopySrc}},
+            {{debugTexture, rhi::ResourceState::CopyDst}},
+            {},
+            {},
+            [](const RGResources &resources) {
+
+            },
+            [this, fxaaTexture, debugTexture](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            {
+                cmd->copyTextureToTexture(resources.getTexture(fxaaTexture), resources.getTexture(debugTexture));
+            },
+        });
+        m_renderGraph.addPass({
+            "Debug Draw Pass",
+            {},
+            {{debugTexture, rhi::ResourceState::RenderTarget, WriteMode::Extend}},
+            {},
+            {},
+            [this, debugTexture](const RGResources &resources)
+            {
+                m_debugDrawPass->bindResources(resources, debugTexture);
+            },
+            [this, debugTexture](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            {
+                if (settings.debugDrawPicking)
+                {
+                    auto &lastPick = ctx.scene->lastPick();
+                    m_debugDrawPass->drawRay(lastPick.ray.origin, lastPick.ray.dir, lastPick.ray.tMax, DebugColor::Ray);
+
+                    if (settings.debugDrawTestedBoxes)
+                    {
+                        for (auto &h : lastPick.tested)
+                        {
+                            auto instance = ctx.scene->meshManager->getMeshInstance(h);
+                            if (!instance)
+                            {
+                                continue;
+                            }
+                            m_debugDrawPass->drawAABB(instance->worldAABBMin, instance->worldAABBMax, DebugColor::Tested);
+                        }
+                    }
+
+                    for (auto &h : lastPick.hit)
+                    {
+                        auto instance = ctx.scene->meshManager->getMeshInstance(h);
+                        if (!instance)
+                        {
+                            continue;
+                        }
+                        m_debugDrawPass->drawAABB(instance->worldAABBMin, instance->worldAABBMax, DebugColor::Hit);
+                    }
+
+                    if (lastPick.best.has_value())
+                    {
+                        auto instance = ctx.scene->meshManager->getMeshInstance(lastPick.best.value());
+
+                        if (instance)
+                        {
+                            m_debugDrawPass->drawAABB(instance->worldAABBMin, instance->worldAABBMax, DebugColor::Best);
+                        }
+                    }
+                }
+
+                m_debugDrawPass->execute(cmd, ctx.camera->viewProj());
+                m_currentSceneTextureID = debugTexture;
+            },
+        });
         m_renderGraph.addPass({
             "Final Scene",
-            {{fxaaTexture, rhi::ResourceState::ShaderRead}},
+            {{debugTexture, rhi::ResourceState::ShaderRead}},
             {},
             {},
             {},
             [](const RGResources &resources) {
 
             },
-            [this, emitterBuffer, fxaaTexture](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            [this, emitterBuffer, debugTexture](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
             {
                 rhi::RHIRenderPassDesc rpDesc{};
                 rpDesc.clearColor[0] = 0.0f;

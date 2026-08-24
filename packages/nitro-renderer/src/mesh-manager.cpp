@@ -59,9 +59,9 @@ namespace nitro::renderer
         }
     }
 
-    uint32_t MeshManager::addMesh(geometry::Mesh mesh)
+    MeshHandle MeshManager::addMesh(geometry::Mesh mesh)
     {
-        uint32_t id = static_cast<uint32_t>(m_meshes.size());
+        HandleValueType id = static_cast<HandleValueType>(m_meshes.size());
 
         MeshInfo info;
         info.mesh = mesh;
@@ -112,14 +112,22 @@ namespace nitro::renderer
             info.meshLod[i].screenThreshold = LOD_SCREEN_THRESHOLDS[i];
         };
         m_meshes.push_back(info);
-        return id;
+        return {id};
     }
 
-    uint32_t MeshManager::addMeshInstances(MeshInstance &instance)
+    MeshInstanceHandle MeshManager::addMeshInstances(MeshInstance &instance)
     {
-        uint32_t id = static_cast<uint32_t>(m_instances.size());
+        HandleValueType id = static_cast<HandleValueType>(m_instances.size());
+        auto mesh = getMesh(instance.mesh);
+        assert(mesh != nullptr);
+        geometry::MeshTransformation::computeWorldAABB(
+            instance.transformation.getTransform().model,
+            mesh->aabbMin,
+            mesh->aabbMax,
+            instance.worldAABBMin,
+            instance.worldAABBMax);
         m_instances.push_back(std::move(instance));
-        return id;
+        return {id};
     }
 
     void MeshManager::buildMegaBuffers()
@@ -209,14 +217,56 @@ namespace nitro::renderer
 
         m_meshDescriptorBuffer = m_device->createBuffer(descriptorDesc);
 
-        rhi::BufferDesc instanceDesc;
-        instanceDesc.initialData = m_instances.data();
-        instanceDesc.size = sizeof(MeshInstance) * m_instances.size();
-        instanceDesc.storage = rhi::BufferDesc::StorageMode::GPU;
-        instanceDesc.usage = rhi::BufferDesc::Usage::Storage | rhi::BufferDesc::Usage::TransferDst;
+        std::vector<MeshInstanceDesc> instanceDesc;
+        instanceDesc.reserve(m_instances.size());
+
+        for (auto &instance : m_instances)
+        {
+            MeshInstanceDesc desc;
+            if (!instance.mesh.isValid())
+            {
+                continue;
+            }
+            desc.meshId = instance.mesh.id;
+
+            desc.materialId = instance.material.isValid() ? instance.material.id : INVALID_MATERIAL_INDEX;
+            auto pc = instance.transformation.getTransform();
+            desc.modelTransform = pc.model;
+            desc.normalTransform = pc.normalMatrix;
+
+            instanceDesc.push_back(desc);
+        };
+
+        rhi::BufferDesc instanceBufferDesc;
+        instanceBufferDesc.initialData = instanceDesc.data();
+        instanceBufferDesc.size = sizeof(MeshInstanceDesc) * instanceDesc.size();
+        instanceBufferDesc.storage = rhi::BufferDesc::StorageMode::GPU;
+        instanceBufferDesc.usage = rhi::BufferDesc::Usage::Storage | rhi::BufferDesc::Usage::TransferDst;
 
         if (m_meshInstanceBuffer)
             m_device->destroyBuffer(m_meshInstanceBuffer);
-        m_meshInstanceBuffer = m_device->createBuffer(instanceDesc);
+        m_meshInstanceBuffer = m_device->createBuffer(instanceBufferDesc);
     }
+
+    MeshInfo *MeshManager::getMesh(const MeshHandle &handle)
+    {
+        if (!handle.isValid() || handle.id >= m_meshes.size())
+        {
+            return nullptr;
+        }
+
+        return &m_meshes[handle.id];
+    }
+
+    MeshInstance *MeshManager::getMeshInstance(const MeshInstanceHandle handle)
+    {
+
+        if (!handle.isValid() || handle.id >= m_instances.size())
+        {
+            return nullptr;
+        }
+
+        return &m_instances[handle.id];
+    }
+
 } // namespace nitro::renderer

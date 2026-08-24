@@ -105,12 +105,12 @@ namespace nitro::renderer
 
         if (size.x < 100 || size.y < 100)
         {
-            size.x = settings.imaguiDockWindow.x;
-            size.y = settings.imaguiDockWindow.y;
+            size.x = settings.imGuiDockWindow.x;
+            size.y = settings.imGuiDockWindow.y;
         }
         else
         {
-            settings.imaguiDockWindow = {size.x, size.y};
+            settings.imGuiDockWindow = {size.x, size.y};
         }
 
         bool viewportHovered = ImGui::IsWindowHovered();
@@ -126,6 +126,22 @@ namespace nitro::renderer
         settings.viewportInputState.focused = viewportFocused;
         settings.viewportInputState.hovered = viewportHovered;
         ImGui::Image((ImTextureID)m_device->getImGuiTextureRef(inputTexture), size);
+
+        ImVec2 vpMin = ImGui::GetItemRectMin();
+        ImVec2 vpSize = ImGui::GetItemRectSize();
+        if (viewportHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+        {
+            ImVec2 m = ImGui::GetIO().MousePos; // screen space, same as vpMin
+            glm::vec2 local = {m.x - vpMin.x,
+                               m.y - vpMin.y};
+            glm::vec2 uv = local / glm::vec2{vpSize.x, vpSize.y};
+            if (uv.x >= 0 && uv.x <= 1 && uv.y >= 0 && uv.y <= 1)
+            {
+                geometry::Ray ray = ctx.camera->reconstructRayFromUV(uv);
+
+                ctx.scene->pickMeshInstance(ray);
+            }
+        }
         ImGui::End();
         m_device->endImGuiFrame();
         m_device->drawImGui(cmd);

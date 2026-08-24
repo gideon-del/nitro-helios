@@ -809,14 +809,20 @@ namespace nitro::rhi::vulkan
 
         vkEndCommandBuffer(vulkanCmd->cmd);
 
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        VkFenceCreateInfo fi{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO}; // NOT signalled
+        VkFence fence;
+        checkVkResult(vkCreateFence(device, &fi, nullptr, &fence), "one-time fence");
+
+        VkSubmitInfo submitInfo{VK_STRUCTURE_TYPE_SUBMIT_INFO};
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &vulkanCmd->cmd;
+        checkVkResult(vkQueueSubmit(graphicsQueue, 1, &submitInfo, fence), "one-time submit");
 
-        checkVkResult(vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE),
-                      "Failed to submit one-time command");
-        vkQueueWaitIdle(graphicsQueue);
+        VkResult r = vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
+        if (r != VK_SUCCESS)
+            std::cerr << "one-time command buffer wait: " << r << "\n";
+
+        vkDestroyFence(device, fence, nullptr);
         vkFreeCommandBuffers(device, commandPool, 1, &vulkanCmd->cmd);
     }
     RHISamplerHandle VulkanDevice::create(const RHISamplerDesc &desc)

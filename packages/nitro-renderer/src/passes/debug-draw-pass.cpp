@@ -16,9 +16,11 @@ namespace nitro::renderer
         pipelineDesc.layouts = {m_descriptorLayout};
         pipelineDesc.topology = rhi::PipelineTopology::LineList;
         pipelineDesc.hasPushConstant = true;
+        pipelineDesc.hasDepth = false;
         pipelineDesc.pushConstantSize = sizeof(glm::mat4);
         pipelineDesc.depthWrite = false;
         pipelineDesc.depthTest = rhi::CompareOp::Always;
+        pipelineDesc.colorAttachments = {{rhi::TextureDesc::ImageFormat::ColorRGBA8}};
         std::string shaderPath = shaderDir + "/debug-pass/debug-pass";
 
         if (isMetal)
@@ -52,6 +54,9 @@ namespace nitro::renderer
                                bufferDesc.usage = rhi::BufferDesc::Usage::Storage;
                                bufferDesc.storage = rhi::BufferDesc::StorageMode::Shared;
                                resource.vertexStorageBuffer = m_device->createBuffer(bufferDesc);
+
+                               std::vector<DebugVertex> zeros(DebugDrawPass::MAX_LINES * 2, DebugVertex{});
+                               resource.vertexStorageBuffer->upload(zeros.data(), sizeof(DebugVertex) * zeros.size());
 
                                resource.descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
 
@@ -301,18 +306,60 @@ namespace nitro::renderer
         drawLine(nearBR, farBR, {0, 0, 1});
         drawLine(nearBL, farBL, {0, 0, 1});
     }
-    void DebugDrawPass::execute(rhi::RHICommandBuffer *cmd, glm::mat4 &viewProj)
+
+    void DebugDrawPass::bindResources(const RGResources &resources, const RGTextureID output)
+    {
+        rhi::RHITexture *colorTexture = resources.getTexture(output);
+
+        if (m_renderPass)
+        {
+            m_device->destroyRenderPass(m_renderPass);
+        }
+
+        rhi::RenderPassDesc renderPassDesc;
+
+        rhi::RenderPassDesc::Attachment colorAttachment;
+        colorAttachment.texture = colorTexture;
+        colorAttachment.load = rhi::RenderPassDesc::LoadOp::Load;
+        colorAttachment.store = rhi::RenderPassDesc::StoreOp::Store;
+
+        renderPassDesc.colorAttachments = {colorAttachment};
+
+        renderPassDesc.width = m_width;
+        renderPassDesc.height = m_height;
+
+        m_renderPass = m_device->createRenderPass(renderPassDesc);
+    }
+
+    void DebugDrawPass::resize(uint32_t width, uint32_t height)
+    {
+        m_width = width;
+        m_height = height;
+    }
+    void DebugDrawPass::execute(rhi::RHICommandBuffer *cmd, const glm::mat4 &viewProj)
     {
 
         auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
 
         resource.vertexStorageBuffer->upload(m_vertices.data(), sizeof(DebugVertex) * m_vertices.size());
+        cmd->beginRenderPass(m_renderPass);
         cmd->bindPipeline(m_pipeline);
         cmd->bindDescriptorSet(resource.descriptorSet, 0);
-        cmd->setPushConstant(&viewProj, sizeof(glm::mat4), 1);
+        glm::mat4 vp = viewProj;
+        cmd->setPushConstant(&vp, sizeof(glm::mat4), 1);
+        rhi::RHIViewport viewport;
+        viewport.width = m_width;
+        viewport.height = m_height;
+        cmd->setViewPort(viewport);
+        rhi::RHIScissor scissor;
+
+        scissor.width = m_width;
+        scissor.height = m_height;
+        cmd->setScissor(scissor);
         cmd->draw(getVertexCount());
 
         clear();
+        cmd->endRenderPass();
     };
 
 } // namespace nitro::renderer

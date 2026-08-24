@@ -2,6 +2,8 @@
 #include "../vendor/tiny_gltf.h"
 #include <nitro-renderer/scene.h>
 #include <chrono>
+#include <unordered_set>
+#include "nitro-geometry/utils.h"
 
 namespace nitro::renderer
 {
@@ -91,7 +93,7 @@ namespace nitro::renderer
             throw std::runtime_error("Failed to load tiny gltf file at " + filePath);
 
         tinygltf::Scene defaultScene = model.scenes[model.defaultScene];
-        std::vector<uint32_t> materialIndices;
+        std::vector<MaterialHandle> materialIndices;
 
         auto t0 = std::chrono::high_resolution_clock::now();
         for (auto &gltfMaterial : model.materials)
@@ -164,40 +166,29 @@ namespace nitro::renderer
                     std::vector<glm::vec3> positions(positionAccessor.count);
                     std::vector<glm::vec3> normals(normalAccessor.count);
                     std::vector<glm::vec2> uvs(uvAccessor.count);
-                    auto positionT0 = std::chrono::high_resolution_clock::now();
+
                     for (int i = 0; i < positionAccessor.count; i++)
                         positions[i] = read_vec3(positionAccessor, model, i);
-                    auto positionT1 = std::chrono::high_resolution_clock::now();
 
-                    std::cout << "Postion Load : " << ms(positionT0, positionT1) << " ms\n";
-
-                    auto normalT0 = std::chrono::high_resolution_clock::now();
                     for (int i = 0; i < normalAccessor.count; i++)
                         normals[i] = read_vec3(normalAccessor, model, i);
-                    auto normalT1 = std::chrono::high_resolution_clock::now();
-                    std::cout << "Normal Load : " << ms(normalT0, normalT1) << " ms\n";
 
-                    auto uvT0 = std::chrono::high_resolution_clock::now();
                     for (int i = 0; i < uvAccessor.count; i++)
                         uvs[i] = read_vec2(uvAccessor, model, i);
-                    auto uvT1 = std::chrono::high_resolution_clock::now();
-
-                    std::cout << "UV Load : " << ms(uvT0, uvT1) << " ms\n";
 
                     bool hasTangent = primitive.attributes.count("TANGENT");
                     std::vector<glm::vec4> tangents;
                     if (hasTangent)
                     {
                         tangents.resize(model.accessors[primitive.attributes.at("TANGENT")].count);
-                        auto tangentT0 = std::chrono::high_resolution_clock::now();
+
                         for (int i = 0; i < tangents.size(); i++)
                             tangents[i] = read_vec4(model.accessors[primitive.attributes.at("TANGENT")], model, i);
                         auto tangentT1 = std::chrono::high_resolution_clock::now();
-                        std::cout << "Tangent Load : " << ms(tangentT0, tangentT1) << " ms\n";
                     }
 
                     vertices.reserve(positionAccessor.count);
-                    auto vertexT0 = std::chrono::high_resolution_clock::now();
+
                     for (int i = 0; i < positionAccessor.count; i++)
                     {
                         geometry::Vertex vertex;
@@ -208,15 +199,13 @@ namespace nitro::renderer
                             vertex.tangent = tangents[i];
                         vertices.push_back(vertex);
                     }
-                    auto vertexT1 = std::chrono::high_resolution_clock::now();
-                    std::cout << "Vertex Copy : " << ms(vertexT0, vertexT1) << " ms\n";
+
                     tinygltf::Accessor indicesAccessor = model.accessors[primitive.indices];
                     tinygltf::BufferView bufferView = model.bufferViews[indicesAccessor.bufferView];
                     tinygltf::Buffer buffer = model.buffers[bufferView.buffer];
                     const uint8_t *data = buffer.data.data() + bufferView.byteOffset + indicesAccessor.byteOffset;
 
                     indices.resize(indicesAccessor.count);
-                    auto indexT0 = std::chrono::high_resolution_clock::now();
 
                     if (indicesAccessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT)
                     {
@@ -244,29 +233,20 @@ namespace nitro::renderer
                             indices.push_back(index);
                         }
                     }
-                    auto indexT1 = std::chrono::high_resolution_clock::now();
-                    std::cout << "Index Copy : " << ms(indexT0, indexT1) << " ms\n";
 
                     geometry::Mesh mesh;
                     mesh.vertices = vertices;
                     mesh.indices = indices;
-                    auto meshT0 = std::chrono::high_resolution_clock::now();
 
-                    uint32_t meshId = meshManager->addMesh(mesh);
-                    auto meshT1 = std::chrono::high_resolution_clock::now();
-
-                    std::cout << "Mesh Id : " << meshId << " Load time: " << ms(meshT0, meshT1) << " ms\n";
-                    std::cout << "Vertex Count: " << vertices.size() << "\n";
+                    auto meshId = meshManager->addMesh(mesh);
 
                     MeshInstance instance;
-                    instance.meshId = meshId;
-                    instance.materialId = (primitive.material >= 0) ? materialIndices[primitive.material] : INVALID_MATERIAL_INDEX;
+                    instance.mesh = meshId;
+                    instance.material = (primitive.material >= 0) ? materialIndices[primitive.material] : MaterialHandle{};
 
-                    auto transform = transformation.getTransform();
-                    instance.modelTransform = transform.model;
-                    instance.normalTransform = transform.normalMatrix;
+                    instance.transformation = transformation;
 
-                    instanceIds.push_back(meshManager->addMeshInstances(instance));
+                    addMeshInstance(meshManager->addMeshInstances(instance));
                 }
             }
 
@@ -274,13 +254,70 @@ namespace nitro::renderer
                 walkNode(childIdx, transformation);
         };
 
-        auto t2 = std::chrono::high_resolution_clock::now();
         for (auto nodeIdx : defaultScene.nodes)
             walkNode(nodeIdx, geometry::MeshTransformation{});
+    }
 
-        auto t3 = std::chrono::high_resolution_clock::now();
+    void Scene::addMeshInstance(const MeshInstanceHandle &handle)
+    {
+        auto instance = meshManager->getMeshInstance(handle);
+        if (instance == nullptr)
+            return;
+        auto mesh = meshManager->getMesh(instance->mesh);
+        if (mesh == nullptr)
+            return;
 
-        std::cout << "Material setup : " << ms(t0, t1) << " ms\n";
-        std::cout << "Mesh parsing   : " << ms(t2, t3) << " ms\n";
+        instance->cells = m_grid.worldToCellRange(instance->worldAABBMin, instance->worldAABBMax);
+
+        m_grid.addMeshInstance(handle, instance->cells);
+
+        m_instanceIds.push_back(handle);
+    }
+
+    OptionalMeshInstanceHandle Scene::pickMeshInstance(const geometry::Ray &ray)
+    {
+        MeshInstanceHandle bestInstance{};
+        float bestT = std::numeric_limits<float>::max();
+
+        m_lastPick.ray = ray;
+
+        m_lastPick.tested.clear();
+        m_lastPick.hit.clear();
+        auto startPoint = ray.origin;
+        auto endPoint = ray.origin + (ray.tMax * ray.dir);
+        auto cellCoords = m_grid.worldToCellRange(startPoint, endPoint);
+
+        auto instances = m_grid.getMeshInstances(cellCoords);
+
+        for (auto &instanceHandle : instances)
+        {
+
+            auto instance = meshManager->getMeshInstance(instanceHandle);
+
+            if (!instance)
+                continue;
+
+            m_lastPick.tested.push_back(instanceHandle);
+            float tHit = 0.0f;
+
+            if (geometry::rayAABB(ray, instance->worldAABBMin, instance->worldAABBMax, tHit) && bestT > tHit)
+            {
+                bestT = tHit;
+                bestInstance = instanceHandle;
+                m_lastPick.hit.push_back(instanceHandle);
+            }
+        }
+
+        m_lastPick.best = bestInstance;
+
+        if (!bestInstance.isValid())
+        {
+            return std::nullopt;
+        }
+
+        OptionalMeshInstanceHandle result = bestInstance;
+        m_selectedInstance = result;
+
+        return result;
     }
 } // namespace nitro::renderer

@@ -325,19 +325,14 @@ namespace nitro::renderer
             if (isDepthFormat(desc.format))
             {
                 textureDesc.usage = rhi::TextureDesc::Usage::ShaderRead | rhi::TextureDesc::Usage::DepthStencil;
-
-                if (desc.isStorage)
-                {
-                    textureDesc.usage |= rhi::TextureDesc::Usage::Storage;
-                }
             }
-            else if (desc.isStorage)
+            if (desc.isStorage)
             {
-                textureDesc.usage = rhi::TextureDesc::Usage::Storage | rhi::TextureDesc::Usage::ShaderRead;
+                textureDesc.usage |= rhi::TextureDesc::Usage::Storage | rhi::TextureDesc::Usage::ShaderRead;
             }
-            else if (isWrittenByAnyPass(tid))
+            if (isWrittenByAnyPass(tid) && !isDepthFormat(desc.format))
             {
-                textureDesc.usage = rhi::TextureDesc::Usage::RenderTarget | rhi::TextureDesc::Usage::ShaderRead;
+                textureDesc.usage |= rhi::TextureDesc::Usage::RenderTarget | rhi::TextureDesc::Usage::ShaderRead;
             }
 
             textureDesc.size.width = frameWidth;

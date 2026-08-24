@@ -8,3 +8,4 @@
 #include "mesh-transformation.h"
 #include "camera-view.h"
 #include "blinn-phong-light.h"
+#include "utils.h"

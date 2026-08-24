@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <limits>
 namespace nitro::geometry
 {
     class MeshTransformation
@@ -32,6 +33,22 @@ namespace nitro::geometry
             pc.applyNormalMatrix();
             return pc;
         };
+        static void computeWorldAABB(const glm::mat4 &model,
+                                     const glm::vec3 &localMin, const glm::vec3 &localMax,
+                                     glm::vec3 &outMin, glm::vec3 &outMax)
+        {
+            outMin = glm::vec3(std::numeric_limits<float>::max());
+            outMax = glm::vec3(-std::numeric_limits<float>::max());
+            for (int i = 0; i < 8; ++i)
+            {
+                glm::vec3 c{(i & 1) ? localMax.x : localMin.x,
+                            (i & 2) ? localMax.y : localMin.y,
+                            (i & 4) ? localMax.z : localMin.z};
+                glm::vec3 w = glm::vec3(model * glm::vec4(c, 1.0f));
+                outMin = glm::min(outMin, w);
+                outMax = glm::max(outMax, w);
+            }
+        }
 
     private:
         glm::mat4 m_translate = glm::mat4(1.0f);
