@@ -36,9 +36,16 @@ namespace nitro::renderer
         return lod;
     };
 
-    MeshManager::MeshManager(std::shared_ptr<rhi::RHIDevice> device) : m_device(device) {
+    MeshManager::MeshManager(std::shared_ptr<rhi::RHIDevice> device) : m_device(device)
+    {
 
-                                                                       };
+        m_meshInstanceBuffers.create(
+            g_MAX_FRAMES_IN_FLIGHT,
+            [](uint32_t frameIdx)
+            {
+                return MeshManagerResource{};
+            });
+    };
     MeshManager::~MeshManager()
     {
         if (m_vertexMegaBuffer)
@@ -53,9 +60,12 @@ namespace nitro::renderer
         {
             m_device->destroyBuffer(m_meshDescriptorBuffer);
         }
-        if (m_meshInstanceBuffer)
+        for (auto &resource : m_meshInstanceBuffers)
         {
-            m_device->destroyBuffer(m_meshInstanceBuffer);
+            if (resource.instanceBuffer)
+            {
+                m_device->destroyBuffer(resource.instanceBuffer);
+            }
         }
     }
 
@@ -222,17 +232,11 @@ namespace nitro::renderer
 
         for (auto &instance : m_instances)
         {
-            MeshInstanceDesc desc;
             if (!instance.mesh.isValid())
             {
                 continue;
             }
-            desc.meshId = instance.mesh.id;
-
-            desc.materialId = instance.material.isValid() ? instance.material.id : INVALID_MATERIAL_INDEX;
-            auto pc = instance.transformation.getTransform();
-            desc.modelTransform = pc.model;
-            desc.normalTransform = pc.normalMatrix;
+            MeshInstanceDesc desc = createInstanceDesc(instance);
 
             instanceDesc.push_back(desc);
         };
@@ -240,12 +244,15 @@ namespace nitro::renderer
         rhi::BufferDesc instanceBufferDesc;
         instanceBufferDesc.initialData = instanceDesc.data();
         instanceBufferDesc.size = sizeof(MeshInstanceDesc) * instanceDesc.size();
-        instanceBufferDesc.storage = rhi::BufferDesc::StorageMode::GPU;
+        instanceBufferDesc.storage = rhi::BufferDesc::StorageMode::Dynamic;
         instanceBufferDesc.usage = rhi::BufferDesc::Usage::Storage | rhi::BufferDesc::Usage::TransferDst;
 
-        if (m_meshInstanceBuffer)
-            m_device->destroyBuffer(m_meshInstanceBuffer);
-        m_meshInstanceBuffer = m_device->createBuffer(instanceBufferDesc);
+        for (auto &resource : m_meshInstanceBuffers)
+        {
+            if (resource.instanceBuffer)
+                m_device->destroyBuffer(resource.instanceBuffer);
+            resource.instanceBuffer = m_device->createBuffer(instanceBufferDesc);
+        }
     }
 
     MeshInfo *MeshManager::getMesh(const MeshHandle &handle)
@@ -267,6 +274,72 @@ namespace nitro::renderer
         }
 
         return &m_instances[handle.id];
+    }
+
+    void MeshManager::markMeshInstanceAsDirty(const MeshInstanceHandle &handle)
+    {
+        auto instance = getMeshInstance(handle);
+        if (!instance)
+            return;
+
+        if (instance->dirtyMask == 0)
+            m_dirtyInstances.push_back(handle);
+        instance->dirtyMask = (1 << g_MAX_FRAMES_IN_FLIGHT) - 1;
+    }
+
+    void MeshManager::flusDirtyMeshInstances()
+    {
+        auto frameIdx = m_device->getCurrentFrameIndex();
+        const uint8_t bit = 1 << frameIdx;
+        uint write = 0;
+        for (auto &h : m_dirtyInstances)
+        {
+            auto instance = getMeshInstance(h);
+
+            if (!instance)
+                continue;
+
+            if (instance->dirtyMask & bit)
+            {
+
+                instance->dirtyMask &= ~bit;
+                updateMeshInstanceBuffer(*instance, h.id, frameIdx);
+            }
+
+            if (instance->dirtyMask != 0)
+            {
+                m_dirtyInstances[write++] = h;
+            }
+        }
+
+        m_dirtyInstances.resize(write);
+    }
+
+    MeshInstanceDesc MeshManager::createInstanceDesc(MeshInstance &instance)
+    {
+        MeshInstanceDesc desc;
+
+        desc.meshId = instance.mesh.id;
+
+        desc.materialId = instance.material.isValid() ? instance.material.id : INVALID_MATERIAL_INDEX;
+        auto pc = instance.transformation.getTransform();
+        desc.modelTransform = pc.model;
+        desc.normalTransform = pc.normalMatrix;
+
+        return desc;
+    }
+
+    void MeshManager::updateMeshInstanceBuffer(MeshInstance &instance, uint32_t id, uint32_t frameIdx)
+    {
+
+               MeshInstanceDesc desc = createInstanceDesc(instance);
+
+        auto &resource = m_meshInstanceBuffers.current(frameIdx);
+
+        resource.instanceBuffer->upload(
+            &desc,
+            sizeof(MeshInstanceDesc),
+            static_cast<size_t>(id) * sizeof(MeshInstanceDesc));
     }
 
 } // namespace nitro::renderer

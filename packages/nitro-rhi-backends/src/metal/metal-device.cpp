@@ -18,6 +18,7 @@
 #include <imgui_impl_metal.h>
 #include <imnodes.h>
 #include <GLFW/glfw3.h>
+#include "ImGuizmo.h"
 namespace nitro::rhi::metal
 {
     MetalDevice::MetalDevice(void *window) : m_window(window)
@@ -199,6 +200,7 @@ namespace nitro::rhi::metal
         ImGui_ImplMetal_NewFrame(m_currentCommandBuffer->rpd);
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+        ImGuizmo::BeginFrame();
     }
     void MetalDevice::endImGuiFrame()
     {

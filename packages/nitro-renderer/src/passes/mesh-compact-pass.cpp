@@ -121,6 +121,8 @@ namespace nitro::renderer
         auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
         if (isSceneBufferStale(scene, resource, drawCommandBuffer, drawCountBuffer, hizTexture))
         {
+
+            std::cout << "Mesh Compact Rebind called" << std::endl;
             bindSceneBuffer(scene, resource, drawCommandBuffer, drawCountBuffer, hizTexture);
         }
 

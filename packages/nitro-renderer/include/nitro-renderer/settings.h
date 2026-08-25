@@ -143,7 +143,7 @@ namespace nitro::renderer
         SSAOSettings ssao;
         DebugMode selectedDebugMode = DebugMode::Lit;
         LightMode selectedLightMode = LightMode::CookTorrenceStub;
-        RendererScenes selectedScene = RendererScenes::DamageHelmet;
+        RendererScenes selectedScene = RendererScenes::Main;
         glm::vec2 viewportSize{0.0f, 0.0f};
         glm::vec2 imGuiDockWindow{0.0f, 0.0f};
         glm::vec2 oldImGuiDockWindow{0.0f, 0.0f};

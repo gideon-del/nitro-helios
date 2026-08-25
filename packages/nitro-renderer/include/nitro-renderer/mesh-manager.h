@@ -4,6 +4,7 @@
 #include <nitro-rhi/rhi.h>
 #include <glm/glm.hpp>
 #include "spatial-grid-coord.h"
+#include "per-frame.h"
 #include "handles.h"
 namespace nitro::renderer
 {
@@ -45,8 +46,9 @@ namespace nitro::renderer
         std::vector<GridCellCoord> cells;
         glm::vec3 worldAABBMin;
         glm::vec3 worldAABBMax;
+        uint8_t dirtyMask = 0;
     };
-    struct MeshInstanceDesc
+    struct alignas(16) MeshInstanceDesc
     {
         uint32_t meshId;
         uint32_t materialId = INVALID_MATERIAL_INDEX;
@@ -71,6 +73,11 @@ namespace nitro::renderer
 
     static_assert(sizeof(MeshDescriptor) == 112);
     static_assert(alignof(MeshDescriptor) == 16);
+
+    struct MeshManagerResource
+    {
+        rhi::RHIBuffer *instanceBuffer = nullptr;
+    };
     class MeshManager
     {
     public:
@@ -80,12 +87,14 @@ namespace nitro::renderer
         MeshInstanceHandle addMeshInstances(MeshInstance &instance);
         rhi::RHIBuffer *getVertexMegaBuffer() { return m_vertexMegaBuffer; }
         rhi::RHIBuffer *getIndexMegaBuffer() { return m_indexMegaBuffer; }
-        rhi::RHIBuffer *instanceBuffer() { return m_meshInstanceBuffer; }
+        rhi::RHIBuffer *instanceBuffer() { return m_meshInstanceBuffers.current(m_device->getCurrentFrameIndex()).instanceBuffer; }
         rhi::RHIBuffer *descriptorBuffer() { return m_meshDescriptorBuffer; }
         uint32_t instanceCount() { return static_cast<uint32_t>(m_instances.size()); }
         void buildMegaBuffers();
         MeshInfo *getMesh(const MeshHandle &handle);
         MeshInstance *getMeshInstance(const MeshInstanceHandle handle);
+        void markMeshInstanceAsDirty(const MeshInstanceHandle &handle);
+        void flusDirtyMeshInstances();
 
     private:
         std::shared_ptr<rhi::RHIDevice> m_device;
@@ -94,6 +103,11 @@ namespace nitro::renderer
         rhi::RHIBuffer *m_vertexMegaBuffer = nullptr;
         rhi::RHIBuffer *m_indexMegaBuffer = nullptr;
         rhi::RHIBuffer *m_meshDescriptorBuffer = nullptr;
-        rhi::RHIBuffer *m_meshInstanceBuffer = nullptr;
+        PerFrame<MeshManagerResource> m_meshInstanceBuffers;
+
+        std::vector<MeshInstanceHandle> m_dirtyInstances;
+        void updateMeshInstanceBuffer(MeshInstance &instance, uint32_t id, uint32_t frameIdx);
+
+        MeshInstanceDesc createInstanceDesc(MeshInstance &instance);
     };
 } // namespace nitro::renderer

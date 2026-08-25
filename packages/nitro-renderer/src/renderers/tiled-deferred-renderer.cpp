@@ -904,12 +904,12 @@ namespace nitro::renderer
             [](const RGResources &resources) {
 
             },
-            [fxaaTexture, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            [fxaaTexture, tonemapTexture, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
             {
                 FXAAPushConstant fxaaPc;
                 fxaaPc.textureSize = settings.viewportSize;
 
-                m_fxaaPass->execute(cmd, fxaaPc, {resources.getTexture(m_currentSceneTextureID), resources.getTexture(fxaaTexture)});
+                m_fxaaPass->execute(cmd, fxaaPc, {resources.getTexture(tonemapTexture), resources.getTexture(fxaaTexture)});
                 m_currentSceneTextureID = fxaaTexture;
             },
         });

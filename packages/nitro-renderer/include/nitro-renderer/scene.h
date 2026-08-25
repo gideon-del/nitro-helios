@@ -88,9 +88,12 @@ namespace nitro::renderer
         {
             m_selectedInstance = handle;
         }
+
         const OptionalMeshInstanceHandle &selectedInstance() const { return m_selectedInstance; }
         void loadGltfScene(std::string filePath, std::shared_ptr<rhi::RHIDevice> device);
         void addMeshInstance(const MeshInstanceHandle &handle);
+
+        void updateMeshInstance(const MeshInstanceHandle &handle);
         OptionalMeshInstanceHandle pickMeshInstance(const geometry::Ray &ray);
         std::shared_ptr<MeshManager> meshManager;
         std::shared_ptr<MaterialManager> materialManager;

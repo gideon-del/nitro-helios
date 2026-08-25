@@ -3,6 +3,7 @@
 #include "context.h"
 #include "particle-emitter-system.h"
 #include <nitro-rhi/rhi.h>
+#include "ImGuizmo.h"
 namespace nitro::renderer
 {
     struct LightPanel
@@ -46,7 +47,7 @@ namespace nitro::renderer
 
     struct InspectorPanel
     {
-        void draw(const RenderContext &ctx);
+        void draw(const RenderContext &ctx, ImGuizmo::OPERATION &gizmoOp, ImGuizmo::MODE &mode);
     };
     struct HierarchyPanel
     {

@@ -389,7 +389,7 @@ namespace nitro::renderer
         }
     }
 
-    void InspectorPanel::draw(const RenderContext &ctx)
+    void InspectorPanel::draw(const RenderContext &ctx, ImGuizmo::OPERATION &gizmoOp, ImGuizmo::MODE &mode)
     {
         ImGui::Begin("Inspector");
 
@@ -409,24 +409,57 @@ namespace nitro::renderer
         {
             ImGui::Text("Mesh: %s", mesh->mesh.name.c_str());
         }
-        ImGui::Text(" Instance ID %s", std::to_string(selectedInstance.value().id).c_str());
+        ImGui::Text("Instance ID %s", std::to_string(selectedInstance.value().id).c_str());
 
         ImGui::Separator();
 
         ImGui::Text("Transform");
-        ImGui::BeginDisabled();
+        ImGui::Text("Gizmo operation");
+        if (ImGui::RadioButton("Translate", gizmoOp == ImGuizmo::OPERATION::TRANSLATE))
+        {
+            gizmoOp = ImGuizmo::OPERATION::TRANSLATE;
+        }
+        if (ImGui::RadioButton("Scale", gizmoOp == ImGuizmo::OPERATION::SCALE))
+        {
+            gizmoOp = ImGuizmo::OPERATION::SCALE;
+        }
+        if (ImGui::RadioButton("Rotation", gizmoOp == ImGuizmo::OPERATION::ROTATE))
+        {
+            gizmoOp = ImGuizmo::OPERATION::ROTATE;
+        }
         auto translation = instance->transformation.baseTranslation();
 
-        ImGui::DragFloat3("Translation", &translation.x, 0.4f);
+        if (ImGui::DragFloat3("Translation", &translation.x, 0.4f))
+        {
+            instance->transformation.setTranslation(translation);
+            ctx.scene->updateMeshInstance(selectedInstance.value());
+        }
 
         auto scale = instance->transformation.baseScale();
 
-        ImGui::DragFloat3("Scale", &scale.x, 0.4f);
-
+        if (ImGui::DragFloat3("Scale", &scale.x, 0.4f))
+        {
+            instance->transformation.setScale(scale);
+            ctx.scene->updateMeshInstance(selectedInstance.value());
+        }
         auto rotation = instance->transformation.baseRotationEuler();
 
-        ImGui::DragFloat3("Rotation", &rotation.x, 0.4f);
-        ImGui::EndDisabled();
+        if (ImGui::DragFloat3("Rotation", &rotation.x, 0.4f))
+        {
+            instance->transformation.setRotationEuler(rotation);
+            ctx.scene->updateMeshInstance(selectedInstance.value());
+        }
+        ImGui::Text("Transform Mode");
+
+        if (ImGui::RadioButton("Local", mode == ImGuizmo::MODE::LOCAL))
+        {
+            mode = ImGuizmo::MODE::LOCAL;
+        }
+        if (ImGui::RadioButton("World", mode == ImGuizmo::MODE::WORLD))
+        {
+            mode = ImGuizmo::MODE::WORLD;
+        }
+
         ImGui::Separator();
         ImGui::Text("World Bounds");
 

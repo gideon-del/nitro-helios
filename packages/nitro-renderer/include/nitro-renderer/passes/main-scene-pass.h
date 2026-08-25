@@ -6,6 +6,7 @@
 #include <nitro-renderer/per-frame.h>
 #include <nitro-renderer/single-texture-pass-resource.h>
 #include <nitro-renderer/particle-emitter-system.h>
+#include "ImGuizmo.h"
 
 namespace nitro::renderer
 {
@@ -37,5 +38,7 @@ namespace nitro::renderer
         rhi::RHIPipeline *m_pipeline;
         rhi::RHIDescriptorLayout *m_descriptorLayout;
         PerFrame<SingleInputPassResource> m_resources;
+        ImGuizmo::OPERATION m_gizmoOp = ImGuizmo::OPERATION::TRANSLATE;
+        ImGuizmo::MODE m_gizmoMode = ImGuizmo::MODE::LOCAL;
     };
 } // namespace nitro::renderer

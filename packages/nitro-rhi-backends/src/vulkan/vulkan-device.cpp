@@ -18,6 +18,7 @@
 #include <imnodes.h>
 #include <vector>
 #include <set>
+#include <ImGuizmo.h>
 namespace nitro::rhi::vulkan
 {
     VkInstance create_instance()
@@ -864,6 +865,7 @@ namespace nitro::rhi::vulkan
         ImGui_ImplVulkan_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+        ImGuizmo::BeginFrame();
     }
 
     void VulkanDevice::endImGuiFrame()

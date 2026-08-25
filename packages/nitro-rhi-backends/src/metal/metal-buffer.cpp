@@ -5,7 +5,7 @@ namespace nitro::rhi::metal
 {
     MetalBuffer::MetalBuffer(MetalDevice *device, const BufferDesc &desc) : m_device(device), m_size(desc.size)
     {
-        if (desc.usage != BufferDesc::Usage::Uniform && desc.initialData != nullptr)
+        if (desc.initialData != nullptr)
         {
             buffer = m_device->device->newBuffer(
                 desc.initialData,

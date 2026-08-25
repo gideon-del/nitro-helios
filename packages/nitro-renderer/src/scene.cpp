@@ -327,4 +327,35 @@ namespace nitro::renderer
 
         return result;
     }
+
+    void Scene::updateMeshInstance(const MeshInstanceHandle &handle)
+    {
+        auto instance = meshManager->getMeshInstance(handle);
+
+        if (!instance)
+        {
+            return;
+        }
+
+        auto mesh = meshManager->getMesh(instance->mesh);
+        if (!mesh)
+        {
+            return;
+        }
+
+        m_grid.removeMeshInstance(handle, instance->cells);
+
+        geometry::MeshTransformation::computeWorldAABB(
+            instance->transformation.getTransform().model,
+            mesh->aabbMin,
+            mesh->aabbMax,
+            instance->worldAABBMin,
+            instance->worldAABBMax);
+
+        instance->cells = m_grid.worldToCellRange(instance->worldAABBMin, instance->worldAABBMax);
+
+        m_grid.addMeshInstance(handle, instance->cells);
+
+        meshManager->markMeshInstanceAsDirty(handle);
+    }
 } // namespace nitro::renderer

@@ -62,6 +62,7 @@ if(APPLE)
         PUBLIC glfw
         PUBLIC imgui-backend-metal
         PUBLIC imnodes
+        PUBLIC imguizmo
         "-framework Metal"
         "-framework Foundation"
         "-framework QuartzCore"
@@ -80,6 +81,7 @@ PUBLIC glm::glm
  PUBLIC imgui-core
 PUBLIC imgui-backend-glfw
  PUBLIC imnodes
+ PUBLIC imguizmo
  PUBLIC imgui-backend-vulkan
  $<$<PLATFORM_ID:Darwin>:nitro-rhi-metal>
 )

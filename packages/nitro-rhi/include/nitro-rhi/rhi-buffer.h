@@ -10,7 +10,8 @@ namespace nitro::rhi
         enum class StorageMode
         {
             Shared,
-            GPU
+            GPU,
+            Dynamic
         } storage;
 
         enum class Usage : uint32_t

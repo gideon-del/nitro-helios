@@ -16,6 +16,7 @@ layout(location = 3) flat out uint fragInstanceIndex;
     {
         uint meshId;
         uint materialId;
+         float pads[2];
         mat4 modelTransform;
         mat4 normalTransform;           
     };

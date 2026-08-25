@@ -66,4 +66,5 @@ PUBLIC nitro-core
 PRIVATE imgui-core
 PRIVATE imnodes
 PRIVATE meshoptimizer
+PRIVATE imguizmo
 )

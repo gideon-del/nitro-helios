@@ -15,6 +15,9 @@ namespace nitro::rhi::vulkan
         case BufferDesc::StorageMode::Shared:
             return VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
             break;
+        case BufferDesc::StorageMode::Dynamic:
+            return VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+            break;
         default:
             throw std::runtime_error("Invalid Storage Mode: ");
         };
@@ -27,6 +30,7 @@ namespace nitro::rhi::vulkan
             return VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
             break;
         case BufferDesc::StorageMode::Shared:
+        case BufferDesc::StorageMode::Dynamic:
             return VMA_MEMORY_USAGE_AUTO;
             break;
         default:
@@ -93,21 +97,28 @@ namespace nitro::rhi::vulkan
             &allocation,
             nullptr));
 
-        if (desc.storage == BufferDesc::StorageMode::GPU && desc.initialData != nullptr)
+        if (desc.initialData != nullptr)
         {
-            BufferDesc stagingDesc{};
+            if (desc.storage == BufferDesc::StorageMode::GPU)
+            {
+                BufferDesc stagingDesc{};
 
-            stagingDesc.initialData = nullptr;
-            stagingDesc.size = desc.size;
-            stagingDesc.storage = BufferDesc::StorageMode::Shared;
-            stagingDesc.usage = BufferDesc::Usage::Staging;
+                stagingDesc.initialData = nullptr;
+                stagingDesc.size = desc.size;
+                stagingDesc.storage = BufferDesc::StorageMode::Shared;
+                stagingDesc.usage = BufferDesc::Usage::Staging;
 
-            VulkanBuffer staging(device, stagingDesc);
+                VulkanBuffer staging(device, stagingDesc);
 
-            staging.upload(desc.initialData, desc.size);
+                staging.upload(desc.initialData, desc.size);
 
-            device->copyBuffer(staging.buffer, buffer, desc.size);
-        };
+                device->copyBuffer(staging.buffer, buffer, desc.size);
+            }
+            else
+            {
+                upload(desc.initialData, desc.size);
+            }
+        }
     };
 
     void VulkanBuffer::upload(const void *data, size_t size, size_t offset)

@@ -15,6 +15,7 @@ using DeviceType = nitro::rhi::vulkan::VulkanDevice;
 #include <string>
 #include <imgui.h>
 #include <random>
+#include <ImGuizmo.h>
 using namespace nitro::rhi;
 using namespace nitro::geometry;
 using namespace nitro::renderer;
@@ -244,7 +245,7 @@ int main()
 
     // mainScene.instanceIds.push_back(meshManager->addMeshInstances(wallInstance));
     // pbrScene.objects.push_back(RenderObject(planeRenderer));
-    addRandomSpheres(10000, 3000, mainScene, sphereMeshId);
+    addRandomSpheres(1, 10, mainScene, sphereMeshId);
     // addWallTestCluster(mainScene, sphereMeshId);
     Mesh pointLightSphere = MeshGenerator::createUVSphere(1, 10, 100);
     std::shared_ptr<MeshRenderer> pointLightRenderer = std::make_shared<MeshRenderer>(pointLightSphere, device);
@@ -345,7 +346,6 @@ int main()
 
                 currentViewport = pendingViewport;
                 resizePending = false;
-                std::cout << "Resized textures worked" << std::endl;
             }
         }
 
@@ -354,7 +354,7 @@ int main()
             handleKeyboard(window, camera);
         }
 
-        if (rendererSettings.viewportInputState.hovered)
+        if (rendererSettings.viewportInputState.hovered && !ImGuizmo::IsUsing())
         {
             handleMouse(window, appState, io);
         }
@@ -371,6 +371,7 @@ int main()
         }
 
         RHICommandBuffer *cmd = device->beginFrame();
+        meshManager->flusDirtyMeshInstances();
         cmd->resetFrameStats();
         timer->beginFrame(cmd);
 

@@ -201,6 +201,7 @@ namespace nitro::geometry
         {
             return m_invViewProj;
         }
+        bool flipY() const { return m_flipY; }
 
     private:
         float m_theta = glm::radians(45.0f);

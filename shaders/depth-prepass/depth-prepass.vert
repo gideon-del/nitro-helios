@@ -9,6 +9,7 @@ layout(location = 3) in vec2 aUV;
     {
         uint meshId;
         uint materialId;
+         float pads[2];
         mat4 modelTransform;
         mat4 normalTransform;           
     };

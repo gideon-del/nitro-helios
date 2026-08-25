@@ -94,7 +94,7 @@ namespace nitro::renderer
 
         ImGui::End();
         // renderGraph.drawImGui();
-        m_inspectorPanel.draw(ctx);
+        m_inspectorPanel.draw(ctx, m_gizmoOp, m_gizmoMode);
         m_heirarchyPanel.draw(ctx);
         ImGui::Begin("Viewport");
 
@@ -118,7 +118,7 @@ namespace nitro::renderer
         bool viewportHovered = ImGui::IsWindowHovered();
         bool viewportFocused = ImGui::IsWindowFocused();
 
-        if (viewportHovered && ImGui::IsMouseDown(ImGuiMouseButton_Left))
+        if (viewportHovered && ImGui::IsMouseDown(ImGuiMouseButton_Left) && !ImGuizmo::IsUsing())
         {
             ImVec2 delta = ImGui::GetIO().MouseDelta;
 
@@ -131,9 +131,14 @@ namespace nitro::renderer
 
         ImVec2 vpMin = ImGui::GetItemRectMin();
         ImVec2 vpSize = ImGui::GetItemRectSize();
-        if (viewportHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+
+        ImGuizmo::SetOrthographic(false);
+        ImGuizmo::SetDrawlist();
+        ImGuizmo::SetRect(vpMin.x, vpMin.y, vpSize.x, vpSize.y);
+
+        if (viewportHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGuizmo::IsUsing() && !ImGuizmo::IsOver())
         {
-            ImVec2 m = ImGui::GetIO().MousePos; // screen space, same as vpMin
+            ImVec2 m = ImGui::GetIO().MousePos;
             glm::vec2 local = {m.x - vpMin.x,
                                m.y - vpMin.y};
             glm::vec2 uv = local / glm::vec2{vpSize.x, vpSize.y};
@@ -145,6 +150,31 @@ namespace nitro::renderer
             }
         }
         auto &selectedInstance = ctx.scene->selectedInstance();
+
+        if (selectedInstance.has_value() && selectedInstance->isValid())
+        {
+            auto *inst = ctx.scene->meshManager->getMeshInstance(selectedInstance.value());
+            glm::mat4 model = inst->transformation.getTransform().model;
+
+            glm::mat4 view = ctx.camera->view();
+            glm::mat4 proj = ctx.camera->proj();
+
+            glm::mat4 gizmoProj = proj;
+
+            if (ctx.camera->flipY())
+                gizmoProj[1][1] *= -1.0f;
+            if (ImGuizmo::Manipulate(&view[0][0], &gizmoProj[0][0],
+                                     m_gizmoOp, m_gizmoMode, &model[0][0]))
+            {
+                float t[3], r[3], s[3];
+                ImGuizmo::DecomposeMatrixToComponents(&model[0][0], t, r, s);
+                inst->transformation.setTranslation({t[0], t[1], t[2]});
+                inst->transformation.setRotationEuler({r[0], r[1], r[2]});
+                inst->transformation.setScale({s[0], s[1], s[2]});
+                ctx.scene->updateMeshInstance(selectedInstance.value());
+            }
+        }
+
         if (!ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_F) && selectedInstance.has_value() && selectedInstance.value().isValid())
         {
             auto instance = ctx.scene->meshManager->getMeshInstance(selectedInstance.value());
@@ -155,6 +185,18 @@ namespace nitro::renderer
             glm::vec3 center = (mn + mx) * 0.5f;
 
             ctx.camera->focus(center, glm::length(size) * 0.5f);
+        }
+
+        if (!ImGui::GetIO().WantTextInput && viewportHovered)
+        {
+            if (ImGui::IsKeyPressed(ImGuiKey_W))
+                m_gizmoOp = ImGuizmo::TRANSLATE;
+            if (ImGui::IsKeyPressed(ImGuiKey_E))
+                m_gizmoOp = ImGuizmo::ROTATE;
+            if (ImGui::IsKeyPressed(ImGuiKey_R))
+                m_gizmoOp = ImGuizmo::SCALE;
+            if (ImGui::IsKeyPressed(ImGuiKey_X))
+                m_gizmoMode = (m_gizmoMode == ImGuizmo::LOCAL) ? ImGuizmo::WORLD : ImGuizmo::LOCAL;
         }
         ImGui::End();
         m_device->endImGuiFrame();

@@ -1,0 +1,16 @@
+file(
+    GLOB IMGUIZ_SOURCES
+    CONFIGURE_DEPENDS
+    "*.cpp"
+)
+
+add_library(imguizmo STATIC 
+${IMGUIZ_SOURCES}
+)
+
+target_include_directories(imguizmo
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+target_link_libraries(imguizmo PUBLIC imgui-core)
