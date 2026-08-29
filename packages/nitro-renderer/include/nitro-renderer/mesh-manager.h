@@ -6,6 +6,8 @@
 #include "spatial-grid-coord.h"
 #include "per-frame.h"
 #include "handles.h"
+#include "nitro-core/types/pool.h"
+
 namespace nitro::renderer
 {
 
@@ -38,16 +40,7 @@ namespace nitro::renderer
         float _pad2;
         MeshLODDescriptor lod[MESH_LOD_COUT];
     };
-    struct MeshInstance
-    {
-        MeshHandle mesh;
-        MaterialHandle material;
-        geometry::MeshTransformation transformation;
-        std::vector<GridCellCoord> cells;
-        glm::vec3 worldAABBMin;
-        glm::vec3 worldAABBMax;
-        uint8_t dirtyMask = 0;
-    };
+
     struct alignas(16) MeshInstanceDesc
     {
         uint32_t meshId;
@@ -77,7 +70,14 @@ namespace nitro::renderer
     struct MeshManagerResource
     {
         rhi::RHIBuffer *instanceBuffer = nullptr;
+        rhi::RHIBuffer *descriptorBuffer = nullptr;
+        rhi::RHIBuffer *vertexBuffer = nullptr;
+        rhi::RHIBuffer *indexBuffer = nullptr;
+
+        size_t instanceCapacity = 1024;
+        size_t meshCapacity = 1024;
     };
+
     class MeshManager
     {
     public:
@@ -85,29 +85,44 @@ namespace nitro::renderer
         ~MeshManager();
         MeshHandle addMesh(geometry::Mesh mesh);
         MeshInstanceHandle addMeshInstances(MeshInstance &instance);
-        rhi::RHIBuffer *getVertexMegaBuffer() { return m_vertexMegaBuffer; }
-        rhi::RHIBuffer *getIndexMegaBuffer() { return m_indexMegaBuffer; }
-        rhi::RHIBuffer *instanceBuffer() { return m_meshInstanceBuffers.current(m_device->getCurrentFrameIndex()).instanceBuffer; }
-        rhi::RHIBuffer *descriptorBuffer() { return m_meshDescriptorBuffer; }
+        void reclaimInstance(const MeshInstanceHandle &handle);
+        void deactivateMeshInstance(const MeshInstanceHandle &handle);
+        bool reactivateMeshInstance(MeshInstanceHandle &handle, MeshInstance &instance);
+        rhi::RHIBuffer *getVertexMegaBuffer() { return m_resources.current(m_device->getCurrentFrameIndex()).vertexBuffer; }
+        rhi::RHIBuffer *getIndexMegaBuffer() { return m_resources.current(m_device->getCurrentFrameIndex()).indexBuffer; }
+        rhi::RHIBuffer *instanceBuffer() { return m_resources.current(m_device->getCurrentFrameIndex()).instanceBuffer; }
+        rhi::RHIBuffer *descriptorBuffer() { return m_resources.current(m_device->getCurrentFrameIndex()).descriptorBuffer; }
         uint32_t instanceCount() { return static_cast<uint32_t>(m_instances.size()); }
         void buildMegaBuffers();
         MeshInfo *getMesh(const MeshHandle &handle);
         MeshInstance *getMeshInstance(const MeshInstanceHandle handle);
         void markMeshInstanceAsDirty(const MeshInstanceHandle &handle);
         void flusDirtyMeshInstances();
+        size_t poolCapacity() const { m_instances.size(); }
 
     private:
         std::shared_ptr<rhi::RHIDevice> m_device;
         std::vector<MeshInfo> m_meshes;
-        std::vector<MeshInstance> m_instances;
-        rhi::RHIBuffer *m_vertexMegaBuffer = nullptr;
-        rhi::RHIBuffer *m_indexMegaBuffer = nullptr;
-        rhi::RHIBuffer *m_meshDescriptorBuffer = nullptr;
-        PerFrame<MeshManagerResource> m_meshInstanceBuffers;
+        ResourcePool<MeshInstance> m_instances;
+        PerFrame<MeshManagerResource> m_resources;
+        uint8_t m_dirtyInstanceBufferMask = 0;
+        uint8_t m_dirtyDescriptorBufferMask = 0;
 
         std::vector<MeshInstanceHandle> m_dirtyInstances;
         void updateMeshInstanceBuffer(MeshInstance &instance, uint32_t id, uint32_t frameIdx);
 
         MeshInstanceDesc createInstanceDesc(MeshInstance &instance);
+        void rebuildFrameInstanceBuffer(uint32_t frameIdx);
+        void buildMeshDescriptorBuffer(uint32_t frameIdx);
+        void buildMegaVertexBuffer(uint32_t frameidx);
+        void buildMegaIndexBuffer(uint32_t frameidx);
+        void markMeshDescriptorDirty()
+        {
+            m_dirtyDescriptorBufferMask = (1 << g_MAX_FRAMES_IN_FLIGHT) - 1;
+        }
+        void markMeshInstanceBufferDirty()
+        {
+            m_dirtyInstanceBufferMask = (1 << g_MAX_FRAMES_IN_FLIGHT) - 1;
+        }
     };
 } // namespace nitro::renderer

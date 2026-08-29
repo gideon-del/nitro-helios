@@ -8,6 +8,26 @@ namespace nitro::rhi::vulkan
     class VulkanDevice;
     class VulkanDescriptorSet : public RHIDescriptorSet
     {
+
+        enum class DescriptorResourceType
+        {
+            Buffer,
+            Texture,
+            Bindless
+        };
+        struct PendingDescriptorWrite
+        {
+            DescriptorResourceType type;
+
+            VkDescriptorBufferInfo bufferInfo{};
+
+            VkDescriptorImageInfo imageInfo{};
+
+            std::vector<VkDescriptorImageInfo> bindlessImageInfos;
+
+            VkWriteDescriptorSet write{};
+        };
+
     public:
         VulkanDescriptorSet(VulkanDevice *device, VulkanDescriptorLayout *layout, VkDescriptorSet descriptorSet);
         ~VulkanDescriptorSet() override;
@@ -22,6 +42,7 @@ namespace nitro::rhi::vulkan
 
     private:
         std::vector<VkWriteDescriptorSet> m_writes;
+        std::vector<PendingDescriptorWrite> m_pendingWrites;
         std::vector<VkDescriptorBufferInfo> m_bufferInfos;
         std::vector<VkDescriptorImageInfo> m_imageInfos;
         std::vector<std::vector<VkDescriptorImageInfo>> m_bindlessImageInfos;

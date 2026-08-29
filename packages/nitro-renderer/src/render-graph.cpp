@@ -1,6 +1,7 @@
 #include <nitro-renderer/render-graph.h>
 #include <imnodes.h>
 #include <imgui.h>
+#include <algorithm>
 
 namespace nitro::renderer
 {

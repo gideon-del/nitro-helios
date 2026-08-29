@@ -126,7 +126,7 @@ namespace nitro::renderer
             bindSceneBuffer(scene, resource, drawCommandBuffer, drawCountBuffer, hizTexture);
         }
 
-        uint32_t groupSize = (pc.objectCount + 63) / 64;
+        uint32_t groupSize = std::max((pc.objectCount + 63) / 64, 1u);
         cmd->bindComputePipeline(m_computePipeline);
         cmd->bindComputeDescriptorSet(resource.descriptorSet, 0);
         cmd->setPushConstant(&pc, sizeof(MeshCompactPushConstant), 1, true);

@@ -47,7 +47,7 @@ namespace nitro::renderer
 
     struct InspectorPanel
     {
-        void draw(const RenderContext &ctx, ImGuizmo::OPERATION &gizmoOp, ImGuizmo::MODE &mode);
+        void draw(const RenderContext &ctx, ImGuizmo::OPERATION &gizmoOp, ImGuizmo::MODE &mode, geometry::MeshTransformation &m_editBefore);
     };
     struct HierarchyPanel
     {

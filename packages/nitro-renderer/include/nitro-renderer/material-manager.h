@@ -2,6 +2,7 @@
 #include <nitro-rhi/rhi.h>
 #include <glm/glm.hpp>
 #include "handles.h"
+#include "per-frame.h"
 namespace nitro::renderer
 {
 
@@ -47,6 +48,12 @@ namespace nitro::renderer
         MaterialParameters parameters;
     };
 
+    struct MaterialManagerFrameResource
+    {
+        rhi::RHIBuffer *materialBuffer = nullptr;
+
+        size_t capacity = 1024;
+    };
     class MaterialManager
     {
     public:
@@ -55,16 +62,24 @@ namespace nitro::renderer
         MaterialHandle addMaterial(const MaterialDesc &desc);
         const std::vector<rhi::RHITexture *> &getTextures() { return m_textures; }
         const std::vector<Material> &getMaterials() { return m_materials; }
-        rhi::RHIBuffer *getMaterialBuffer() { return m_materialBuffer; }
+        rhi::RHIBuffer *getMaterialBuffer() { return m_resources.current(m_device->getCurrentFrameIndex()).materialBuffer; }
         void buildMegaMaterialBuffer();
         Material *getMaterial(const MaterialHandle &handle);
+        void flush();
 
     private:
         std::shared_ptr<rhi::RHIDevice> m_device;
         std::vector<rhi::RHITexture *> m_textures;
         std::vector<Material> m_materials;
-        rhi::RHIBuffer *m_materialBuffer = nullptr;
-        uint32_t addTexture(rhi::RHITexture *texture);
+        PerFrame<MaterialManagerFrameResource> m_resources;
+        uint32_t
+        addTexture(rhi::RHITexture *texture);
+        uint8_t m_dirtMaterialBuffer = 0;
+        void buildFrameBuffer(uint32_t frameIdx);
+        void markMaterialBufferAsDirty()
+        {
+            m_dirtMaterialBuffer = (1 << g_MAX_FRAMES_IN_FLIGHT) - 1;
+        }
     };
 
 } // namespace nitro::renderer

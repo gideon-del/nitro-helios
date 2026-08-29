@@ -94,7 +94,7 @@ namespace nitro::renderer
 
         ImGui::End();
         // renderGraph.drawImGui();
-        m_inspectorPanel.draw(ctx, m_gizmoOp, m_gizmoMode);
+        m_inspectorPanel.draw(ctx, m_gizmoOp, m_gizmoMode, m_dragStartTransform);
         m_heirarchyPanel.draw(ctx);
         ImGui::Begin("Viewport");
 
@@ -150,9 +150,10 @@ namespace nitro::renderer
             }
         }
         auto &selectedInstance = ctx.scene->selectedInstance();
-
+        bool usingNow = ImGuizmo::IsUsing();
         if (selectedInstance.has_value() && selectedInstance->isValid())
         {
+
             auto *inst = ctx.scene->meshManager->getMeshInstance(selectedInstance.value());
             glm::mat4 model = inst->transformation.getTransform().model;
 
@@ -173,7 +174,18 @@ namespace nitro::renderer
                 inst->transformation.setScale({s[0], s[1], s[2]});
                 ctx.scene->updateMeshInstance(selectedInstance.value());
             }
+
+            if (usingNow && !m_wasUsingGizmo)
+                m_dragStartTransform = inst->transformation;
+
+            if (!usingNow && m_wasUsingGizmo) // falling edge
+                ctx.scene->pushCommand(
+                    std::make_unique<TransformCommand>(m_dragStartTransform,
+                                                       inst->transformation,
+                                                       *selectedInstance));
         }
+
+        m_wasUsingGizmo = usingNow;
 
         if (!ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_F) && selectedInstance.has_value() && selectedInstance.value().isValid())
         {
@@ -198,6 +210,60 @@ namespace nitro::renderer
             if (ImGui::IsKeyPressed(ImGuiKey_X))
                 m_gizmoMode = (m_gizmoMode == ImGuizmo::LOCAL) ? ImGuizmo::WORLD : ImGuizmo::LOCAL;
         }
+        ImGuiIO &io = ImGui::GetIO();
+
+        if (!io.WantTextInput)
+        {
+            bool mod = io.KeyMods & ImGuiMod_Ctrl;
+            if (mod && ImGui::IsKeyPressed(ImGuiKey_Z, false))
+            {
+                if (io.KeyShift)
+                    ctx.scene->commands().redo();
+                else
+                    ctx.scene->commands().undo();
+            }
+            if (mod && ImGui::IsKeyPressed(ImGuiKey_Y, false))
+                ctx.scene->commands().redo();
+        }
+
+        if (!io.WantTextInput && viewportHovered && selectedInstance.has_value() && selectedInstance->isValid())
+        {
+            auto *inst = ctx.scene->meshManager->getMeshInstance(*selectedInstance);
+
+            if (inst && (ImGui::IsKeyPressed(ImGuiKey_Delete) || ImGui::IsKeyPressed(ImGuiKey_Backspace)))
+            {
+                ctx.scene->pushCommand(
+                    std::make_unique<DeleteMeshInstanceCommand>(*selectedInstance, *inst));
+            }
+
+            if (inst && (io.KeyMods & ImGuiMod_Shortcut) && ImGui::IsKeyPressed(ImGuiKey_D, false))
+            {
+                MeshInstance copy = *inst;
+                glm::mat4 invView = glm::inverse(ctx.camera->view());
+                glm::vec3 right = glm::normalize(glm::vec3(invView[0]));
+                glm::vec3 extent = inst->worldAABBMax - inst->worldAABBMin;
+
+                copy.transformation.translate(right * glm::length(extent) * 1.1f);
+                ctx.scene->pushCommand(std::make_unique<CreateMeshInstanceCommand>(copy));
+            }
+        }
+
+        ImGui::End();
+        ImGui::SetNextWindowPos(ImVec2(vpMin.x + 10, vpMin.y + 10));
+        ImGui::SetNextWindowBgAlpha(0.35f);
+        ImGui::Begin("##viewport_stats", nullptr,
+                     ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
+                         ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoNav);
+
+        ImGui::Text("Instances: %zu", ctx.scene->instanceIds().size());
+        ImGui::Text("Pool slots: %zu", ctx.scene->meshManager->poolCapacity());
+        if (selectedInstance)
+            ImGui::Text("Selected: %u", selectedInstance->id);
+        else
+            ImGui::TextUnformatted("Selected: none");
+        ImGui::Text("Last pick: %zu tested, %zu hit",
+                    ctx.scene->lastPick().tested.size(), ctx.scene->lastPick().hit.size());
+        ImGui::Text("Undo: %zu  Redo: %zu", ctx.scene->commands().undoSize(), ctx.scene->commands().redoSize());
         ImGui::End();
         m_device->endImGuiFrame();
         m_device->drawImGui(cmd);

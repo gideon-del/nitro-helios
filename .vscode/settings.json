@@ -1,3 +1,4 @@
 {
-  "cSpell.words": ["cofactor", "slerp"]
+  "cSpell.words": ["cofactor", "slerp"],
+  "C_Cpp.default.compileCommands": "${workspaceFolder}/build/compile_commands.json"
 }

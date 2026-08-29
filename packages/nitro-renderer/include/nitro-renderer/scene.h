@@ -5,6 +5,7 @@
 #include <nitro-rhi/rhi.h>
 #include "spatial-grid.h"
 #include "nitro-geometry/ray.h"
+#include "editor-commands.h"
 namespace nitro::renderer
 {
 
@@ -23,16 +24,34 @@ namespace nitro::renderer
         std::vector<MeshInstanceHandle> hit;
         OptionalMeshInstanceHandle best;
     };
+
+    struct SceneFrameResource
+    {
+        rhi::RHIBuffer *instanceIdBuffer = nullptr;
+        size_t capacity = 1024;
+    };
     struct Scene
     {
 
         Scene(std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<MeshManager> meshManager, std::shared_ptr<MaterialManager> materialManager)
-            : m_device(std::move(device)), meshManager(std::move(meshManager)), materialManager(std::move(materialManager)) {}
+            : m_device(std::move(device)), meshManager(std::move(meshManager)), materialManager(std::move(materialManager)),
+              m_commands(EditorCommandStack(*this))
+        {
+            m_sceneInstanceIdBuffers.create(
+                g_MAX_FRAMES_IN_FLIGHT,
+                [](uint32_t frameIdx)
+                {
+                    return SceneFrameResource{};
+                });
+        }
 
         ~Scene()
         {
-            if (m_sceneInstanceIdBuffer)
-                m_device->destroyBuffer(m_sceneInstanceIdBuffer);
+            for (auto &resource : m_sceneInstanceIdBuffers)
+            {
+                if (resource.instanceIdBuffer)
+                    m_device->destroyBuffer(resource.instanceIdBuffer);
+            }
         }
 
         void draw(rhi::RHICommandBuffer *cmd, rhi::RHIBuffer *drawCommandsBuffer, rhi::RHIBuffer *drawCountBuffer)
@@ -57,25 +76,15 @@ namespace nitro::renderer
         };
         void buildSceneInstanceId()
         {
-            std::vector<uint32_t> gpuInstanceIds;
 
-            gpuInstanceIds.reserve(m_instanceIds.size());
-
-            for (auto &handle : m_instanceIds)
+            for (uint32_t i = 0; i < g_MAX_FRAMES_IN_FLIGHT; i++)
             {
-                gpuInstanceIds.push_back(handle.id);
+                rebuildInstanceIdFrameBuffer(i);
             }
-            rhi::BufferDesc desc;
-            desc.initialData = gpuInstanceIds.data();
-            desc.size = sizeof(uint32_t) * gpuInstanceIds.size();
-            desc.storage = rhi::BufferDesc::StorageMode::GPU;
-            desc.usage = rhi::BufferDesc::Usage::Storage | rhi::BufferDesc::Usage::TransferDst;
 
-            if (m_sceneInstanceIdBuffer)
-                m_device->destroyBuffer(m_sceneInstanceIdBuffer);
-            m_sceneInstanceIdBuffer = m_device->createBuffer(desc);
+            m_dirtySceneInstanceIdBufferMask = 0;
         }
-        rhi::RHIBuffer *sceneInstanceIdBuffer() const { return m_sceneInstanceIdBuffer; }
+        rhi::RHIBuffer *sceneInstanceIdBuffer() const { return m_sceneInstanceIdBuffers.current(m_device->getCurrentFrameIndex()).instanceIdBuffer; }
         const std::vector<MeshInstanceHandle> &instanceIds() const { return m_instanceIds; }
         SpatialGrid &spatialGrid()
         {
@@ -89,11 +98,19 @@ namespace nitro::renderer
             m_selectedInstance = handle;
         }
 
+        EditorCommandStack &commands() { return m_commands; }
+
         const OptionalMeshInstanceHandle &selectedInstance() const { return m_selectedInstance; }
         void loadGltfScene(std::string filePath, std::shared_ptr<rhi::RHIDevice> device);
         void addMeshInstance(const MeshInstanceHandle &handle);
 
         void updateMeshInstance(const MeshInstanceHandle &handle);
+        void reclaimMeshInstanceSlot(const MeshInstanceHandle &handle);
+        void reactivateMeshInstanceSlot(MeshInstanceHandle &handle, MeshInstance instance);
+        void deactivateMeshInstanceSlot(const MeshInstanceHandle &handle);
+        void pushCommand(std::unique_ptr<IEditorCommand> cmd);
+
+        void flush();
         OptionalMeshInstanceHandle pickMeshInstance(const geometry::Ray &ray);
         std::shared_ptr<MeshManager> meshManager;
         std::shared_ptr<MaterialManager> materialManager;
@@ -101,11 +118,19 @@ namespace nitro::renderer
         static constexpr uint32_t s_MAX_DRAW_COMMANDS = 100000;
 
     private:
-        rhi::RHIBuffer *m_sceneInstanceIdBuffer = nullptr;
+        PerFrame<SceneFrameResource> m_sceneInstanceIdBuffers;
+        uint8_t m_dirtySceneInstanceIdBufferMask = 0;
         std::shared_ptr<rhi::RHIDevice> m_device;
         std::vector<MeshInstanceHandle> m_instanceIds;
         SpatialGrid m_grid;
         OptionalMeshInstanceHandle m_selectedInstance;
         PickDebug m_lastPick;
+        EditorCommandStack m_commands;
+
+        void rebuildInstanceIdFrameBuffer(uint32_t frameIdx);
+        void markInstanceIdBuffersDirty()
+        {
+            m_dirtySceneInstanceIdBufferMask = (1 << g_MAX_FRAMES_IN_FLIGHT) - 1;
+        }
     };
 } // namespace nitro::renderer

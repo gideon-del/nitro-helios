@@ -25,7 +25,8 @@ namespace nitro::geometry
 
             return Mesh{
                 .vertices = {v0, v1, v2, v3},
-                .indices = {0, 1, 2, 2, 3, 0}};
+                .indices = {0, 1, 2, 2, 3, 0},
+                .name = "Quad"};
         }
 
         static Mesh createPlane(float width, float depth)
@@ -47,7 +48,8 @@ namespace nitro::geometry
 
             return Mesh{
                 .vertices = {v0, v1, v2, v3},
-                .indices = {0, 1, 2, 2, 3, 0}};
+                .indices = {0, 1, 2, 2, 3, 0},
+                .name = "Plane"};
         }
 
         static Mesh createGrid(uint32_t rows, uint32_t cols, float width, float height)
@@ -97,7 +99,7 @@ namespace nitro::geometry
                     mesh.indices.push_back(topLeft);
                 }
             }
-
+            mesh.name = "Grid";
             return mesh;
         }
         static Mesh createPolygon(uint32_t radius, uint32_t segments)
@@ -142,6 +144,8 @@ namespace nitro::geometry
                 mesh.indices.push_back(nextIdx);
                 mesh.indices.push_back(i);
             }
+
+            mesh.name = "Polygon";
 
             return mesh;
         };
@@ -191,6 +195,7 @@ namespace nitro::geometry
                 mesh.indices.push_back(nextIdx);
                 mesh.indices.push_back(i);
             }
+            mesh.name = "Circle";
 
             return mesh;
         }
@@ -253,7 +258,7 @@ namespace nitro::geometry
                 mesh.indices.push_back(bottomLeft);
                 mesh.indices.push_back(topLeft);
             }
-
+            mesh.name = "Ring";
             return mesh;
         }
         static Mesh createCylinder(
@@ -317,6 +322,8 @@ namespace nitro::geometry
                 mesh.indices.push_back(bottomRight);
                 mesh.indices.push_back(bottomLeft);
             }
+
+            mesh.name = "Cylinder";
 
             return mesh;
         }
@@ -454,7 +461,7 @@ namespace nitro::geometry
                 mesh.indices.push_back(B);
                 mesh.indices.push_back(C);
             }
-
+            mesh.name = "Sphere";
             return mesh;
         }
 
@@ -521,7 +528,42 @@ namespace nitro::geometry
             addFace({-hw, -hh, -hd}, {-hw, -hh, hd}, {-hw, hh, hd}, {-hw, hh, -hd}, {-1, 0, 0});
             addFace({-hw, hh, hd}, {hw, hh, hd}, {hw, hh, -hd}, {-hw, hh, -hd}, {0, 1, 0});
             addFace({-hw, -hh, -hd}, {hw, -hh, -hd}, {hw, -hh, hd}, {-hw, -hh, hd}, {0, -1, 0});
+            mesh.name = "Cuboid";
+            return mesh;
+        }
+        static Mesh createCube(float size)
+        {
+            float hw = size * 0.5f;
+            float hh = size * 0.5f;
+            float hd = size * 0.5f;
 
+            Mesh mesh;
+
+            auto addFace = [&](glm::vec3 a, glm::vec3 b, glm::vec3 c, glm::vec3 d, glm::vec3 normal)
+            {
+                uint32_t base = static_cast<uint32_t>(mesh.vertices.size());
+
+                mesh.vertices.push_back(Vertex(a, {0.6f, 0.6f, 0.6f}, normal, {0.0f, 0.0f}));
+                mesh.vertices.push_back(Vertex(b, {0.6f, 0.6f, 0.6f}, normal, {1.0f, 0.0f}));
+                mesh.vertices.push_back(Vertex(c, {0.6f, 0.6f, 0.6f}, normal, {1.0f, 1.0f}));
+                mesh.vertices.push_back(Vertex(d, {0.6f, 0.6f, 0.6f}, normal, {0.0f, 1.0f}));
+
+                mesh.indices.push_back(base + 0);
+                mesh.indices.push_back(base + 1);
+                mesh.indices.push_back(base + 2);
+
+                mesh.indices.push_back(base + 2);
+                mesh.indices.push_back(base + 3);
+                mesh.indices.push_back(base + 0);
+            };
+
+            addFace({-hw, -hh, hd}, {hw, -hh, hd}, {hw, hh, hd}, {-hw, hh, hd}, {0, 0, -1});
+            addFace({hw, -hh, -hd}, {-hw, -hh, -hd}, {-hw, hh, -hd}, {hw, hh, -hd}, {0, 0, 1});
+            addFace({hw, -hh, hd}, {hw, -hh, -hd}, {hw, hh, -hd}, {hw, hh, hd}, {1, 0, 0});
+            addFace({-hw, -hh, -hd}, {-hw, -hh, hd}, {-hw, hh, hd}, {-hw, hh, -hd}, {-1, 0, 0});
+            addFace({-hw, hh, hd}, {hw, hh, hd}, {hw, hh, -hd}, {-hw, hh, -hd}, {0, 1, 0});
+            addFace({-hw, -hh, -hd}, {hw, -hh, -hd}, {hw, -hh, hd}, {-hw, -hh, hd}, {0, -1, 0});
+            mesh.name = "Cube";
             return mesh;
         }
     };

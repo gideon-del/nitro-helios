@@ -993,7 +993,10 @@ namespace nitro::renderer
         });
         m_renderGraph.addPass({
             "Final Scene",
-            {{debugTexture, rhi::ResourceState::ShaderRead}},
+            {
+                {debugTexture, rhi::ResourceState::ShaderRead},
+                {fxaaTexture, rhi::ResourceState::ShaderRead},
+            },
             {},
             {},
             {},

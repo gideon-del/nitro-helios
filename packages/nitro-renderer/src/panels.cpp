@@ -1,5 +1,6 @@
 #include <nitro-renderer/panels.h>
 #include <imgui.h>
+#include "nitro-renderer/editor-commands.h"
 
 namespace nitro::renderer
 {
@@ -389,10 +390,27 @@ namespace nitro::renderer
         }
     }
 
-    void InspectorPanel::draw(const RenderContext &ctx, ImGuizmo::OPERATION &gizmoOp, ImGuizmo::MODE &mode)
+    void InspectorPanel::draw(const RenderContext &ctx, ImGuizmo::OPERATION &gizmoOp, ImGuizmo::MODE &mode, geometry::MeshTransformation &m_editBefore)
     {
         ImGui::Begin("Inspector");
 
+        if (ImGui::Button("Add Mesh"))
+        {
+            auto meshHandle = ctx.scene->meshManager->addMesh(geometry::MeshGenerator::createCube(40));
+
+            MaterialDesc desc;
+            desc.parameters.albedo = glm::vec4(0.0, 0.0, 1.0, 1.0);
+            desc.parameters.metallic = 0.9;
+            desc.parameters.roughness = 0.15;
+
+            auto materialHandle = ctx.scene->materialManager->addMaterial(desc);
+            MeshInstance instance;
+            instance.mesh = meshHandle;
+            instance.material = materialHandle;
+
+            ctx.scene->pushCommand(
+                std::make_unique<CreateMeshInstanceCommand>(instance));
+        }
         auto &selectedInstance = ctx.scene->selectedInstance();
 
         if (!selectedInstance.has_value() || !selectedInstance.value().isValid())
@@ -415,6 +433,7 @@ namespace nitro::renderer
 
         ImGui::Text("Transform");
         ImGui::Text("Gizmo operation");
+
         if (ImGui::RadioButton("Translate", gizmoOp == ImGuizmo::OPERATION::TRANSLATE))
         {
             gizmoOp = ImGuizmo::OPERATION::TRANSLATE;
@@ -429,11 +448,19 @@ namespace nitro::renderer
         }
         auto translation = instance->transformation.baseTranslation();
 
+        auto before = instance->transformation;
         if (ImGui::DragFloat3("Translation", &translation.x, 0.4f))
         {
             instance->transformation.setTranslation(translation);
             ctx.scene->updateMeshInstance(selectedInstance.value());
         }
+
+        if (ImGui::IsItemActivated())
+            m_editBefore = before;
+
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            ctx.scene->pushCommand(std::make_unique<TransformCommand>(
+                m_editBefore, instance->transformation, *selectedInstance));
 
         auto scale = instance->transformation.baseScale();
 
@@ -442,6 +469,14 @@ namespace nitro::renderer
             instance->transformation.setScale(scale);
             ctx.scene->updateMeshInstance(selectedInstance.value());
         }
+
+        if (ImGui::IsItemActivated())
+            m_editBefore = before;
+
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            ctx.scene->pushCommand(std::make_unique<TransformCommand>(
+                m_editBefore, instance->transformation, *selectedInstance));
+
         auto rotation = instance->transformation.baseRotationEuler();
 
         if (ImGui::DragFloat3("Rotation", &rotation.x, 0.4f))
@@ -449,6 +484,14 @@ namespace nitro::renderer
             instance->transformation.setRotationEuler(rotation);
             ctx.scene->updateMeshInstance(selectedInstance.value());
         }
+
+        if (ImGui::IsItemActivated())
+            m_editBefore = before;
+
+        if (ImGui::IsItemDeactivatedAfterEdit())
+            ctx.scene->pushCommand(std::make_unique<TransformCommand>(
+                m_editBefore, instance->transformation, *selectedInstance));
+
         ImGui::Text("Transform Mode");
 
         if (ImGui::RadioButton("Local", mode == ImGuizmo::MODE::LOCAL))
@@ -506,6 +549,20 @@ namespace nitro::renderer
         if (ImGui::Button("Focus"))
         {
             ctx.camera->focus(center, glm::length(size) * 0.5f);
+        }
+
+        if (ImGui::Button("Delete"))
+        {
+            auto *inst = ctx.scene->meshManager->getMeshInstance(*selectedInstance);
+            if (inst)
+                ctx.scene->pushCommand(
+                    std::make_unique<DeleteMeshInstanceCommand>(*selectedInstance, *inst));
+        }
+        if (ImGui::Button("Reset Transform"))
+        {
+            geometry::MeshTransformation identity;
+            ctx.scene->pushCommand(std::make_unique<TransformCommand>(
+                instance->transformation, identity, *selectedInstance));
         }
 
         ImGui::End();

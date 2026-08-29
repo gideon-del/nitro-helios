@@ -40,5 +40,8 @@ namespace nitro::renderer
         PerFrame<SingleInputPassResource> m_resources;
         ImGuizmo::OPERATION m_gizmoOp = ImGuizmo::OPERATION::TRANSLATE;
         ImGuizmo::MODE m_gizmoMode = ImGuizmo::MODE::LOCAL;
+
+        bool m_wasUsingGizmo;
+        geometry::MeshTransformation m_dragStartTransform;
     };
 } // namespace nitro::renderer

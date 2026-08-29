@@ -2,13 +2,21 @@
 
 namespace nitro::renderer
 {
-    MaterialManager::MaterialManager(std::shared_ptr<rhi::RHIDevice> device) : m_device(device) {}
+    MaterialManager::MaterialManager(std::shared_ptr<rhi::RHIDevice> device) : m_device(device)
+    {
+        m_resources.create(
+            g_MAX_FRAMES_IN_FLIGHT,
+            [](uint32_t frameIdx)
+            {
+                return MaterialManagerFrameResource{};
+            });
+    }
 
     MaterialManager::~MaterialManager()
     {
-        if (m_materialBuffer)
+        for (auto &resource : m_resources)
         {
-            m_device->destroyBuffer(m_materialBuffer);
+            m_device->destroyBuffer(resource.materialBuffer);
         }
         for (auto &texture : m_textures)
         {
@@ -43,23 +51,57 @@ namespace nitro::renderer
         HandleValueType id = static_cast<HandleValueType>(m_materials.size());
 
         m_materials.push_back(std::move(material));
-
+        markMaterialBufferAsDirty();
         return MaterialHandle{id};
     };
 
+    void MaterialManager::flush()
+    {
+        auto frameIdx = m_device->getCurrentFrameIndex();
+        uint8_t bit = 1 << frameIdx;
+
+        if (m_dirtMaterialBuffer & bit)
+        {
+            buildFrameBuffer(frameIdx);
+            m_dirtMaterialBuffer &= ~bit;
+        }
+    }
+
     void MaterialManager::buildMegaMaterialBuffer()
     {
-        rhi::BufferDesc desc;
-        desc.initialData = m_materials.data();
-        desc.size = sizeof(Material) * m_materials.size();
-        desc.storage = rhi::BufferDesc::StorageMode::GPU;
-        desc.usage = rhi::BufferDesc::Usage::Storage | rhi::BufferDesc::Usage::TransferDst;
 
-        if (m_materialBuffer)
+        for (uint i = 0; i < g_MAX_FRAMES_IN_FLIGHT; i++)
         {
-            m_device->destroyBuffer(m_materialBuffer);
+            buildFrameBuffer(i);
         }
-        m_materialBuffer = m_device->createBuffer(desc);
+        m_dirtMaterialBuffer = 0;
+    };
+
+    void MaterialManager::buildFrameBuffer(uint32_t frameIdx)
+    {
+
+        auto &resource = m_resources.current(frameIdx);
+
+        size_t needed = m_materials.size();
+
+        if (!resource.materialBuffer || needed > resource.capacity)
+        {
+            if (resource.materialBuffer)
+                m_device->destroyBuffer(resource.materialBuffer);
+            if (needed > resource.capacity)
+                resource.capacity = std::max((needed * 2), size_t(1024));
+            rhi::BufferDesc desc;
+
+            desc.size = sizeof(Material) * resource.capacity;
+            desc.storage = rhi::BufferDesc::StorageMode::Dynamic;
+            desc.usage = rhi::BufferDesc::Usage::Storage;
+
+            resource.materialBuffer = m_device->createBuffer(desc);
+        }
+
+        resource.materialBuffer->upload(
+            m_materials.data(),
+            sizeof(Material) * m_materials.size());
     };
 
     Material *MaterialManager::getMaterial(const MaterialHandle &handle)

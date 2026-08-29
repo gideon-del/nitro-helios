@@ -39,7 +39,7 @@ namespace nitro::renderer
     MeshManager::MeshManager(std::shared_ptr<rhi::RHIDevice> device) : m_device(device)
     {
 
-        m_meshInstanceBuffers.create(
+        m_resources.create(
             g_MAX_FRAMES_IN_FLIGHT,
             [](uint32_t frameIdx)
             {
@@ -48,23 +48,24 @@ namespace nitro::renderer
     };
     MeshManager::~MeshManager()
     {
-        if (m_vertexMegaBuffer)
-        {
-            m_device->destroyBuffer(m_vertexMegaBuffer);
-        }
-        if (m_indexMegaBuffer)
-        {
-            m_device->destroyBuffer(m_indexMegaBuffer);
-        }
-        if (m_meshDescriptorBuffer)
-        {
-            m_device->destroyBuffer(m_meshDescriptorBuffer);
-        }
-        for (auto &resource : m_meshInstanceBuffers)
+
+        for (auto &resource : m_resources)
         {
             if (resource.instanceBuffer)
             {
                 m_device->destroyBuffer(resource.instanceBuffer);
+            }
+            if (resource.descriptorBuffer)
+            {
+                m_device->destroyBuffer(resource.descriptorBuffer);
+            }
+            if (resource.vertexBuffer)
+            {
+                m_device->destroyBuffer(resource.vertexBuffer);
+            }
+            if (resource.indexBuffer)
+            {
+                m_device->destroyBuffer(resource.indexBuffer);
             }
         }
     }
@@ -122,12 +123,13 @@ namespace nitro::renderer
             info.meshLod[i].screenThreshold = LOD_SCREEN_THRESHOLDS[i];
         };
         m_meshes.push_back(info);
+        markMeshDescriptorDirty();
         return {id};
     }
 
     MeshInstanceHandle MeshManager::addMeshInstances(MeshInstance &instance)
     {
-        HandleValueType id = static_cast<HandleValueType>(m_instances.size());
+
         auto mesh = getMesh(instance.mesh);
         assert(mesh != nullptr);
         geometry::MeshTransformation::computeWorldAABB(
@@ -136,31 +138,24 @@ namespace nitro::renderer
             mesh->aabbMax,
             instance.worldAABBMin,
             instance.worldAABBMax);
-        m_instances.push_back(std::move(instance));
-        return {id};
+        markMeshInstanceBufferDirty();
+        return m_instances.emplace(std::move(instance));
     }
 
-    void MeshManager::buildMegaBuffers()
+    void MeshManager::buildMegaVertexBuffer(uint32_t frameIdx)
     {
-
+        auto &resource = m_resources.current(frameIdx);
         if (m_meshes.size() == 0)
             return;
+        if (resource.vertexBuffer)
+            m_device->destroyBuffer(resource.vertexBuffer);
 
         auto &lastMesh = m_meshes.back();
         size_t totalVertices = lastMesh.vertexOffset + lastMesh.mesh.vertices.size();
-        size_t totalIndices = lastMesh.indexOffset + lastMesh.indexCount;
-
         std::vector<geometry::Vertex> vertices(totalVertices);
-        std::vector<uint32_t> indices(totalIndices);
-
         for (auto &info : m_meshes)
         {
             memcpy(vertices.data() + info.vertexOffset, info.mesh.vertices.data(), sizeof(geometry::Vertex) * info.mesh.vertices.size());
-
-            for (int i = 0; i < MESH_LOD_COUT; i++)
-            {
-                memcpy(indices.data() + info.meshLod[i].indexOffset, info.meshLod[i].indices.data(), sizeof(uint32_t) * info.meshLod[i].indices.size());
-            }
         }
 
         rhi::BufferDesc vertexDesc;
@@ -169,12 +164,28 @@ namespace nitro::renderer
         vertexDesc.storage = rhi::BufferDesc::StorageMode::GPU;
         vertexDesc.usage = rhi::BufferDesc::Usage::Vertex;
 
-        if (m_vertexMegaBuffer)
-        {
-            m_device->destroyBuffer(m_vertexMegaBuffer);
-        }
+        resource.vertexBuffer = m_device->createBuffer(vertexDesc);
+    }
 
-        m_vertexMegaBuffer = m_device->createBuffer(vertexDesc);
+    void MeshManager::buildMegaIndexBuffer(uint32_t frameIdx)
+    {
+        auto &resource = m_resources.current(frameIdx);
+        if (m_meshes.size() == 0)
+            return;
+        if (resource.indexBuffer)
+            m_device->destroyBuffer(resource.indexBuffer);
+
+        auto &lastMesh = m_meshes.back();
+
+        size_t totalIndices = lastMesh.indexOffset + lastMesh.indexCount;
+        std::vector<uint32_t> indices(totalIndices);
+        for (auto &info : m_meshes)
+        {
+            for (int i = 0; i < MESH_LOD_COUT; i++)
+            {
+                memcpy(indices.data() + info.meshLod[i].indexOffset, info.meshLod[i].indices.data(), sizeof(uint32_t) * info.meshLod[i].indices.size());
+            }
+        }
 
         rhi::BufferDesc indexDesc;
         indexDesc.initialData = indices.data();
@@ -182,77 +193,22 @@ namespace nitro::renderer
         indexDesc.storage = rhi::BufferDesc::StorageMode::GPU;
         indexDesc.usage = rhi::BufferDesc::Usage::Index;
 
-        if (m_indexMegaBuffer)
+        resource.indexBuffer = m_device->createBuffer(indexDesc);
+    }
+
+    void MeshManager::buildMegaBuffers()
+    {
+
+        for (uint32_t i = 0; i < g_MAX_FRAMES_IN_FLIGHT; i++)
         {
-            m_device->destroyBuffer(m_indexMegaBuffer);
+            rebuildFrameInstanceBuffer(i);
+            buildMegaVertexBuffer(i);
+            buildMegaIndexBuffer(i);
+            buildMeshDescriptorBuffer(i);
         }
 
-        m_indexMegaBuffer = m_device->createBuffer(indexDesc);
-
-        std::vector<MeshDescriptor> descriptors;
-
-        for (auto &meshInfo : m_meshes)
-        {
-            MeshDescriptor descriptor{};
-            descriptor.indexOffset = meshInfo.indexOffset;
-            descriptor.indexCount = static_cast<uint32_t>(meshInfo.mesh.indices.size());
-            descriptor.vertexOffset = meshInfo.vertexOffset;
-            descriptor.aabbMax = meshInfo.aabbMax;
-            descriptor.aabbMin = meshInfo.aabbMin;
-            descriptor.boundingSphereRadius = meshInfo.boundingSphereRadius;
-
-            for (int i = 0; i < MESH_LOD_COUT; i++)
-            {
-                MeshLODDescriptor lodDescriptor{};
-                lodDescriptor.indexCount = static_cast<uint32_t>(meshInfo.meshLod[i].indices.size());
-                lodDescriptor.indexOffset = static_cast<uint32_t>(meshInfo.meshLod[i].indexOffset);
-                lodDescriptor.screenThreshold = meshInfo.meshLod[i].screenThreshold;
-
-                descriptor.lod[i] = std::move(lodDescriptor);
-            }
-
-            descriptors.push_back(std::move(descriptor));
-        }
-
-        rhi::BufferDesc descriptorDesc;
-        descriptorDesc.initialData = descriptors.data();
-        descriptorDesc.size = sizeof(MeshDescriptor) * descriptors.size();
-        descriptorDesc.storage = rhi::BufferDesc::StorageMode::GPU;
-        descriptorDesc.usage = rhi::BufferDesc::Usage::Storage | rhi::BufferDesc::Usage::TransferDst;
-
-        if (m_meshDescriptorBuffer)
-        {
-            m_device->destroyBuffer(m_meshDescriptorBuffer);
-        }
-
-        m_meshDescriptorBuffer = m_device->createBuffer(descriptorDesc);
-
-        std::vector<MeshInstanceDesc> instanceDesc;
-        instanceDesc.reserve(m_instances.size());
-
-        for (auto &instance : m_instances)
-        {
-            if (!instance.mesh.isValid())
-            {
-                continue;
-            }
-            MeshInstanceDesc desc = createInstanceDesc(instance);
-
-            instanceDesc.push_back(desc);
-        };
-
-        rhi::BufferDesc instanceBufferDesc;
-        instanceBufferDesc.initialData = instanceDesc.data();
-        instanceBufferDesc.size = sizeof(MeshInstanceDesc) * instanceDesc.size();
-        instanceBufferDesc.storage = rhi::BufferDesc::StorageMode::Dynamic;
-        instanceBufferDesc.usage = rhi::BufferDesc::Usage::Storage | rhi::BufferDesc::Usage::TransferDst;
-
-        for (auto &resource : m_meshInstanceBuffers)
-        {
-            if (resource.instanceBuffer)
-                m_device->destroyBuffer(resource.instanceBuffer);
-            resource.instanceBuffer = m_device->createBuffer(instanceBufferDesc);
-        }
+        m_dirtyDescriptorBufferMask = 0;
+        m_dirtyInstanceBufferMask = 0;
     }
 
     MeshInfo *MeshManager::getMesh(const MeshHandle &handle)
@@ -268,12 +224,7 @@ namespace nitro::renderer
     MeshInstance *MeshManager::getMeshInstance(const MeshInstanceHandle handle)
     {
 
-        if (!handle.isValid() || handle.id >= m_instances.size())
-        {
-            return nullptr;
-        }
-
-        return &m_instances[handle.id];
+        return m_instances.get(handle);
     }
 
     void MeshManager::markMeshInstanceAsDirty(const MeshInstanceHandle &handle)
@@ -291,6 +242,19 @@ namespace nitro::renderer
     {
         auto frameIdx = m_device->getCurrentFrameIndex();
         const uint8_t bit = 1 << frameIdx;
+
+        if (m_dirtyDescriptorBufferMask & bit)
+        {
+            buildMegaIndexBuffer(frameIdx);
+            buildMegaVertexBuffer(frameIdx);
+            buildMeshDescriptorBuffer(frameIdx);
+            m_dirtyDescriptorBufferMask &= ~bit;
+        }
+        if (m_dirtyInstanceBufferMask & bit)
+        {
+            rebuildFrameInstanceBuffer(frameIdx);
+            m_dirtyInstanceBufferMask &= ~bit;
+        }
         uint write = 0;
         for (auto &h : m_dirtyInstances)
         {
@@ -332,14 +296,110 @@ namespace nitro::renderer
     void MeshManager::updateMeshInstanceBuffer(MeshInstance &instance, uint32_t id, uint32_t frameIdx)
     {
 
-               MeshInstanceDesc desc = createInstanceDesc(instance);
+        MeshInstanceDesc desc = createInstanceDesc(instance);
 
-        auto &resource = m_meshInstanceBuffers.current(frameIdx);
+        auto &resource = m_resources.current(frameIdx);
 
         resource.instanceBuffer->upload(
             &desc,
             sizeof(MeshInstanceDesc),
             static_cast<size_t>(id) * sizeof(MeshInstanceDesc));
+    }
+
+    void MeshManager::rebuildFrameInstanceBuffer(uint32_t frameIdx)
+    {
+        auto &resource = m_resources.current(frameIdx);
+        const size_t needed = m_instances.capacity();
+
+        if (!resource.instanceBuffer || needed > resource.instanceCapacity)
+        {
+            m_device->waitIdle();
+            if (resource.instanceBuffer)
+                m_device->destroyBuffer(resource.instanceBuffer);
+
+            if (needed > resource.instanceCapacity)
+                resource.instanceCapacity = std::max(needed * 2, size_t(1024));
+
+            rhi::BufferDesc desc;
+            desc.size = sizeof(MeshInstanceDesc) * resource.instanceCapacity;
+            desc.storage = rhi::BufferDesc::StorageMode::Dynamic;
+            desc.usage = rhi::BufferDesc::Usage::Storage;
+            resource.instanceBuffer = m_device->createBuffer(desc);
+        }
+
+        std::vector<MeshInstanceDesc> descs(resource.instanceCapacity);
+        m_instances.forEach([&](MeshInstanceHandle h, MeshInstance &inst)
+                            { descs[h.id] = createInstanceDesc(inst); });
+
+        resource.instanceBuffer->upload(descs.data(),
+                                        sizeof(MeshInstanceDesc) * resource.instanceCapacity, 0);
+    };
+    void MeshManager::buildMeshDescriptorBuffer(uint32_t frameIdx)
+    {
+        auto &resource = m_resources.current(frameIdx);
+        const size_t needed = m_meshes.size();
+
+        if (!resource.descriptorBuffer || needed > resource.meshCapacity)
+        {
+            m_device->waitIdle();
+            if (resource.descriptorBuffer)
+                m_device->destroyBuffer(resource.descriptorBuffer);
+
+            if (needed > resource.meshCapacity)
+                resource.meshCapacity = std::max(needed * 2, size_t(1024));
+
+            rhi::BufferDesc desc;
+            desc.size = sizeof(MeshDescriptor) * resource.meshCapacity;
+            desc.storage = rhi::BufferDesc::StorageMode::Dynamic;
+            desc.usage = rhi::BufferDesc::Usage::Storage;
+            resource.descriptorBuffer = m_device->createBuffer(desc);
+        }
+
+        std::vector<MeshDescriptor> descriptors;
+        descriptors.reserve(resource.meshCapacity);
+        for (auto &meshInfo : m_meshes)
+        {
+            MeshDescriptor descriptor{};
+            descriptor.indexOffset = meshInfo.indexOffset;
+            descriptor.indexCount = static_cast<uint32_t>(meshInfo.mesh.indices.size());
+            descriptor.vertexOffset = meshInfo.vertexOffset;
+            descriptor.aabbMax = meshInfo.aabbMax;
+            descriptor.aabbMin = meshInfo.aabbMin;
+            descriptor.boundingSphereRadius = meshInfo.boundingSphereRadius;
+
+            for (int i = 0; i < MESH_LOD_COUT; i++)
+            {
+                MeshLODDescriptor lodDescriptor{};
+                lodDescriptor.indexCount = static_cast<uint32_t>(meshInfo.meshLod[i].indices.size());
+                lodDescriptor.indexOffset = static_cast<uint32_t>(meshInfo.meshLod[i].indexOffset);
+                lodDescriptor.screenThreshold = meshInfo.meshLod[i].screenThreshold;
+
+                descriptor.lod[i] = std::move(lodDescriptor);
+            }
+
+            descriptors.push_back(std::move(descriptor));
+        }
+
+        resource.descriptorBuffer->upload(descriptors.data(),
+                                          sizeof(MeshDescriptor) * resource.meshCapacity, 0);
+    };
+
+    void MeshManager::reclaimInstance(const MeshInstanceHandle &handle)
+    {
+        m_instances.reclaim(handle);
+    };
+    void MeshManager::deactivateMeshInstance(const MeshInstanceHandle &handle)
+    {
+        m_instances.deactivate(handle);
+        m_dirtyInstanceBufferMask = (1 << g_MAX_FRAMES_IN_FLIGHT) - 1;
+    };
+    bool MeshManager::reactivateMeshInstance(MeshInstanceHandle &handle, MeshInstance &instance)
+    {
+        MeshInstance copied = instance;
+        bool ok = m_instances.reactivate(handle, std::move(copied));
+        if (ok)
+            m_dirtyInstanceBufferMask = (1 << g_MAX_FRAMES_IN_FLIGHT) - 1;
+        return ok;
     }
 
 } // namespace nitro::renderer

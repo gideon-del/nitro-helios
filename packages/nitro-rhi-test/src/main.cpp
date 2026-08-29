@@ -372,6 +372,8 @@ int main()
 
         RHICommandBuffer *cmd = device->beginFrame();
         meshManager->flusDirtyMeshInstances();
+        materialManager->flush();
+        renderContext.scene->flush();
         cmd->resetFrameStats();
         timer->beginFrame(cmd);
 
@@ -389,6 +391,7 @@ int main()
             renderContext.scene = &helmetScene;
             break;
         }
+
         tileDeferredRenderer.execute(cmd, renderContext, rendererSettings, timer);
         // switch (rendererSettings.renderer)
         // {

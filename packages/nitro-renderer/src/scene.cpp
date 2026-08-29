@@ -280,6 +280,8 @@ namespace nitro::renderer
         m_grid.addMeshInstance(handle, instance->cells);
 
         m_instanceIds.push_back(handle);
+
+        markInstanceIdBuffersDirty();
     }
 
     OptionalMeshInstanceHandle Scene::pickMeshInstance(const geometry::Ray &ray)
@@ -357,5 +359,103 @@ namespace nitro::renderer
         m_grid.addMeshInstance(handle, instance->cells);
 
         meshManager->markMeshInstanceAsDirty(handle);
+    }
+
+    void Scene::pushCommand(std::unique_ptr<IEditorCommand> cmd)
+    {
+        m_commands.push(std::move(cmd));
+    }
+
+    void Scene::reclaimMeshInstanceSlot(const MeshInstanceHandle &handle)
+    {
+        meshManager->reclaimInstance(handle);
+    }
+
+    void Scene::deactivateMeshInstanceSlot(const MeshInstanceHandle &handle)
+    {
+        std::cout << "Removing instance " << handle.id << std::endl;
+
+        auto *inst = meshManager->getMeshInstance(handle);
+        if (inst)
+            m_grid.removeMeshInstance(handle, inst->cells);
+
+        if (m_selectedInstance && m_selectedInstance->id == handle.id)
+            m_selectedInstance = std::nullopt;
+
+        m_instanceIds.erase(
+            std::remove(
+                m_instanceIds.begin(),
+                m_instanceIds.end(),
+                handle),
+            m_instanceIds.end());
+
+        for (auto &h : m_instanceIds)
+        {
+            std::cout << "Scene instances " << h.id << std::endl;
+        }
+
+        meshManager->deactivateMeshInstance(handle);
+        markInstanceIdBuffersDirty();
+    };
+
+    void Scene::reactivateMeshInstanceSlot(MeshInstanceHandle &handle, MeshInstance instance)
+    {
+        auto activated = meshManager->reactivateMeshInstance(handle, instance);
+
+        assert(activated);
+
+        m_instanceIds.push_back(handle);
+        auto inst = meshManager->getMeshInstance(handle);
+        if (inst)
+            m_grid.addMeshInstance(handle, inst->cells);
+        markInstanceIdBuffersDirty();
+    }
+
+    void Scene::flush()
+    {
+        auto frameIdx = m_device->getCurrentFrameIndex();
+        uint8_t bit = 1 << frameIdx;
+
+        if (m_dirtySceneInstanceIdBufferMask & bit)
+        {
+
+            rebuildInstanceIdFrameBuffer(frameIdx);
+            m_dirtySceneInstanceIdBufferMask &= ~bit;
+        }
+    };
+
+    void Scene::rebuildInstanceIdFrameBuffer(uint32_t frameIdx)
+    {
+        auto &resource = m_sceneInstanceIdBuffers.current(frameIdx);
+
+        std::vector<uint32_t> gpuInstanceIds;
+        gpuInstanceIds.reserve(m_instanceIds.size());
+        for (auto &handle : m_instanceIds)
+            gpuInstanceIds.push_back(handle.id);
+
+        const size_t needed = gpuInstanceIds.size();
+
+        if (!resource.instanceIdBuffer || needed > resource.capacity)
+        {
+            m_device->waitIdle();
+            if (resource.instanceIdBuffer)
+                m_device->destroyBuffer(resource.instanceIdBuffer);
+
+            if (needed > resource.capacity)
+            {
+                resource.capacity = std::max(needed * 2, size_t(1024));
+            }
+
+            rhi::BufferDesc desc;
+            desc.size = sizeof(uint32_t) * resource.capacity;
+            desc.storage = rhi::BufferDesc::StorageMode::Dynamic;
+            desc.usage = rhi::BufferDesc::Usage::Storage;
+            desc.initialData = nullptr;
+            resource.instanceIdBuffer = m_device->createBuffer(desc);
+        }
+
+        if (needed > 0)
+            resource.instanceIdBuffer->upload(gpuInstanceIds.data(),
+                                              sizeof(uint32_t) * needed, 0);
     }
 } // namespace nitro::renderer
