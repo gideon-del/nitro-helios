@@ -1,9 +1,12 @@
 #include <nitro-renderer/panels.h>
 #include <imgui.h>
 #include "nitro-renderer/editor-commands.h"
-
+#include <nfd.hpp>
+#include <iostream>
 namespace nitro::renderer
 {
+
+    constexpr auto SCENE_ASSET_DIR = "./assets/scenes";
     void LightPanel::draw(LightingSettings &settings)
     {
 
@@ -398,12 +401,12 @@ namespace nitro::renderer
         {
             auto meshHandle = ctx.scene->meshManager->addMesh(geometry::MeshGenerator::createCube(40));
 
-            MaterialDesc desc;
-            desc.parameters.albedo = glm::vec4(0.0, 0.0, 1.0, 1.0);
-            desc.parameters.metallic = 0.9;
-            desc.parameters.roughness = 0.15;
+            assets::Material material;
+            material.parameters.albedo = glm::vec4(0.0, 0.0, 1.0, 1.0);
+            material.parameters.metallic = 0.9;
+            material.parameters.roughness = 0.15;
 
-            auto materialHandle = ctx.scene->materialManager->addMaterial(desc);
+            auto materialHandle = ctx.scene->materialManager->addMaterial(ctx.scene->assetManager()->registerMaterial(std::make_unique<Material>(material), "Runtime Material"));
             MeshInstance instance;
             instance.mesh = meshHandle;
             instance.material = materialHandle;
@@ -421,13 +424,13 @@ namespace nitro::renderer
         }
 
         auto instance = ctx.scene->meshManager->getMeshInstance(selectedInstance.value());
-        auto mesh = ctx.scene->meshManager->getMesh(instance->mesh);
-
+        auto gpuMesh = ctx.scene->meshManager->getGPUMesh(instance->mesh);
+        auto mesh = ctx.scene->assetManager()->getAsset(gpuMesh->meshHandle);
         if (mesh)
         {
-            ImGui::Text("Mesh: %s", mesh->mesh.name.c_str());
+            ImGui::Text("Mesh: %s", mesh->name.c_str());
         }
-        ImGui::Text("Instance ID %s", std::to_string(selectedInstance.value().id).c_str());
+        ImGui::Text("Instance ID %s", std::to_string(selectedInstance.value().index).c_str());
 
         ImGui::Separator();
 
@@ -568,14 +571,58 @@ namespace nitro::renderer
         ImGui::End();
     }
 
-    void HierarchyPanel::draw(const RenderContext &ctx)
+    void HierarchyPanel::draw(const RenderContext &ctx, RendererSettings &settings)
     {
         ImGui::Begin("Hierarchy");
 
         auto &scene = *ctx.scene;
         const auto &selected = scene.selectedInstance();
         const auto &ids = scene.instanceIds();
+        if (ImGui::Button("Import glTF"))
+        {
+            NFD::Guard nfdGuard;
+            NFD::UniquePath outPath;
+            nfdfilteritem_t filters[1] = {{"glTF", "gltf"}};
+            if (NFD::OpenDialog(outPath, filters, 1) == NFD_OKAY)
+                settings.pendingImport = std::filesystem::path(outPath.get());
+        }
+        if (settings.currentScenePath)
+        {
+            if (ImGui::Button("Save"))
+            {
+                scene.serialize(*settings.currentScenePath);
+            }
+        }
+        if (ImGui::Button("Save As"))
+        {
 
+            NFD::Guard nfdGuard;
+            NFD::UniquePath outPath;
+            nfdfilteritem_t filters[1] = {{"Nitro Scene", "scene"}};
+
+            nfdresult_t result = NFD::SaveDialog(outPath, filters, 1, SCENE_ASSET_DIR, "untitled.scene");
+            if (result == NFD_OKAY)
+            {
+                auto path = std::filesystem::path(outPath.get());
+                scene.serialize(path);
+                settings.currentScenePath = path;
+            }
+            else if (result == NFD_ERROR)
+                std::cerr << "NFD SaveDialog error: " << NFD::GetError() << std::endl;
+        }
+
+        if (ImGui::Button("Load"))
+        {
+            NFD::Guard nfdGuard;
+            NFD::UniquePath outPath;
+            nfdfilteritem_t filters[1] = {{"Nitro Scene", "scene"}};
+
+            nfdresult_t result = NFD::OpenDialog(outPath, filters, 1, SCENE_ASSET_DIR);
+            if (result == NFD_OKAY)
+                settings.pendingLoad = std::filesystem::path(outPath.get());
+            else if (result == NFD_ERROR)
+                std::cerr << "NFD OpenDialog error: " << NFD::GetError() << std::endl;
+        }
         ImGui::Text("%zu instances", ids.size());
         ImGui::Separator();
 
@@ -589,15 +636,16 @@ namespace nitro::renderer
                 auto *instance = scene.meshManager->getMeshInstance(handle);
                 if (!instance)
                     continue;
-                auto *mesh = scene.meshManager->getMesh(instance->mesh);
+                auto gpuMesh = scene.meshManager->getGPUMesh(instance->mesh);
+                auto mesh = scene.assetManager()->getAsset(gpuMesh->meshHandle);
 
-                const char *name = (mesh && !mesh->mesh.name.empty())
-                                       ? mesh->mesh.name.c_str()
+                const char *name = (mesh && !mesh->name.empty())
+                                       ? mesh->name.c_str()
                                        : "(unnamed)";
 
-                bool isSelected = selected.has_value() && selected.value().id == handle.id;
+                bool isSelected = selected.has_value() && selected.value().index == handle.index;
 
-                ImGui::PushID(static_cast<int>(handle.id));
+                ImGui::PushID(static_cast<int>(handle.index));
                 if (ImGui::Selectable(name, isSelected))
                     scene.setSelectedInstance(handle);
 

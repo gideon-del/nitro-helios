@@ -51,6 +51,6 @@ namespace nitro::renderer
     };
     struct HierarchyPanel
     {
-        void draw(const RenderContext &ctx);
+        void draw(const RenderContext &ctx, RendererSettings &settings);
     };
 } // namespace nitro::renderer

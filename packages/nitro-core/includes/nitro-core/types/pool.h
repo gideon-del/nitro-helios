@@ -38,14 +38,14 @@ namespace nitro
             {
                 uint32_t idx = m_free.back();
                 m_free.pop_back();
-                new (&m_slots[idx].storage) T{std::forward<Args>(args)...};
+                new (&m_slots[idx].storage) T(std::forward<Args>(args)...);
                 m_slots[idx].alive = true;
                 return {idx, m_slots[idx].generation};
             }
 
             m_slots.emplace_back();
             uint32_t idx = uint32_t(m_slots.size() - 1);
-            new (&m_slots[idx].storage) T{std::forward<Args>(args)...};
+            new (&m_slots[idx].storage) T(std::forward<Args>(args)...);
             m_slots[idx].alive = true;
             return {idx, m_slots[idx].generation};
         };
@@ -58,9 +58,9 @@ namespace nitro
 
             get(h)->~T();
 
-            m_slots[h.id].alive = false;
-            ++m_slots[h.id].generation;
-            m_free.push_back(h.id);
+            m_slots[h.index].alive = false;
+            ++m_slots[h.index].generation;
+            m_free.push_back(h.index);
         };
         void deactivate(PoolHandle h)
         {
@@ -70,14 +70,14 @@ namespace nitro
 
             get(h)->~T();
 
-            m_slots[h.id].alive = false;
+            m_slots[h.index].alive = false;
         };
         template <class... Args>
         bool reactivate(PoolHandle h, Args &&...args)
         {
-            if (!h.isValid() || h.id >= m_slots.size())
+            if (!h.isValid() || h.index >= m_slots.size())
                 return false;
-            Slot &s = m_slots[h.id];
+            Slot &s = m_slots[h.index];
             if (s.alive || h.generation != s.generation)
                 return false;
             new (&s.storage) T(std::forward<Args>(args)...);
@@ -87,13 +87,13 @@ namespace nitro
 
         void reclaim(PoolHandle h)
         {
-            if (!h.isValid() || h.id >= m_slots.size())
+            if (!h.isValid() || h.index >= m_slots.size())
                 return;
-            Slot &s = m_slots[h.id];
+            Slot &s = m_slots[h.index];
             if (s.alive || h.generation != s.generation)
                 return;
             ++s.generation;
-            m_free.push_back(h.id);
+            m_free.push_back(h.index);
         }
 
         template <class Fn>
@@ -133,27 +133,16 @@ namespace nitro
         {
             if (!isAlive(h))
                 return nullptr;
-            return std::launder(reinterpret_cast<T *>(&m_slots[h.id].storage));
+            return std::launder(reinterpret_cast<T *>(&m_slots[h.index].storage));
         }
         const T *get(PoolHandle h) const
         {
             if (!isAlive(h))
                 return nullptr;
-            return std::launder(reinterpret_cast<T *>(&m_slots[h.id].storage));
+            return std::launder(reinterpret_cast<T *>(&m_slots[h.index].storage));
         }
         size_t capacity() const { return m_slots.size(); }
         size_t size() const { return m_slots.size() - m_free.size(); }
-
-    private:
-        bool isAlive(PoolHandle h) const
-        {
-            if (!h.isValid() || h.id >= m_slots.size())
-                return false;
-
-            const Slot &slot = m_slots[h.id];
-
-            return slot.alive && h.generation == slot.generation;
-        }
         void clear()
         {
             for (auto &s : m_slots)
@@ -164,6 +153,17 @@ namespace nitro
                 }
             m_slots.clear();
             m_free.clear();
+        }
+
+    private:
+        bool isAlive(PoolHandle h) const
+        {
+            if (!h.isValid() || h.index >= m_slots.size())
+                return false;
+
+            const Slot &slot = m_slots[h.index];
+
+            return slot.alive && h.generation == slot.generation;
         }
     };
 } // namespace nitro

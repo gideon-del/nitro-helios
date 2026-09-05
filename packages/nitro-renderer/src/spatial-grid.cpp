@@ -128,5 +128,8 @@ namespace nitro::renderer
         std::vector<MeshInstanceHandle> instanceHandles(handles.begin(), handles.end());
         return instanceHandles;
     }
-
+    void SpatialGrid::clear()
+    {
+        m_cells.clear();
+    }
 } // namespace nitro::renderer

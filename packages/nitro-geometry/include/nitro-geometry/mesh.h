@@ -10,7 +10,20 @@ namespace nitro::geometry
         std::vector<Vertex> vertices;
         std::vector<uint32_t> indices;
         std::string name = "Mesh";
+        glm::vec3 aabbMin{0.0f}, aabbMax{0.0f};
+        float boundingSphereRadius = 0.0f;
 
+        void computeBounds()
+        {
+            aabbMin = glm::vec3(FLT_MAX);
+            aabbMax = glm::vec3(-FLT_MAX);
+            for (auto &v : vertices)
+            {
+                aabbMin = glm::min(aabbMin, glm::vec3(v.pos));
+                aabbMax = glm::max(aabbMax, glm::vec3(v.pos));
+            }
+            boundingSphereRadius = glm::length(aabbMax - aabbMin) * 0.5f;
+        }
         void calculateNormals()
         {
 

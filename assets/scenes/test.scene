@@ -1,0 +1,128 @@
+{
+    "assets": {
+        "materials": {
+            "408cd710-8e2b-4721-98bf-f4c0f33132f6": {
+                "name": "Runtime Material",
+                "parameters": {
+                    "albedo": [
+                        0.0,
+                        0.0,
+                        1.0,
+                        1.0
+                    ],
+                    "metallic": 0.8999999761581421,
+                    "roughness": 0.15000000596046448
+                },
+                "path": null,
+                "textures": {
+                    "albedo": null,
+                    "emission": null,
+                    "metallicRoughness": null,
+                    "normal": null,
+                    "occlusion": null
+                }
+            }
+        },
+        "meshes": {
+            "01e8c7c7-cf51-4a72-8ed8-5cb8844f29f0": {
+                "aabb": {
+                    "max": [
+                        5.0,
+                        5.0,
+                        6.0
+                    ],
+                    "min": [
+                        -5.0,
+                        -5.0,
+                        -4.0
+                    ],
+                    "radius": 8.66025447845459
+                },
+                "indices": {
+                    "count": 6000,
+                    "offset": 66660
+                },
+                "name": "Mesh",
+                "path": null,
+                "vertices": {
+                    "count": 1111,
+                    "offset": 0
+                }
+            },
+            "442bbc5a-08f5-4024-86cc-0a72e197e293": {
+                "aabb": {
+                    "max": [
+                        20.0,
+                        20.0,
+                        20.0
+                    ],
+                    "min": [
+                        -20.0,
+                        -20.0,
+                        -20.0
+                    ],
+                    "radius": 34.64101791381836
+                },
+                "indices": {
+                    "count": 36,
+                    "offset": 92100
+                },
+                "name": "Cube",
+                "path": null,
+                "vertices": {
+                    "count": 24,
+                    "offset": 90660
+                }
+            }
+        },
+        "textures": {}
+    },
+    "scene": {
+        "instances": [
+            {
+                "material": null,
+                "mesh": "01e8c7c7-cf51-4a72-8ed8-5cb8844f29f0",
+                "transform": {
+                    "position": [
+                        -0.10796725749969482,
+                        10.0,
+                        -7.416508197784424
+                    ],
+                    "rotation": [
+                        0.0,
+                        -0.0,
+                        0.0
+                    ],
+                    "scale": [
+                        1.0,
+                        1.0,
+                        1.0
+                    ]
+                }
+            },
+            {
+                "material": "408cd710-8e2b-4721-98bf-f4c0f33132f6",
+                "mesh": "442bbc5a-08f5-4024-86cc-0a72e197e293",
+                "transform": {
+                    "position": [
+                        6.180110931396484,
+                        -21.410545349121094,
+                        8.21738052368164
+                    ],
+                    "rotation": [
+                        0.0,
+                        -0.0,
+                        0.0
+                    ],
+                    "scale": [
+                        0.25,
+                        0.25,
+                        0.25
+                    ]
+                }
+            }
+        ]
+    },
+    "version": 1,
+    "vertexStride": 60
+}

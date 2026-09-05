@@ -400,7 +400,7 @@ switch(int(frameUbo.debugMode)) {
     finalColor = specularIBLColor;
     break;
   default:
-    finalColor = directionalLighting  + (PLColor * albedo) + texture(gEmissive, fragUV).rgb;
+    finalColor = (directionalLighting  + (PLColor * albedo)) + texture(gEmissive, fragUV).rgb;
     break;
 }
 

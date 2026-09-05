@@ -6,6 +6,9 @@
 #include "spatial-grid.h"
 #include "nitro-geometry/ray.h"
 #include "editor-commands.h"
+#include "nitro-assets/manager.h"
+#include "gpu-resource-cache.h"
+#include <filesystem>
 namespace nitro::renderer
 {
 
@@ -33,9 +36,11 @@ namespace nitro::renderer
     struct Scene
     {
 
-        Scene(std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<MeshManager> meshManager, std::shared_ptr<MaterialManager> materialManager)
+        Scene(std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<MeshManager> meshManager, std::shared_ptr<MaterialManager> materialManager, std::shared_ptr<assets::AssetManager> assetManager)
             : m_device(std::move(device)), meshManager(std::move(meshManager)), materialManager(std::move(materialManager)),
-              m_commands(EditorCommandStack(*this))
+              m_commands(EditorCommandStack(*this)),
+              m_assetManager(std::move(assetManager))
+
         {
             m_sceneInstanceIdBuffers.create(
                 g_MAX_FRAMES_IN_FLIGHT,
@@ -99,6 +104,7 @@ namespace nitro::renderer
         }
 
         EditorCommandStack &commands() { return m_commands; }
+        std::shared_ptr<assets::AssetManager> assetManager() { return m_assetManager; }
 
         const OptionalMeshInstanceHandle &selectedInstance() const { return m_selectedInstance; }
         void loadGltfScene(std::string filePath, std::shared_ptr<rhi::RHIDevice> device);
@@ -112,6 +118,9 @@ namespace nitro::renderer
 
         void flush();
         OptionalMeshInstanceHandle pickMeshInstance(const geometry::Ray &ray);
+        void clear();
+        void serialize(const std::filesystem::path &filepath);
+        bool load(const std::filesystem::path &filepath);
         std::shared_ptr<MeshManager> meshManager;
         std::shared_ptr<MaterialManager> materialManager;
 
@@ -126,6 +135,7 @@ namespace nitro::renderer
         OptionalMeshInstanceHandle m_selectedInstance;
         PickDebug m_lastPick;
         EditorCommandStack m_commands;
+        std::shared_ptr<assets::AssetManager> m_assetManager;
 
         void rebuildInstanceIdFrameBuffer(uint32_t frameIdx);
         void markInstanceIdBuffersDirty()

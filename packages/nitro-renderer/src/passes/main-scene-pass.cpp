@@ -95,7 +95,7 @@ namespace nitro::renderer
         ImGui::End();
         // renderGraph.drawImGui();
         m_inspectorPanel.draw(ctx, m_gizmoOp, m_gizmoMode, m_dragStartTransform);
-        m_heirarchyPanel.draw(ctx);
+        m_heirarchyPanel.draw(ctx, settings);
         ImGui::Begin("Viewport");
 
         ImGuiViewport *vp = ImGui::GetWindowViewport();
@@ -248,6 +248,11 @@ namespace nitro::renderer
             }
         }
 
+        if ((io.KeyMods & ImGuiMod_Shortcut) && ImGui::IsKeyPressed(ImGuiKey_S, false) && settings.currentScenePath)
+        {
+            ctx.scene->serialize(*settings.currentScenePath);
+        }
+
         ImGui::End();
         ImGui::SetNextWindowPos(ImVec2(vpMin.x + 10, vpMin.y + 10));
         ImGui::SetNextWindowBgAlpha(0.35f);
@@ -258,7 +263,7 @@ namespace nitro::renderer
         ImGui::Text("Instances: %zu", ctx.scene->instanceIds().size());
         ImGui::Text("Pool slots: %zu", ctx.scene->meshManager->poolCapacity());
         if (selectedInstance)
-            ImGui::Text("Selected: %u", selectedInstance->id);
+            ImGui::Text("Selected: %u", selectedInstance->index);
         else
             ImGui::TextUnformatted("Selected: none");
         ImGui::Text("Last pick: %zu tested, %zu hit",

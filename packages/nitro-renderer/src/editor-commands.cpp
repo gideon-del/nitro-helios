@@ -49,6 +49,11 @@ namespace nitro::renderer
     {
         return !m_undone.empty();
     }
+    void EditorCommandStack::clear()
+    {
+        m_done.clear();
+        m_undone.clear();
+    };
 
     TransformCommand::TransformCommand(geometry::MeshTransformation oldTransformation, geometry::MeshTransformation newTransformation, MeshInstanceHandle handle)
         : m_oldTransformation(oldTransformation),
@@ -106,7 +111,7 @@ namespace nitro::renderer
             return;
         }
         m_handle = s.meshManager->addMeshInstances(m_instance);
-        std::cout << "Added Mesh Handle " << m_handle.id << std::endl;
+
         s.addMeshInstance(m_handle);
     };
 

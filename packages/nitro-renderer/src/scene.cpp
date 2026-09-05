@@ -1,12 +1,14 @@
 #define TINYGLTF_NO_STB_IMAGE_WRITE
-#include "../vendor/tiny_gltf.h"
+#include "tiny_gltf.h"
 #include <nitro-renderer/scene.h>
 #include <chrono>
 #include <unordered_set>
 #include "nitro-geometry/utils.h"
-
+#include "json.hpp"
 namespace nitro::renderer
 {
+
+    using json = nlohmann::json;
 
     glm::vec2 read_vec2(const tinygltf::Accessor accessor, const tinygltf::Model &model, int i)
     {
@@ -54,33 +56,26 @@ namespace nitro::renderer
         return res;
     }
 
-    rhi::RHITexture *loadGltfTexture(std::shared_ptr<rhi::RHIDevice> device, tinygltf::Model &model, const tinygltf::TextureInfo &textureInfo, rhi::TextureDesc::ImageFormat format)
+    assets::TextureHandle loadGltfTexture(std::shared_ptr<rhi::RHIDevice> device, tinygltf::Model &model, const tinygltf::TextureInfo &textureInfo, rhi::TextureDesc::ImageFormat format, std::shared_ptr<assets::AssetManager> assetManager, std::string &filePath)
     {
         const tinygltf::Texture &texture = model.textures[textureInfo.index];
         const tinygltf::Image &image = model.images[texture.source];
-        rhi::TextureDesc textureDesc;
-        textureDesc.size = {static_cast<uint32_t>(image.width), static_cast<uint32_t>(image.height)};
-        textureDesc.format = format;
-        textureDesc.initialData = image.image.data();
-        textureDesc.usage = rhi::TextureDesc::Usage::ShaderRead;
+        std::filesystem::path baseDir = std::filesystem::path(filePath).parent_path();
 
-        return device->createTexture(textureDesc);
+        return assetManager->import(baseDir / image.uri);
     };
-    rhi::RHITexture *loadGltfTexture(std::shared_ptr<rhi::RHIDevice> device, tinygltf::Model &model, const tinygltf::Texture &texture, rhi::TextureDesc::ImageFormat format)
+    assets::TextureHandle loadGltfTexture(std::shared_ptr<rhi::RHIDevice> device, tinygltf::Model &model, const tinygltf::Texture &texture, rhi::TextureDesc::ImageFormat format, std::shared_ptr<assets::AssetManager> assetManager, std::string &filePath)
     {
 
         const auto &image = model.images[texture.source];
-        rhi::TextureDesc textureDesc;
-        textureDesc.size = {static_cast<uint32_t>(image.width), static_cast<uint32_t>(image.height)};
-        textureDesc.format = format;
-        textureDesc.initialData = image.image.data();
-        textureDesc.usage = rhi::TextureDesc::Usage::ShaderRead;
+        std::filesystem::path baseDir = std::filesystem::path(filePath).parent_path();
 
-        return device->createTexture(textureDesc);
+        return assetManager->import(baseDir / image.uri);
     };
     void Scene::loadGltfScene(std::string filePath, std::shared_ptr<rhi::RHIDevice> device)
     {
         tinygltf::TinyGLTF loader;
+        loader.SetImagesAsIs(true);
         tinygltf::Model model;
         std::string err, warn;
         bool success = loader.LoadASCIIFromFile(&model, &err, &warn, filePath);
@@ -93,43 +88,43 @@ namespace nitro::renderer
             throw std::runtime_error("Failed to load tiny gltf file at " + filePath);
 
         tinygltf::Scene defaultScene = model.scenes[model.defaultScene];
-        std::vector<MaterialHandle> materialIndices;
+        std::vector<GPUMaterialHandle> materialIndices;
 
         auto t0 = std::chrono::high_resolution_clock::now();
         for (auto &gltfMaterial : model.materials)
         {
-            MaterialDesc desc;
+            assets::Material material;
 
             if (gltfMaterial.pbrMetallicRoughness.baseColorTexture.index >= 0)
-                desc.textures.albedo = loadGltfTexture(device, model, gltfMaterial.pbrMetallicRoughness.baseColorTexture, rhi::TextureDesc::ImageFormat::ColorSRGB8);
+                material.textures.albedo = loadGltfTexture(device, model, gltfMaterial.pbrMetallicRoughness.baseColorTexture, rhi::TextureDesc::ImageFormat::ColorSRGB8, m_assetManager, filePath);
 
             if (gltfMaterial.pbrMetallicRoughness.metallicRoughnessTexture.index >= 0)
-                desc.textures.metallicRoughness = loadGltfTexture(device, model, gltfMaterial.pbrMetallicRoughness.metallicRoughnessTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+                material.textures.metallicRoughness = loadGltfTexture(device, model, gltfMaterial.pbrMetallicRoughness.metallicRoughnessTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8, m_assetManager, filePath);
 
             if (gltfMaterial.normalTexture.index >= 0)
             {
                 auto normalTexture = model.textures[gltfMaterial.normalTexture.index];
-                desc.textures.normalMap = loadGltfTexture(device, model, normalTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+                material.textures.normalMap = loadGltfTexture(device, model, normalTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8, m_assetManager, filePath);
             }
 
             if (gltfMaterial.occlusionTexture.index >= 0)
             {
                 auto occlusionTexture = model.textures[gltfMaterial.occlusionTexture.index];
-                desc.textures.occlusionMap = loadGltfTexture(device, model, occlusionTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+                material.textures.occlusionMap = loadGltfTexture(device, model, occlusionTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8, m_assetManager, filePath);
             }
 
             if (gltfMaterial.emissiveTexture.index >= 0)
             {
                 auto emissiveTexture = model.textures[gltfMaterial.emissiveTexture.index];
-                desc.textures.emissive = loadGltfTexture(device, model, emissiveTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+                material.textures.emissive = loadGltfTexture(device, model, emissiveTexture, rhi::TextureDesc::ImageFormat::ColorRGBA8, m_assetManager, filePath);
             }
 
             auto &pbr = gltfMaterial.pbrMetallicRoughness;
-            desc.parameters.albedo = glm::vec4(pbr.baseColorFactor[0], pbr.baseColorFactor[1], pbr.baseColorFactor[2], pbr.baseColorFactor[3]);
-            desc.parameters.metallic = static_cast<float>(pbr.metallicFactor);
-            desc.parameters.roughness = static_cast<float>(pbr.roughnessFactor);
-
-            materialIndices.push_back(materialManager->addMaterial(desc));
+            material.parameters.albedo = glm::vec4(pbr.baseColorFactor[0], pbr.baseColorFactor[1], pbr.baseColorFactor[2], pbr.baseColorFactor[3]);
+            material.parameters.metallic = static_cast<float>(pbr.metallicFactor);
+            material.parameters.roughness = static_cast<float>(pbr.roughnessFactor);
+            auto materialHandle = m_assetManager->registerMaterial(std::make_unique<assets::Material>(std::move(material)), "Material");
+            materialIndices.push_back(materialManager->addMaterial(materialHandle));
         }
         auto t1 = std::chrono::high_resolution_clock::now();
         auto ms = [](auto a, auto b)
@@ -248,7 +243,7 @@ namespace nitro::renderer
 
                     MeshInstance instance;
                     instance.mesh = meshId;
-                    instance.material = (primitive.material >= 0) ? materialIndices[primitive.material] : MaterialHandle{};
+                    instance.material = (primitive.material >= 0) ? materialIndices[primitive.material] : GPUMaterialHandle{};
 
                     instance.transformation = transformation;
 
@@ -271,7 +266,10 @@ namespace nitro::renderer
         auto instance = meshManager->getMeshInstance(handle);
         if (instance == nullptr)
             return;
-        auto mesh = meshManager->getMesh(instance->mesh);
+        auto gpuMesh = meshManager->getGPUMesh(instance->mesh);
+        if (!gpuMesh)
+            return;
+        auto mesh = m_assetManager->getAsset(gpuMesh->meshHandle);
         if (mesh == nullptr)
             return;
 
@@ -339,7 +337,13 @@ namespace nitro::renderer
             return;
         }
 
-        auto mesh = meshManager->getMesh(instance->mesh);
+        auto gpuMesh = meshManager->getGPUMesh(instance->mesh);
+        if (!gpuMesh)
+        {
+            return;
+        }
+        auto mesh = m_assetManager->getAsset(gpuMesh->meshHandle);
+
         if (!mesh)
         {
             return;
@@ -373,13 +377,12 @@ namespace nitro::renderer
 
     void Scene::deactivateMeshInstanceSlot(const MeshInstanceHandle &handle)
     {
-        std::cout << "Removing instance " << handle.id << std::endl;
 
         auto *inst = meshManager->getMeshInstance(handle);
         if (inst)
             m_grid.removeMeshInstance(handle, inst->cells);
 
-        if (m_selectedInstance && m_selectedInstance->id == handle.id)
+        if (m_selectedInstance && m_selectedInstance->index == handle.index)
             m_selectedInstance = std::nullopt;
 
         m_instanceIds.erase(
@@ -388,11 +391,6 @@ namespace nitro::renderer
                 m_instanceIds.end(),
                 handle),
             m_instanceIds.end());
-
-        for (auto &h : m_instanceIds)
-        {
-            std::cout << "Scene instances " << h.id << std::endl;
-        }
 
         meshManager->deactivateMeshInstance(handle);
         markInstanceIdBuffersDirty();
@@ -431,7 +429,7 @@ namespace nitro::renderer
         std::vector<uint32_t> gpuInstanceIds;
         gpuInstanceIds.reserve(m_instanceIds.size());
         for (auto &handle : m_instanceIds)
-            gpuInstanceIds.push_back(handle.id);
+            gpuInstanceIds.push_back(handle.index);
 
         const size_t needed = gpuInstanceIds.size();
 
@@ -458,4 +456,170 @@ namespace nitro::renderer
             resource.instanceIdBuffer->upload(gpuInstanceIds.data(),
                                               sizeof(uint32_t) * needed, 0);
     }
+
+    void Scene::serialize(const std::filesystem::path &filepath)
+    {
+
+        try
+        {
+            std::filesystem::create_directories(filepath.parent_path());
+            json serializer;
+
+            serializer["version"] = 1;
+
+            auto &scene = serializer["scene"];
+            auto &instances = scene["instances"];
+
+            instances = json::array();
+            for (auto &handle : m_instanceIds)
+            {
+                auto meshInstance = meshManager->getMeshInstance(handle);
+                if (!meshInstance)
+                    continue;
+                auto gpuMesh = meshManager->getGPUMesh(meshInstance->mesh);
+                if (!gpuMesh)
+                    continue;
+
+                auto &instance = instances.emplace_back();
+
+                instance["mesh"] = m_assetManager->assetIdToJSON(gpuMesh->meshHandle);
+                auto position = meshInstance->transformation.baseTranslation();
+                auto rotation = meshInstance->transformation.baseRotationEuler();
+                auto scale = meshInstance->transformation.baseScale();
+
+                instance["transform"] = {
+                    {"position", {
+                                     position.x,
+                                     position.y,
+                                     position.z,
+                                 }},
+                    {"rotation", {
+                                     rotation.x,
+                                     rotation.y,
+                                     rotation.z,
+                                 }},
+                    {"scale", {
+                                  scale.x,
+                                  scale.y,
+                                  scale.z,
+                              }},
+                };
+
+                auto material = materialManager->getAssetHandle(meshInstance->material);
+
+                if (!material.has_value())
+                {
+                    instance["material"] = json(nullptr);
+                }
+                else
+                {
+
+                    instance["material"] = m_assetManager->assetIdToJSON(*material);
+                }
+            }
+            m_assetManager->serialize(serializer, filepath);
+            std::ofstream file(filepath);
+
+            if (!file)
+                throw std::runtime_error(
+                    "Failed to create scene file: " + filepath.string());
+
+            file << serializer.dump(4);
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << e.what() << '\n';
+        }
+    };
+
+    void Scene::clear()
+    {
+        m_grid.clear();
+        m_instanceIds.clear();
+        m_selectedInstance = std::nullopt;
+        m_lastPick = PickDebug{};
+        m_assetManager->clear();
+        m_commands.clear();
+        materialManager->clear();
+        meshManager->clear();
+    };
+
+    bool Scene::load(const std::filesystem::path &filepath)
+    {
+
+        try
+        {
+
+            std::ifstream file(filepath);
+
+            if (!file)
+                return false;
+
+            json serializer;
+
+            file >> serializer;
+
+            m_device->waitIdle();
+            clear();
+
+            m_assetManager->load(serializer, filepath);
+
+            const auto &scene = serializer.at("scene");
+            const auto &instances = scene.at("instances");
+
+            for (auto &inst : instances)
+            {
+                auto meshId = AssetId::parse(inst.at("mesh").get<std::string>());
+                if (!meshId)
+                    continue;
+                auto meshAsset = m_assetManager->meshHandle(*meshId);
+                if (!meshAsset)
+                    continue;
+                auto gpuMesh = meshManager->addMeshFromAsset(*meshAsset);
+
+                GPUMaterialHandle gpuMat{};
+
+                if (!inst.at("material").is_null())
+                {
+                    auto matId = AssetId::parse(inst.at("material").get<std::string>());
+                    if (matId)
+                    {
+                        auto matAsset = m_assetManager->materialHandle(*matId);
+                        std::cout << "Mat Asset handle " << matAsset.has_value() << std::endl;
+
+                        if (matAsset)
+                        {
+                            std::cout << "Mat Asset: " << matAsset.value().index << std::endl;
+                            gpuMat = materialManager->addMaterial(*matAsset);
+                        }
+                    }
+                }
+                auto &t = inst.at("transform");
+                geometry::MeshTransformation xf;
+                auto p = t.at("position");
+                xf.setTranslation({p[0], p[1], p[2]});
+                auto r = t.at("rotation");
+                xf.setRotationEuler({r[0], r[1], r[2]});
+                auto s = t.at("scale");
+                xf.setScale({s[0], s[1], s[2]});
+
+                MeshInstance mi;
+                mi.mesh = gpuMesh;
+                mi.material = gpuMat;
+                mi.transformation = xf;
+                addMeshInstance(meshManager->addMeshInstances(mi));
+            }
+
+            meshManager->buildMegaBuffers();
+            materialManager->buildMegaMaterialBuffer();
+            return true;
+        }
+        catch (const std::exception &e)
+        {
+            std::cerr << e.what() << '\n';
+
+            return false;
+        }
+    }
+
 } // namespace nitro::renderer

@@ -3,6 +3,8 @@
 #include <glm/glm.hpp>
 #include "handles.h"
 #include "per-frame.h"
+#include "nitro-assets/manager.h"
+#include "gpu-resource-cache.h"
 namespace nitro::renderer
 {
 
@@ -26,25 +28,15 @@ namespace nitro::renderer
         float _pads[2];
     };
 
-    struct Material
+    struct GPUMaterial
     {
         MaterialTextures textures;
         MaterialParameters parameters;
+        assets::MaterialAssetHandle assetHandle;
     };
-
-    struct MaterialDesc
+    struct GPUMaterialDesc
     {
-        struct Textures
-        {
-            rhi::RHITexture *albedo = nullptr;
-            rhi::RHITexture *normalMap = nullptr;
-            rhi::RHITexture *metallicRoughness = nullptr;
-            rhi::RHITexture *occlusionMap = nullptr;
-            rhi::RHITexture *emissive = nullptr;
-        };
-
-        Textures textures;
-
+        MaterialTextures textures;
         MaterialParameters parameters;
     };
 
@@ -57,28 +49,50 @@ namespace nitro::renderer
     class MaterialManager
     {
     public:
-        MaterialManager(std::shared_ptr<rhi::RHIDevice> device);
+        MaterialManager(std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<assets::AssetManager> assetManager, std::shared_ptr<GPUResourceCache> gpuResourceCache);
         ~MaterialManager();
-        MaterialHandle addMaterial(const MaterialDesc &desc);
+        GPUMaterialHandle addMaterial(const assets::MaterialAssetHandle &handle);
         const std::vector<rhi::RHITexture *> &getTextures() { return m_textures; }
-        const std::vector<Material> &getMaterials() { return m_materials; }
+        const std::vector<GPUMaterial> &getMaterials() { return m_materials; }
         rhi::RHIBuffer *getMaterialBuffer() { return m_resources.current(m_device->getCurrentFrameIndex()).materialBuffer; }
         void buildMegaMaterialBuffer();
-        Material *getMaterial(const MaterialHandle &handle);
+        GPUMaterial *getMaterial(const GPUMaterialHandle &handle);
         void flush();
+        std::optional<assets::MaterialAssetHandle> getAssetHandle(const GPUMaterialHandle &handle);
+        void clear();
+        bool isTexturesStale()
+        {
+            auto frameIdx = m_device->getCurrentFrameIndex();
+            auto bit = 1 << frameIdx;
+            return (m_dirtMaterialTextures & bit) != 0;
+        }
+        void markAsNotStale()
+        {
+            auto frameIdx = m_device->getCurrentFrameIndex();
+            auto bit = 1 << frameIdx;
+            m_dirtMaterialTextures &= ~bit;
+        };
 
     private:
         std::shared_ptr<rhi::RHIDevice> m_device;
         std::vector<rhi::RHITexture *> m_textures;
-        std::vector<Material> m_materials;
+        std::vector<GPUMaterial> m_materials;
         PerFrame<MaterialManagerFrameResource> m_resources;
+        std::shared_ptr<assets::AssetManager> m_assetManager;
+        std::shared_ptr<GPUResourceCache> m_gpuResourceCache;
+        std::unordered_map<assets::MaterialAssetHandle, GPUMaterialHandle, assets::MaterialAssetHandleHash> m_assetHandleToGPUHandle;
         uint32_t
-        addTexture(rhi::RHITexture *texture);
+        addTexture(const assets::TextureHandle &handle, rhi::TextureDesc::ImageFormat format);
         uint8_t m_dirtMaterialBuffer = 0;
+        uint8_t m_dirtMaterialTextures = 0;
         void buildFrameBuffer(uint32_t frameIdx);
         void markMaterialBufferAsDirty()
         {
             m_dirtMaterialBuffer = (1 << g_MAX_FRAMES_IN_FLIGHT) - 1;
+        }
+        void markMaterialTexturesAsDirty()
+        {
+            m_dirtMaterialTextures = (1 << g_MAX_FRAMES_IN_FLIGHT) - 1;
         }
     };
 

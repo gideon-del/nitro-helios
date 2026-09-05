@@ -102,7 +102,8 @@ namespace nitro::renderer
 
     bool GeometryPass::isSceneBuffersStale(Scene &scene, GeometryPassResource &resource)
     {
-        return resource.lastMeshInstanceBuffer != scene.meshManager->instanceBuffer() || resource.lastMaterialBuffer != scene.materialManager->getMaterialBuffer();
+        return resource.lastMeshInstanceBuffer != scene.meshManager->instanceBuffer() || resource.lastMaterialBuffer != scene.materialManager->getMaterialBuffer() || scene.materialManager->isTexturesStale();
+        ;
     }
     GeometryPass::~GeometryPass()
     {

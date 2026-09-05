@@ -12,16 +12,16 @@ namespace nitro
     struct Handle
     {
 
-        HandleValueType id = INVALID_HANDLE_ID;
+        HandleValueType index = INVALID_HANDLE_ID;
         HandleValueType generation = 0;
 
         bool operator==(const Handle<T> &o) const
         {
-            return o.id == id && generation == o.generation;
+            return o.index == index && generation == o.generation;
         }
         bool isValid() const
         {
-            return id != INVALID_HANDLE_ID;
+            return index != INVALID_HANDLE_ID;
         }
     };
 
@@ -30,7 +30,7 @@ namespace nitro
     {
         size_t operator()(const Handle<T> &handle) const
         {
-            uint32_t key = handle.id | handle.generation;
+            uint32_t key = handle.index | handle.generation;
 
             return std::hash<uint32_t>{}(key);
         }

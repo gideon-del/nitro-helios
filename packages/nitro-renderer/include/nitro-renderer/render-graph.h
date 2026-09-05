@@ -4,7 +4,7 @@
 #include <functional>
 #include <nitro-renderer/context.h>
 #include <nitro-renderer/settings.h>
-#include "graph.h"
+#include "nitro-core/graph.h"
 #include <variant>
 #include "per-frame.h"
 

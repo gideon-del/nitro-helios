@@ -33,6 +33,7 @@ namespace nitro::renderer
         bool canRedo() const;
         size_t undoSize() const { return m_done.size(); }
         size_t redoSize() const { return m_undone.size(); }
+        void clear();
     };
 
     class TransformCommand : public IEditorCommand

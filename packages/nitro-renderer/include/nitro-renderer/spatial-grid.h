@@ -33,5 +33,6 @@ namespace nitro::renderer
 
         void debugPrint() const;
         GridCell *getCell(const GridCellCoord &coord);
+        void clear();
     };
 } // namespace nitro::renderer

@@ -14,12 +14,13 @@ namespace nitro::renderer
     {
     };
 
-    using MeshHandle = Handle<MeshTag>;
-    using MaterialHandle = Handle<MaterialTag>;
+    using GPUMeshHandle = Handle<MeshTag>;
+    using GPUMaterialHandle = Handle<MaterialTag>;
+    using GPUMaterialHandleHash = HandleHash<MaterialTag>;
     struct MeshInstance
     {
-        MeshHandle mesh;
-        MaterialHandle material;
+        GPUMeshHandle mesh;
+        GPUMaterialHandle material;
         geometry::MeshTransformation transformation;
         std::vector<GridCellCoord> cells;
         glm::vec3 worldAABBMin;

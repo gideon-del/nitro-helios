@@ -21,6 +21,8 @@ if(APPLE)
         PRIVATE nitro-geometry
         PRIVATE nitro-renderer
         PRIVATE glfw
+         PRIVATE stb_image
+         
     )
     # target_compile_definitions(nitro-rhi-test PRIVATE USE_METAL)
 else()
@@ -29,5 +31,6 @@ else()
         PRIVATE nitro-geometry
          PRIVATE nitro-renderer
         PRIVATE glfw
+         PRIVATE stb_image
     )
 endif()

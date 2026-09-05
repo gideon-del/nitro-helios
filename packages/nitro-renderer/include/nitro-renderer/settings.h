@@ -2,6 +2,7 @@
 #include <glm/glm.hpp>
 #include <nitro-geometry/camera.h>
 #include <nitro-renderer/mesh-renderer.h>
+#include <filesystem>
 namespace nitro::renderer
 {
 
@@ -154,6 +155,9 @@ namespace nitro::renderer
         bool debugDrawPicking = true;
         bool debugDrawTestedBoxes = true;
         ViewportInputState viewportInputState;
+        std::optional<std::filesystem::path> pendingLoad;
+        std::optional<std::filesystem::path> currentScenePath;
+        std::optional<std::filesystem::path> pendingImport;
     };
 
 } // namespace nitro::renderer

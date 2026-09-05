@@ -9,7 +9,7 @@
 #include <stack>
 #include <iostream>
 
-namespace nitro::renderer
+namespace nitro
 {
     using NodeID = uint32_t;
 

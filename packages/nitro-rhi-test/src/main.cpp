@@ -19,6 +19,7 @@ using DeviceType = nitro::rhi::vulkan::VulkanDevice;
 using namespace nitro::rhi;
 using namespace nitro::geometry;
 using namespace nitro::renderer;
+using namespace nitro::assets;
 
 constexpr float EPSILON = 1e-6f;
 
@@ -93,7 +94,7 @@ void handleKeyboard(GLFWwindow *window, OrbitalCamera &camera)
     }
 }
 
-void addRandomSpheres(uint32_t count, float areaSize, Scene &scene, MeshHandle mesh)
+void addRandomSpheres(uint32_t count, float areaSize, Scene &scene, GPUMeshHandle mesh)
 {
     std::mt19937 rng(50); // fixed seed
     std::uniform_real_distribution<float> pos(-areaSize, areaSize);
@@ -147,7 +148,7 @@ void handleMouse(
         state.mousePressed = false;
     }
 }
-void addPBRSphereGrid(Scene &pbrScene, MeshHandle sphereMeshId)
+void addPBRSphereGrid(Scene &pbrScene, GPUMeshHandle sphereMeshId)
 {
 
     int areaWidth = 200;
@@ -164,26 +165,27 @@ void addPBRSphereGrid(Scene &pbrScene, MeshHandle sphereMeshId)
             float roughness = float(col) / 4.0f;
             float xPos = col * spacing;
 
-            MaterialDesc materialDesc;
+            Material material;
 
-            materialDesc.parameters.metallic = metallic;
-            materialDesc.parameters.roughness = roughness;
-            materialDesc.parameters.albedo = glm::vec4(0.4f, 0.9f, 1.0f, 1.0f);
+            material.parameters.metallic = metallic;
+            material.parameters.roughness = roughness;
+            material.parameters.albedo = glm::vec4(0.4f, 0.9f, 1.0f, 1.0f);
 
-            auto material = pbrScene.materialManager->addMaterial(materialDesc);
+            auto materialHandle = pbrScene.assetManager()->registerMaterial(std::make_unique<Material>(std::move(material)), "PBR Material");
+            auto gpuMaterialHandle = pbrScene.materialManager->addMaterial(materialHandle);
             MeshTransformation transformation;
             transformation.translate(glm::vec3(xPos, yPos, 0.0f));
             auto pc = transformation.getTransform();
             MeshInstance instance;
             instance.mesh = sphereMeshId;
-            instance.material = material;
+            instance.material = gpuMaterialHandle;
             instance.transformation = transformation;
             pbrScene.addMeshInstance(pbrScene.meshManager->addMeshInstances(instance));
         }
     }
 };
 
-void addWallTestCluster(Scene &scene, MeshHandle sphereMeshId)
+void addWallTestCluster(Scene &scene, GPUMeshHandle sphereMeshId)
 {
     int rows = 3, cols = 3, spacing = 40;
     for (int row = 0; row < rows; row++)
@@ -215,15 +217,14 @@ int main()
     std::shared_ptr<RHISwapchain> swapchain(
         device->createSwapchain(nullptr));
 
-    std::shared_ptr<MaterialManager> materialManager = std::make_shared<MaterialManager>(device);
-    std::shared_ptr<MeshManager> meshManager = std::make_shared<MeshManager>(device);
-    Scene mainScene{device, meshManager, materialManager};
-    Scene pbrScene{device, meshManager, materialManager};
-    Scene helmetScene{device, meshManager, materialManager};
+    std::shared_ptr<AssetManager> assetManager = std::make_shared<AssetManager>();
+    std::shared_ptr<GPUResourceCache> gpuResourceCache = std::make_shared<GPUResourceCache>(device);
+    std::shared_ptr<MaterialManager> materialManager = std::make_shared<MaterialManager>(device, assetManager, gpuResourceCache);
+    std::shared_ptr<MeshManager> meshManager = std::make_shared<MeshManager>(device, assetManager);
+    Scene mainScene{device, meshManager, materialManager, assetManager};
 
     auto sphereMeshId = meshManager->addMesh(MeshGenerator::createUVSphere(5, 10, 100));
 
-    addPBRSphereGrid(pbrScene, sphereMeshId);
     // Mesh plane = MeshGenerator::createPlane(500, 500);
     // plane.calculateNormals();
     // auto planeMeshId = meshManager->addMesh(plane);
@@ -287,11 +288,10 @@ int main()
     // helmetScene.objects = Scene::loadGltfScene("./assets/buster_drone/scene.gltf", device, materialSystem);
     // ForwardRenderer forwardRenderer = ForwardRenderer(device, swapchain, std::string(SHADER_DIR), isMetal);
     // DeferredRenderer deferredRenderer = DeferredRenderer(device, swapchain, std::string(SHADER_DIR), isMetal, materialSystem);
-    TiledDeferredRenderer tileDeferredRenderer = TiledDeferredRenderer(device, swapchain, std::string(SHADER_DIR), isMetal);
-    helmetScene.loadGltfScene("./assets/Sponza/Sponza.gltf", device);
-    helmetScene.spatialGrid().debugPrint();
 
-    renderContext.scene = &helmetScene;
+    TiledDeferredRenderer tileDeferredRenderer = TiledDeferredRenderer(device, swapchain, std::string(SHADER_DIR), isMetal);
+
+    renderContext.scene = &mainScene;
     renderContext.ssaoSamples.generate();
 
     camera.setFlipY(!isMetal);
@@ -306,9 +306,8 @@ int main()
     bool resizePending = false;
     glm::vec2 currentViewport{0.0f};
     // Build scene buffers
-    helmetScene.buildSceneInstanceId();
+
     mainScene.buildSceneInstanceId();
-    pbrScene.buildSceneInstanceId();
 
     materialManager->buildMegaMaterialBuffer();
     meshManager->buildMegaBuffers();
@@ -317,7 +316,20 @@ int main()
     {
 
         glfwPollEvents();
-
+        if (rendererSettings.pendingLoad)
+        {
+            if (mainScene.load(*rendererSettings.pendingLoad))
+            {
+                rendererSettings.currentScenePath = rendererSettings.pendingLoad.value();
+            }
+            rendererSettings.pendingLoad.reset();
+        }
+        if (rendererSettings.pendingImport)
+        {
+            device->waitIdle();
+            mainScene.loadGltfScene(rendererSettings.pendingImport->string(), device);
+            rendererSettings.pendingImport.reset();
+        }
         auto currentTime = glfwGetTime();
         renderContext.deltaTime = std::max(currentTime - renderContext.lastFrameTime, 0.0001);
         renderContext.lastFrameTime = currentTime;
@@ -378,19 +390,6 @@ int main()
         timer->beginFrame(cmd);
 
         timer->begin(cmd, "frame-time");
-        switch (rendererSettings.selectedScene)
-        {
-        case RendererScenes::PBRGrid:
-            renderContext.scene = &pbrScene;
-            break;
-        case RendererScenes::Main:
-            renderContext.scene = &mainScene;
-            break;
-
-        default:
-            renderContext.scene = &helmetScene;
-            break;
-        }
 
         tileDeferredRenderer.execute(cmd, renderContext, rendererSettings, timer);
         // switch (rendererSettings.renderer)
@@ -414,6 +413,7 @@ int main()
         //     break;
         // }
 
+        materialManager->markAsNotStale();
         auto frameStat = cmd->getFrameStats();
         timer->end(cmd, "frame-time");
         cmd->present();
