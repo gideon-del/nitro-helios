@@ -52,9 +52,13 @@ namespace nitro::renderer
         GPUMaterial gpuMaterial;
         gpuMaterial.assetHandle = handle;
         gpuMaterial.textures.albedo = addTexture(material->textures.albedo, rhi::TextureDesc::ImageFormat::ColorSRGB8);
+
         gpuMaterial.textures.normalMap = addTexture(material->textures.normalMap, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+
         gpuMaterial.textures.metallicRoughness = addTexture(material->textures.metallicRoughness, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+
         gpuMaterial.textures.occlusionMap = addTexture(material->textures.occlusionMap, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+
         gpuMaterial.textures.emissive = addTexture(material->textures.emissive, rhi::TextureDesc::ImageFormat::ColorSRGB8);
 
         gpuMaterial.parameters.albedo = material->parameters.albedo;
@@ -125,7 +129,7 @@ namespace nitro::renderer
             descriptors.push_back(desc);
         }
         resource.materialBuffer->upload(
-            m_materials.data(),
+            descriptors.data(),
             sizeof(GPUMaterialDesc) * descriptors.size());
     };
 

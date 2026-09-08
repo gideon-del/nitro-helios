@@ -48,6 +48,7 @@ add_library(nitro-renderer STATIC
  src/passes/copy-hiz-depth.cpp
  src/spatial-grid.cpp
  src/editor-commands.cpp
+ src/entity-store.cpp
 )
 
 find_package(glm REQUIRED)

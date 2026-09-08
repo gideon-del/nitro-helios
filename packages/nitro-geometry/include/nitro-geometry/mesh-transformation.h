@@ -33,6 +33,13 @@ namespace nitro::geometry
             pc.applyNormalMatrix();
             return pc;
         };
+        PushConstant getTransform() const
+        {
+            PushConstant pc;
+            pc.model = m_translate * m_rotate * m_scale;
+            pc.applyNormalMatrix();
+            return pc;
+        };
         static void computeWorldAABB(const glm::mat4 &model,
                                      const glm::vec3 &localMin, const glm::vec3 &localMax,
                                      glm::vec3 &outMin, glm::vec3 &outMax)

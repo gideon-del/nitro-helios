@@ -55,6 +55,20 @@ namespace nitro::renderer
 
         return res;
     }
+    template <typename T>
+    std::vector<T> read_accessor(const tinygltf::Accessor &accessor, const tinygltf::Model &model)
+    {
+        const tinygltf::BufferView &bufferView = model.bufferViews[accessor.bufferView];
+        const tinygltf::Buffer &buffer = model.buffers[bufferView.buffer];
+
+        const uint8_t *data = buffer.data.data() + bufferView.byteOffset + accessor.byteOffset;
+
+        std::vector<T> result;
+        result.resize(accessor.count);
+
+        memcpy(result.data(), reinterpret_cast<const char *>(data), sizeof(T) * accessor.count);
+        return result;
+    }
 
     assets::TextureHandle loadGltfTexture(std::shared_ptr<rhi::RHIDevice> device, tinygltf::Model &model, const tinygltf::TextureInfo &textureInfo, rhi::TextureDesc::ImageFormat format, std::shared_ptr<assets::AssetManager> assetManager, std::string &filePath)
     {
@@ -239,15 +253,11 @@ namespace nitro::renderer
                     {
                         mesh.name = "Primitive " + std::to_string(primitiveIdx) + " [mat " + std::to_string(primitive.material) + "]";
                     }
+                    auto material = (primitive.material >= 0) ? materialIndices[primitive.material] : GPUMaterialHandle{};
+                    auto name = mesh.name;
                     auto meshId = meshManager->addMesh(mesh);
 
-                    MeshInstance instance;
-                    instance.mesh = meshId;
-                    instance.material = (primitive.material >= 0) ? materialIndices[primitive.material] : GPUMaterialHandle{};
-
-                    instance.transformation = transformation;
-
-                    addMeshInstance(meshManager->addMeshInstances(instance));
+                    addMeshEntity(meshId, material, transformation, name);
 
                     primitiveIdx++;
                 }
@@ -261,30 +271,9 @@ namespace nitro::renderer
             walkNode(nodeIdx, geometry::MeshTransformation{});
     }
 
-    void Scene::addMeshInstance(const MeshInstanceHandle &handle)
+    OptionalEntityHandle Scene::pickEntity(const geometry::Ray &ray)
     {
-        auto instance = meshManager->getMeshInstance(handle);
-        if (instance == nullptr)
-            return;
-        auto gpuMesh = meshManager->getGPUMesh(instance->mesh);
-        if (!gpuMesh)
-            return;
-        auto mesh = m_assetManager->getAsset(gpuMesh->meshHandle);
-        if (mesh == nullptr)
-            return;
-
-        instance->cells = m_grid.worldToCellRange(instance->worldAABBMin, instance->worldAABBMax);
-
-        m_grid.addMeshInstance(handle, instance->cells);
-
-        m_instanceIds.push_back(handle);
-
-        markInstanceIdBuffersDirty();
-    }
-
-    OptionalMeshInstanceHandle Scene::pickMeshInstance(const geometry::Ray &ray)
-    {
-        MeshInstanceHandle bestInstance{};
+        EntityHandle bestInstance{};
         float bestT = std::numeric_limits<float>::max();
 
         m_lastPick.ray = ray;
@@ -295,42 +284,47 @@ namespace nitro::renderer
         auto endPoint = ray.origin + (ray.tMax * ray.dir);
         auto cellCoords = m_grid.worldToCellRange(startPoint, endPoint);
 
-        auto instances = m_grid.getMeshInstances(cellCoords);
+        auto entities = m_grid.getEntities(cellCoords);
 
-        for (auto &instanceHandle : instances)
+        for (auto &entityHandle : entities)
         {
 
-            auto instance = meshManager->getMeshInstance(instanceHandle);
+            auto entity = m_entityStore->get(entityHandle);
 
-            if (!instance)
+            if (!entity)
                 continue;
 
-            m_lastPick.tested.push_back(instanceHandle);
+            m_lastPick.tested.push_back(entityHandle);
             float tHit = 0.0f;
 
-            if (geometry::rayAABB(ray, instance->worldAABBMin, instance->worldAABBMax, tHit) && bestT > tHit)
+            if (geometry::rayAABB(ray, entity->worldAABBMin, entity->worldAABBMax, tHit) && bestT > tHit)
             {
                 bestT = tHit;
-                bestInstance = instanceHandle;
-                m_lastPick.hit.push_back(instanceHandle);
+                bestInstance = entityHandle;
+                m_lastPick.hit.push_back(entityHandle);
             }
         }
 
         m_lastPick.best = bestInstance;
-        m_selectedInstance = bestInstance;
+        m_selectedEntity = bestInstance;
         if (!bestInstance.isValid())
         {
             return std::nullopt;
         }
 
-        OptionalMeshInstanceHandle result = bestInstance;
+        OptionalEntityHandle result = bestInstance;
 
         return result;
     }
 
-    void Scene::updateMeshInstance(const MeshInstanceHandle &handle)
+    void Scene::updateEntity(const EntityHandle &handle)
     {
-        auto instance = meshManager->getMeshInstance(handle);
+
+        auto entity = m_entityStore->get(handle);
+
+        if (!entity || !entity->meshInstance)
+            return;
+        auto instance = meshManager->getMeshInstance(*entity->meshInstance);
 
         if (!instance)
         {
@@ -349,20 +343,20 @@ namespace nitro::renderer
             return;
         }
 
-        m_grid.removeMeshInstance(handle, instance->cells);
+        m_grid.removeEntity(handle, entity->cells);
 
         geometry::MeshTransformation::computeWorldAABB(
-            instance->transformation.getTransform().model,
+            entity->transformation.getTransform().model,
             mesh->aabbMin,
             mesh->aabbMax,
-            instance->worldAABBMin,
-            instance->worldAABBMax);
+            entity->worldAABBMin,
+            entity->worldAABBMax);
 
-        instance->cells = m_grid.worldToCellRange(instance->worldAABBMin, instance->worldAABBMax);
+        entity->cells = m_grid.worldToCellRange(entity->worldAABBMin, entity->worldAABBMax);
 
-        m_grid.addMeshInstance(handle, instance->cells);
+        m_grid.addEntity(handle, entity->cells);
 
-        meshManager->markMeshInstanceAsDirty(handle);
+        meshManager->markMeshInstanceAsDirty(*entity->meshInstance);
     }
 
     void Scene::pushCommand(std::unique_ptr<IEditorCommand> cmd)
@@ -370,42 +364,44 @@ namespace nitro::renderer
         m_commands.push(std::move(cmd));
     }
 
-    void Scene::reclaimMeshInstanceSlot(const MeshInstanceHandle &handle)
+    void Scene::reclaimEntitySlot(const EntityHandle &handle)
     {
-        meshManager->reclaimInstance(handle);
+
+        m_entityStore->reclaimSlot(handle);
     }
 
-    void Scene::deactivateMeshInstanceSlot(const MeshInstanceHandle &handle)
+    void Scene::deactivateEntitySlot(const EntityHandle &handle)
     {
 
-        auto *inst = meshManager->getMeshInstance(handle);
-        if (inst)
-            m_grid.removeMeshInstance(handle, inst->cells);
+        auto entity = m_entityStore->get(handle);
+        if (entity)
+        {
 
-        if (m_selectedInstance && m_selectedInstance->index == handle.index)
-            m_selectedInstance = std::nullopt;
+            m_grid.removeEntity(handle, entity->cells);
+        }
 
-        m_instanceIds.erase(
-            std::remove(
-                m_instanceIds.begin(),
-                m_instanceIds.end(),
-                handle),
-            m_instanceIds.end());
+        if (m_selectedEntity && m_selectedEntity == handle)
+            m_selectedEntity = std::nullopt;
 
-        meshManager->deactivateMeshInstance(handle);
+        decreaseMeshInstanceCount();
+
+        m_entityStore->deactivateSlot(handle);
         markInstanceIdBuffersDirty();
     };
 
-    void Scene::reactivateMeshInstanceSlot(MeshInstanceHandle &handle, MeshInstance instance)
+    void Scene::reactivateEntitySlot(EntityHandle &handle, Entity entity)
     {
-        auto activated = meshManager->reactivateMeshInstance(handle, instance);
+        auto activated = m_entityStore->reactivateSlot(handle, entity);
 
         assert(activated);
 
-        m_instanceIds.push_back(handle);
-        auto inst = meshManager->getMeshInstance(handle);
-        if (inst)
-            m_grid.addMeshInstance(handle, inst->cells);
+        increaseMeshInstanceCount();
+        auto ent = m_entityStore->get(handle);
+        if (ent)
+        {
+
+            m_grid.addEntity(handle, ent->cells);
+        }
         markInstanceIdBuffersDirty();
     }
 
@@ -427,9 +423,17 @@ namespace nitro::renderer
         auto &resource = m_sceneInstanceIdBuffers.current(frameIdx);
 
         std::vector<uint32_t> gpuInstanceIds;
-        gpuInstanceIds.reserve(m_instanceIds.size());
-        for (auto &handle : m_instanceIds)
-            gpuInstanceIds.push_back(handle.index);
+        gpuInstanceIds.reserve(m_meshInstanceCount);
+
+        m_entityStore->forEach([&](const Entity &entity)
+                               {
+        
+            if(!entity.meshInstance)
+                return;
+
+             gpuInstanceIds.push_back(entity.meshInstance.value().index); }
+
+        );
 
         const size_t needed = gpuInstanceIds.size();
 
@@ -465,59 +469,69 @@ namespace nitro::renderer
             std::filesystem::create_directories(filepath.parent_path());
             json serializer;
 
-            serializer["version"] = 1;
+            serializer["version"] = s_VERSION;
 
             auto &scene = serializer["scene"];
-            auto &instances = scene["instances"];
+            auto &entities = scene["entities"];
 
-            instances = json::array();
-            for (auto &handle : m_instanceIds)
-            {
-                auto meshInstance = meshManager->getMeshInstance(handle);
-                if (!meshInstance)
-                    continue;
-                auto gpuMesh = meshManager->getGPUMesh(meshInstance->mesh);
-                if (!gpuMesh)
-                    continue;
-
-                auto &instance = instances.emplace_back();
-
-                instance["mesh"] = m_assetManager->assetIdToJSON(gpuMesh->meshHandle);
-                auto position = meshInstance->transformation.baseTranslation();
-                auto rotation = meshInstance->transformation.baseRotationEuler();
-                auto scale = meshInstance->transformation.baseScale();
-
-                instance["transform"] = {
-                    {"position", {
-                                     position.x,
-                                     position.y,
-                                     position.z,
-                                 }},
-                    {"rotation", {
-                                     rotation.x,
-                                     rotation.y,
-                                     rotation.z,
-                                 }},
-                    {"scale", {
-                                  scale.x,
-                                  scale.y,
-                                  scale.z,
-                              }},
-                };
-
-                auto material = materialManager->getAssetHandle(meshInstance->material);
-
-                if (!material.has_value())
+            entities = json::array();
+            m_entityStore->forEach(
+                [&](const Entity &entity)
                 {
-                    instance["material"] = json(nullptr);
-                }
-                else
-                {
+                    auto &entityJSON = entities.emplace_back();
+                    entityJSON["id"] = json(entity.id.toString());
+                    entityJSON["name"] = json(entity.name);
+                    auto position = entity.transformation.baseTranslation();
+                    auto rotation = entity.transformation.baseRotationEuler();
+                    auto scale = entity.transformation.baseScale();
 
-                    instance["material"] = m_assetManager->assetIdToJSON(*material);
-                }
-            }
+                    entityJSON["transform"] = {
+                        {"position", {
+                                         position.x,
+                                         position.y,
+                                         position.z,
+                                     }},
+                        {"rotation", {
+                                         rotation.x,
+                                         rotation.y,
+                                         rotation.z,
+                                     }},
+                        {"scale", {
+                                      scale.x,
+                                      scale.y,
+                                      scale.z,
+                                  }},
+                    };
+
+                    if (entity.meshInstance)
+                    {
+                        auto meshInstance = meshManager->getMeshInstance(*entity.meshInstance);
+                        if (meshInstance)
+                        {
+                            auto &instanceJSON = entityJSON["meshInstance"];
+                            auto gpuMesh = meshManager->getGPUMesh(meshInstance->mesh);
+                            if (gpuMesh)
+                            {
+                                instanceJSON["mesh"] = m_assetManager->assetIdToJSON(gpuMesh->meshHandle);
+
+                                auto material = materialManager->getAssetHandle(meshInstance->material);
+
+                                if (!material.has_value())
+                                {
+                                    instanceJSON["material"] = json(nullptr);
+                                }
+                                else
+                                {
+
+                                    instanceJSON["material"] = m_assetManager->assetIdToJSON(*material);
+                                }
+                            }
+                        }
+                    }
+                });
+
             m_assetManager->serialize(serializer, filepath);
+
             std::ofstream file(filepath);
 
             if (!file)
@@ -535,8 +549,8 @@ namespace nitro::renderer
     void Scene::clear()
     {
         m_grid.clear();
-        m_instanceIds.clear();
-        m_selectedInstance = std::nullopt;
+        m_entityStore->clear();
+        m_selectedEntity = std::nullopt;
         m_lastPick = PickDebug{};
         m_assetManager->clear();
         m_commands.clear();
@@ -559,42 +573,29 @@ namespace nitro::renderer
 
             file >> serializer;
 
+            const auto version = serializer.at("version").get<uint32_t>();
+
+            if (version != s_VERSION)
+                throw std::runtime_error("Old scene detected. Rebuild it with the new one");
             m_device->waitIdle();
             clear();
 
             m_assetManager->load(serializer, filepath);
 
             const auto &scene = serializer.at("scene");
-            const auto &instances = scene.at("instances");
 
-            for (auto &inst : instances)
+            const auto &entities = scene.at("entities");
+
+            for (auto &entityJSON : entities)
             {
-                auto meshId = AssetId::parse(inst.at("mesh").get<std::string>());
-                if (!meshId)
-                    continue;
-                auto meshAsset = m_assetManager->meshHandle(*meshId);
-                if (!meshAsset)
-                    continue;
-                auto gpuMesh = meshManager->addMeshFromAsset(*meshAsset);
-
-                GPUMaterialHandle gpuMat{};
-
-                if (!inst.at("material").is_null())
+                auto entityId = EntityID::parse(entityJSON.at("id").get<std::string>());
+                if (!entityId)
                 {
-                    auto matId = AssetId::parse(inst.at("material").get<std::string>());
-                    if (matId)
-                    {
-                        auto matAsset = m_assetManager->materialHandle(*matId);
-                        std::cout << "Mat Asset handle " << matAsset.has_value() << std::endl;
-
-                        if (matAsset)
-                        {
-                            std::cout << "Mat Asset: " << matAsset.value().index << std::endl;
-                            gpuMat = materialManager->addMaterial(*matAsset);
-                        }
-                    }
+                    continue;
                 }
-                auto &t = inst.at("transform");
+
+                auto name = entityJSON.at("name").get<std::string>();
+                auto &t = entityJSON.at("transform");
                 geometry::MeshTransformation xf;
                 auto p = t.at("position");
                 xf.setTranslation({p[0], p[1], p[2]});
@@ -603,11 +604,35 @@ namespace nitro::renderer
                 auto s = t.at("scale");
                 xf.setScale({s[0], s[1], s[2]});
 
-                MeshInstance mi;
-                mi.mesh = gpuMesh;
-                mi.material = gpuMat;
-                mi.transformation = xf;
-                addMeshInstance(meshManager->addMeshInstances(mi));
+                const auto &instance = entityJSON["meshInstance"];
+
+                if (!instance.is_null())
+                {
+                    auto meshId = AssetId::parse(instance.at("mesh").get<std::string>());
+                    if (!meshId)
+                        continue;
+                    auto meshAsset = m_assetManager->meshHandle(*meshId);
+                    if (!meshAsset)
+                        continue;
+                    auto gpuMesh = meshManager->addMeshFromAsset(*meshAsset);
+
+                    GPUMaterialHandle gpuMat{};
+                    if (!instance.at("material").is_null())
+                    {
+                        auto matId = AssetId::parse(instance.at("material").get<std::string>());
+                        if (matId)
+                        {
+                            auto matAsset = m_assetManager->materialHandle(*matId);
+
+                            if (matAsset)
+                            {
+                                gpuMat = materialManager->addMaterial(*matAsset);
+                            }
+                        }
+                    }
+
+                                       addMeshEntity(*entityId, gpuMesh, gpuMat, xf, name);
+                };
             }
 
             meshManager->buildMegaBuffers();
@@ -621,5 +646,51 @@ namespace nitro::renderer
             return false;
         }
     }
+
+    EntityHandle Scene::addMeshEntity(GPUMeshHandle mesh, GPUMaterialHandle material, const geometry::MeshTransformation &xf, std::string name)
+    {
+
+        auto id = EntityID::generate();
+        return addMeshEntity(id, mesh, material, xf, name);
+    };
+    EntityHandle Scene::addMeshEntity(EntityID &id, GPUMeshHandle mesh, GPUMaterialHandle material, const geometry::MeshTransformation &xf, std::string name)
+    {
+        auto gpuMesh = meshManager->getGPUMesh(mesh);
+        if (!gpuMesh)
+        {
+            return {};
+        }
+
+        auto cpuMesh = m_assetManager->getAsset(gpuMesh->meshHandle);
+        if (!cpuMesh)
+        {
+            return {};
+        }
+
+        auto entityHandle = m_entityStore->create(name);
+
+        auto entity = m_entityStore->get(entityHandle);
+        entity->transformation = xf;
+        geometry::MeshTransformation::computeWorldAABB(
+            xf.getTransform().model,
+            cpuMesh->aabbMin,
+            cpuMesh->aabbMax,
+            entity->worldAABBMin,
+            entity->worldAABBMax);
+        MeshInstance instance;
+        instance.mesh = mesh;
+        instance.material = material;
+        instance.entity = entityHandle;
+
+        auto instanceHandle = meshManager->addMeshInstances(instance);
+
+        entity->meshInstance = instanceHandle;
+
+        entity->cells = m_grid.worldToCellRange(entity->worldAABBMin, entity->worldAABBMax);
+        m_grid.addEntity(entityHandle, entity->cells);
+        markInstanceIdBuffersDirty();
+        increaseMeshInstanceCount();
+        return entityHandle;
+    };
 
 } // namespace nitro::renderer

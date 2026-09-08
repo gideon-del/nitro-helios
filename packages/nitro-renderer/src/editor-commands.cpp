@@ -55,7 +55,7 @@ namespace nitro::renderer
         m_undone.clear();
     };
 
-    TransformCommand::TransformCommand(geometry::MeshTransformation oldTransformation, geometry::MeshTransformation newTransformation, MeshInstanceHandle handle)
+    TransformCommand::TransformCommand(geometry::MeshTransformation oldTransformation, geometry::MeshTransformation newTransformation, EntityHandle handle)
         : m_oldTransformation(oldTransformation),
           m_newTransformation(newTransformation),
           m_handle(handle)
@@ -64,60 +64,60 @@ namespace nitro::renderer
 
     void TransformCommand::undo(Scene &s)
     {
-        auto instance = s.meshManager->getMeshInstance(m_handle);
-        if (!instance)
+        auto entity = s.entityStore()->get(m_handle);
+        if (!entity)
             return;
-        instance->transformation = m_oldTransformation;
+        entity->transformation = m_oldTransformation;
 
-        s.updateMeshInstance(m_handle);
+        s.updateEntity(m_handle);
     }
     void TransformCommand::execute(Scene &s)
     {
-        auto instance = s.meshManager->getMeshInstance(m_handle);
-        if (!instance)
+        auto entity = s.entityStore()->get(m_handle);
+        if (!entity)
             return;
-        instance->transformation = m_newTransformation;
+        entity->transformation = m_newTransformation;
 
-        s.updateMeshInstance(m_handle);
+        s.updateEntity(m_handle);
     }
 
     void DeleteMeshInstanceCommand::undo(Scene &s)
     {
 
-        s.reactivateMeshInstanceSlot(m_handle, m_instance);
+        s.reactivateEntitySlot(m_handle, m_entity);
     };
     void DeleteMeshInstanceCommand::execute(Scene &s)
     {
 
-        s.deactivateMeshInstanceSlot(m_handle);
+        s.deactivateEntitySlot(m_handle);
     };
 
     void DeleteMeshInstanceCommand::OnDiscard(Scene &s)
     {
 
-        s.reclaimMeshInstanceSlot(m_handle);
+        s.reclaimEntitySlot(m_handle);
     };
 
     void CreateMeshInstanceCommand::undo(Scene &s)
     {
-
-        s.deactivateMeshInstanceSlot(m_handle);
+        s.deactivateEntitySlot(m_handle);
     };
     void CreateMeshInstanceCommand::execute(Scene &s)
     {
-        if (m_handle.isValid())
+        if (m_handle.isValid() && m_entity)
         {
-            s.reactivateMeshInstanceSlot(m_handle, m_instance);
+            s.reactivateEntitySlot(m_handle, *m_entity);
             return;
         }
-        m_handle = s.meshManager->addMeshInstances(m_instance);
+        m_handle = s.addMeshEntity(m_meshHandle, m_materialHandle, m_transformation, "Entity");
+        auto entity = s.entityStore()->get(m_handle);
 
-        s.addMeshInstance(m_handle);
+        m_entity = *entity;
     };
 
     void CreateMeshInstanceCommand::OnDiscard(Scene &s)
     {
-        s.reclaimMeshInstanceSlot(m_handle);
+        s.reclaimEntitySlot(m_handle);
     };
 
 } // namespace nitro::renderer

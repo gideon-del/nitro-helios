@@ -9,7 +9,7 @@ namespace nitro::renderer
 
     struct GridCell
     {
-        std::vector<MeshInstanceHandle> meshInstances;
+        std::vector<EntityHandle> entities;
     };
 
     class SpatialGrid
@@ -25,11 +25,11 @@ namespace nitro::renderer
         const GridCellCoord worldToCell(glm::vec3 pos);
         const std::vector<GridCellCoord> worldToCellRange(glm::vec3 min, glm::vec3 max);
 
-        const std::vector<MeshInstanceHandle> getMeshInstances(const std::vector<GridCellCoord> &cellCoords);
+        const std::vector<EntityHandle> getEntities(const std::vector<GridCellCoord> &cellCoords);
 
         const std::vector<GridCellCoord> cellsInRadius(const GridCellCoord &center, int radius);
-        void addMeshInstance(MeshInstanceHandle handle, const std::vector<GridCellCoord> &cellCoords);
-        void removeMeshInstance(MeshInstanceHandle handle, const std::vector<GridCellCoord> &cellCoords);
+        void addEntity(EntityHandle handle, const std::vector<GridCellCoord> &cellCoords);
+        void removeEntity(EntityHandle handle, const std::vector<GridCellCoord> &cellCoords);
 
         void debugPrint() const;
         GridCell *getCell(const GridCellCoord &coord);

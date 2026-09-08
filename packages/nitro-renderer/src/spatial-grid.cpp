@@ -51,16 +51,16 @@ namespace nitro::renderer
         return cells;
     }
 
-    void SpatialGrid::addMeshInstance(MeshInstanceHandle handle, const std::vector<GridCellCoord> &cellCoords)
+    void SpatialGrid::addEntity(EntityHandle handle, const std::vector<GridCellCoord> &cellCoords)
     {
 
         for (auto &coord : cellCoords)
         {
-            m_cells[coord].meshInstances.push_back(handle);
+            m_cells[coord].entities.push_back(handle);
         }
     }
 
-    void SpatialGrid::removeMeshInstance(MeshInstanceHandle handle, const std::vector<GridCellCoord> &cellCoords)
+    void SpatialGrid::removeEntity(EntityHandle handle, const std::vector<GridCellCoord> &cellCoords)
     {
         for (auto &coord : cellCoords)
         {
@@ -71,14 +71,14 @@ namespace nitro::renderer
 
             auto &cell = it->second;
 
-            cell.meshInstances.erase(
+            cell.entities.erase(
                 std::remove(
-                    cell.meshInstances.begin(),
-                    cell.meshInstances.end(),
+                    cell.entities.begin(),
+                    cell.entities.end(),
                     handle),
-                cell.meshInstances.end());
+                cell.entities.end());
 
-            if (cell.meshInstances.empty())
+            if (cell.entities.empty())
                 m_cells.erase(it);
         }
     };
@@ -101,31 +101,31 @@ namespace nitro::renderer
         {
             std::cout
                 << "Cell (" << coord.x << ", " << coord.z << ")"
-                << " -> " << cell.meshInstances.size()
+                << " -> " << cell.entities.size()
                 << " instances\n";
         }
     }
 
-    const std::vector<MeshInstanceHandle> SpatialGrid::getMeshInstances(const std::vector<GridCellCoord> &cellCoords)
+    const std::vector<EntityHandle> SpatialGrid::getEntities(const std::vector<GridCellCoord> &cellCoords)
     {
 
-        std::unordered_set<MeshInstanceHandle, MeshInstanceHandleHash> handles;
+        std::unordered_set<EntityHandle, EntityHandleHash> handles;
         for (auto &coord : cellCoords)
         {
             auto cell = getCell(coord);
             if (!cell)
                 continue;
 
-            for (auto &instanceHandles : cell->meshInstances)
+            for (auto &entityHandle : cell->entities)
             {
-                if (!handles.count(instanceHandles))
+                if (!handles.count(entityHandle))
                 {
-                    handles.insert(instanceHandles);
+                    handles.insert(entityHandle);
                 }
             }
         }
 
-        std::vector<MeshInstanceHandle> instanceHandles(handles.begin(), handles.end());
+        std::vector<EntityHandle> instanceHandles(handles.begin(), handles.end());
         return instanceHandles;
     }
     void SpatialGrid::clear()

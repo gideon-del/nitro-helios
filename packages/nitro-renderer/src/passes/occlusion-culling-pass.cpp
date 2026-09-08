@@ -123,7 +123,7 @@ namespace nitro::renderer
 
         cmd->bufferBarrier(bufferBarrier);
 
-        auto instanceCount = static_cast<uint32_t>(scene.instanceIds().size());
+        auto instanceCount = scene.meshCount();
         uint32_t groupSizeX = (instanceCount + 63) / 64;
         cmd->bindComputePipeline(m_computePipeline);
         cmd->bindComputeDescriptorSet(resource.descriptorSet, 0);

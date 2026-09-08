@@ -8,6 +8,7 @@
 #include "handles.h"
 #include "nitro-core/types/pool.h"
 #include "nitro-assets/manager.h"
+#include "entity-store.h"
 
 namespace nitro::renderer
 {
@@ -79,7 +80,7 @@ namespace nitro::renderer
     class MeshManager
     {
     public:
-        MeshManager(std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<assets::AssetManager> assetManager);
+        MeshManager(std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<assets::AssetManager> assetManager, std::shared_ptr<EntityStore> entityStore);
         ~MeshManager();
         GPUMeshHandle addMesh(geometry::Mesh mesh);
         GPUMeshHandle addMeshFromAsset(MeshAssetHandle assetHandle);
@@ -109,6 +110,7 @@ namespace nitro::renderer
         ResourcePool<MeshInstance> m_instances;
         PerFrame<MeshManagerResource> m_resources;
         std::shared_ptr<assets::AssetManager> m_assetManager;
+        std::shared_ptr<EntityStore> m_entityStore;
         uint8_t m_dirtyInstanceBufferMask = 0;
         uint8_t m_dirtyDescriptorBufferMask = 0;
 

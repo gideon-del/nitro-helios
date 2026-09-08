@@ -407,30 +407,25 @@ namespace nitro::renderer
             material.parameters.roughness = 0.15;
 
             auto materialHandle = ctx.scene->materialManager->addMaterial(ctx.scene->assetManager()->registerMaterial(std::make_unique<Material>(material), "Runtime Material"));
-            MeshInstance instance;
-            instance.mesh = meshHandle;
-            instance.material = materialHandle;
 
             ctx.scene->pushCommand(
-                std::make_unique<CreateMeshInstanceCommand>(instance));
+                std::make_unique<CreateMeshInstanceCommand>(meshHandle, materialHandle, geometry::MeshTransformation{}));
         }
-        auto &selectedInstance = ctx.scene->selectedInstance();
+        auto &selectedEntity = ctx.scene->selectedEntity();
 
-        if (!selectedInstance.has_value() || !selectedInstance.value().isValid())
+        if (!selectedEntity.has_value() || !selectedEntity.value().isValid())
         {
             ImGui::Text("Select an Object to Inspect");
             ImGui::End();
             return;
         }
 
-        auto instance = ctx.scene->meshManager->getMeshInstance(selectedInstance.value());
-        auto gpuMesh = ctx.scene->meshManager->getGPUMesh(instance->mesh);
-        auto mesh = ctx.scene->assetManager()->getAsset(gpuMesh->meshHandle);
-        if (mesh)
-        {
-            ImGui::Text("Mesh: %s", mesh->name.c_str());
-        }
-        ImGui::Text("Instance ID %s", std::to_string(selectedInstance.value().index).c_str());
+        auto entity = ctx.scene->entityStore()->get(selectedEntity.value());
+
+        // auto gpuMesh = ctx.scene->meshManager->getGPUMesh(instance->mesh);
+        // auto mesh = ctx.scene->assetManager()->getAsset(gpuMesh->meshHandle);
+        ImGui::Text("Entity: %s", entity->name.c_str());
+        ImGui::Text("Entity ID %s", entity->id.toString().c_str());
 
         ImGui::Separator();
 
@@ -449,13 +444,13 @@ namespace nitro::renderer
         {
             gizmoOp = ImGuizmo::OPERATION::ROTATE;
         }
-        auto translation = instance->transformation.baseTranslation();
+        auto translation = entity->transformation.baseTranslation();
 
-        auto before = instance->transformation;
+        auto before = entity->transformation;
         if (ImGui::DragFloat3("Translation", &translation.x, 0.4f))
         {
-            instance->transformation.setTranslation(translation);
-            ctx.scene->updateMeshInstance(selectedInstance.value());
+            entity->transformation.setTranslation(translation);
+            ctx.scene->updateEntity(*selectedEntity);
         }
 
         if (ImGui::IsItemActivated())
@@ -463,14 +458,14 @@ namespace nitro::renderer
 
         if (ImGui::IsItemDeactivatedAfterEdit())
             ctx.scene->pushCommand(std::make_unique<TransformCommand>(
-                m_editBefore, instance->transformation, *selectedInstance));
+                m_editBefore, entity->transformation, *selectedEntity));
 
-        auto scale = instance->transformation.baseScale();
+        auto scale = entity->transformation.baseScale();
 
         if (ImGui::DragFloat3("Scale", &scale.x, 0.4f))
         {
-            instance->transformation.setScale(scale);
-            ctx.scene->updateMeshInstance(selectedInstance.value());
+            entity->transformation.setScale(scale);
+            ctx.scene->updateEntity(*selectedEntity);
         }
 
         if (ImGui::IsItemActivated())
@@ -478,14 +473,14 @@ namespace nitro::renderer
 
         if (ImGui::IsItemDeactivatedAfterEdit())
             ctx.scene->pushCommand(std::make_unique<TransformCommand>(
-                m_editBefore, instance->transformation, *selectedInstance));
+                m_editBefore, entity->transformation, *selectedEntity));
 
-        auto rotation = instance->transformation.baseRotationEuler();
+        auto rotation = entity->transformation.baseRotationEuler();
 
         if (ImGui::DragFloat3("Rotation", &rotation.x, 0.4f))
         {
-            instance->transformation.setRotationEuler(rotation);
-            ctx.scene->updateMeshInstance(selectedInstance.value());
+            entity->transformation.setRotationEuler(rotation);
+            ctx.scene->updateEntity(*selectedEntity);
         }
 
         if (ImGui::IsItemActivated())
@@ -493,7 +488,7 @@ namespace nitro::renderer
 
         if (ImGui::IsItemDeactivatedAfterEdit())
             ctx.scene->pushCommand(std::make_unique<TransformCommand>(
-                m_editBefore, instance->transformation, *selectedInstance));
+                m_editBefore, entity->transformation, *selectedEntity));
 
         ImGui::Text("Transform Mode");
 
@@ -509,8 +504,8 @@ namespace nitro::renderer
         ImGui::Separator();
         ImGui::Text("World Bounds");
 
-        const auto &mn = instance->worldAABBMin;
-        const auto &mx = instance->worldAABBMax;
+        const auto &mn = entity->worldAABBMin;
+        const auto &mx = entity->worldAABBMax;
         glm::vec3 size = mx - mn;
         glm::vec3 center = (mn + mx) * 0.5f;
 
@@ -520,11 +515,11 @@ namespace nitro::renderer
         ImGui::Text("Size   %.2f, %.2f, %.2f", size.x, size.y, size.z);
 
         ImGui::Separator();
-        ImGui::Text("Spatial Cells (%zu)", instance->cells.size());
+        ImGui::Text("Spatial Cells (%zu)", entity->cells.size());
 
         if (ImGui::BeginChild("cells", ImVec2(0, 80), true))
         {
-            for (const auto &c : instance->cells)
+            for (const auto &c : entity->cells)
                 ImGui::Text("(%d, %d)", c.x, c.z);
         }
         ImGui::EndChild();
@@ -532,22 +527,22 @@ namespace nitro::renderer
         ImGui::Separator();
         ImGui::Text("Material");
 
-        auto *mat = ctx.scene->materialManager->getMaterial(instance->material);
-        if (mat)
-        {
-            ImGui::Text("Albedo    %.2f, %.2f, %.2f, %.2f",
-                        mat->parameters.albedo.r, mat->parameters.albedo.g,
-                        mat->parameters.albedo.b, mat->parameters.albedo.a);
-            ImGui::Text("Metallic  %.3f", mat->parameters.metallic);
-            ImGui::Text("Roughness %.3f", mat->parameters.roughness);
+        // auto *mat = ctx.scene->materialManager->getMaterial(entity->material);
+        // if (mat)
+        // {
+        //     ImGui::Text("Albedo    %.2f, %.2f, %.2f, %.2f",
+        //                 mat->parameters.albedo.r, mat->parameters.albedo.g,
+        //                 mat->parameters.albedo.b, mat->parameters.albedo.a);
+        //     ImGui::Text("Metallic  %.3f", mat->parameters.metallic);
+        //     ImGui::Text("Roughness %.3f", mat->parameters.roughness);
 
-            ImGui::Text("Textures");
-            ImGui::BulletText("Albedo:    %s", mat->textures.albedo ? "yes" : "—");
-            ImGui::BulletText("Normal:    %s", mat->textures.normalMap ? "yes" : "—");
-            ImGui::BulletText("MetalRough:%s", mat->textures.metallicRoughness ? "yes" : "—");
-            ImGui::BulletText("Occlusion: %s", mat->textures.occlusionMap ? "yes" : "—");
-            ImGui::BulletText("Emissive:  %s", mat->textures.emissive ? "yes" : "—");
-        }
+        //     ImGui::Text("Textures");
+        //     ImGui::BulletText("Albedo:    %s", mat->textures.albedo ? "yes" : "—");
+        //     ImGui::BulletText("Normal:    %s", mat->textures.normalMap ? "yes" : "—");
+        //     ImGui::BulletText("MetalRough:%s", mat->textures.metallicRoughness ? "yes" : "—");
+        //     ImGui::BulletText("Occlusion: %s", mat->textures.occlusionMap ? "yes" : "—");
+        //     ImGui::BulletText("Emissive:  %s", mat->textures.emissive ? "yes" : "—");
+        // }
 
         if (ImGui::Button("Focus"))
         {
@@ -556,16 +551,15 @@ namespace nitro::renderer
 
         if (ImGui::Button("Delete"))
         {
-            auto *inst = ctx.scene->meshManager->getMeshInstance(*selectedInstance);
-            if (inst)
-                ctx.scene->pushCommand(
-                    std::make_unique<DeleteMeshInstanceCommand>(*selectedInstance, *inst));
+
+            ctx.scene->pushCommand(
+                std::make_unique<DeleteMeshInstanceCommand>(*selectedEntity, *entity));
         }
         if (ImGui::Button("Reset Transform"))
         {
             geometry::MeshTransformation identity;
             ctx.scene->pushCommand(std::make_unique<TransformCommand>(
-                instance->transformation, identity, *selectedInstance));
+                entity->transformation, identity, *selectedEntity));
         }
 
         ImGui::End();
@@ -576,8 +570,8 @@ namespace nitro::renderer
         ImGui::Begin("Hierarchy");
 
         auto &scene = *ctx.scene;
-        const auto &selected = scene.selectedInstance();
-        const auto &ids = scene.instanceIds();
+        const auto &selected = scene.selectedEntity();
+        // const auto &ids = scene.instanceIds();
         if (ImGui::Button("Import glTF"))
         {
             NFD::Guard nfdGuard;
@@ -623,37 +617,37 @@ namespace nitro::renderer
             else if (result == NFD_ERROR)
                 std::cerr << "NFD OpenDialog error: " << NFD::GetError() << std::endl;
         }
-        ImGui::Text("%zu instances", ids.size());
-        ImGui::Separator();
+        // ImGui::Text("%zu instances", ids.size());
+        // ImGui::Separator();
 
-        ImGuiListClipper clipper;
-        clipper.Begin(static_cast<int>(ids.size()));
-        while (clipper.Step())
-        {
-            for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i)
-            {
-                auto handle = ids[i];
-                auto *instance = scene.meshManager->getMeshInstance(handle);
-                if (!instance)
-                    continue;
-                auto gpuMesh = scene.meshManager->getGPUMesh(instance->mesh);
-                auto mesh = scene.assetManager()->getAsset(gpuMesh->meshHandle);
+        // ImGuiListClipper clipper;
+        // clipper.Begin(static_cast<int>(ids.size()));
+        // while (clipper.Step())
+        // {
+        //     for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i)
+        //     {
+        //         auto handle = ids[i];
+        //         auto *instance = scene.meshManager->getMeshInstance(handle);
+        //         if (!instance)
+        //             continue;
+        //         auto gpuMesh = scene.meshManager->getGPUMesh(instance->mesh);
+        //         auto mesh = scene.assetManager()->getAsset(gpuMesh->meshHandle);
 
-                const char *name = (mesh && !mesh->name.empty())
-                                       ? mesh->name.c_str()
-                                       : "(unnamed)";
+        //         const char *name = (mesh && !mesh->name.empty())
+        //                                ? mesh->name.c_str()
+        //                                : "(unnamed)";
 
-                bool isSelected = selected.has_value() && selected.value().index == handle.index;
+        //         bool isSelected = selected.has_value() && selected.value().index == handle.index;
 
-                ImGui::PushID(static_cast<int>(handle.index));
-                if (ImGui::Selectable(name, isSelected))
-                    scene.setSelectedInstance(handle);
+        //         ImGui::PushID(static_cast<int>(handle.index));
+        //         if (ImGui::Selectable(name, isSelected))
+        //             scene.setSelectedInstance(handle);
 
-                if (isSelected && ImGui::IsWindowAppearing())
-                    ImGui::SetScrollHereY();
-                ImGui::PopID();
-            }
-        }
+        //         if (isSelected && ImGui::IsWindowAppearing())
+        //             ImGui::SetScrollHereY();
+        //         ImGui::PopID();
+        //     }
+        // }
 
         ImGui::End();
     }

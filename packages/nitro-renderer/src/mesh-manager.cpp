@@ -36,8 +36,9 @@ namespace nitro::renderer
         return lod;
     };
 
-    MeshManager::MeshManager(std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<assets::AssetManager> assetManager) : m_device(device),
-                                                                                                                           m_assetManager(std::move(assetManager))
+    MeshManager::MeshManager(std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<assets::AssetManager> assetManager, std::shared_ptr<EntityStore> entityStore) : m_device(device),
+                                                                                                                                                                     m_assetManager(std::move(assetManager)),
+                                                                                                                                                                     m_entityStore(std::move(entityStore))
     {
 
         m_resources.create(
@@ -129,13 +130,10 @@ namespace nitro::renderer
         auto gpuMesh = getGPUMesh(instance.mesh);
         assert(gpuMesh != nullptr);
         auto mesh = m_assetManager->getAsset(gpuMesh->meshHandle);
-        geometry::MeshTransformation::computeWorldAABB(
-            instance.transformation.getTransform().model,
-            mesh->aabbMin,
-            mesh->aabbMax,
-            instance.worldAABBMin,
-            instance.worldAABBMax);
-        markMeshInstanceBufferDirty();
+
+        auto entity = m_entityStore->get(instance.entity);
+
+           markMeshInstanceBufferDirty();
         return m_instances.emplace(std::move(instance));
     }
 
@@ -307,9 +305,14 @@ namespace nitro::renderer
         desc.meshId = instance.mesh.index;
 
         desc.materialId = instance.material.isValid() ? instance.material.index : INVALID_MATERIAL_INDEX;
-        auto pc = instance.transformation.getTransform();
-        desc.modelTransform = pc.model;
-        desc.normalTransform = pc.normalMatrix;
+        auto entity = m_entityStore->get(instance.entity);
+
+        if (entity)
+        {
+            auto pc = entity->transformation.getTransform();
+            desc.modelTransform = pc.model;
+            desc.normalTransform = pc.normalMatrix;
+        }
 
         return desc;
     }

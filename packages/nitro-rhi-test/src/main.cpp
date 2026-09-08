@@ -102,10 +102,8 @@ void addRandomSpheres(uint32_t count, float areaSize, Scene &scene, GPUMeshHandl
     for (int i = 0; i < count; i++)
     {
 
-        MeshInstance instance;
-        instance.mesh = mesh;
-        instance.transformation = MeshTransformation(glm::translate(glm::mat4(1.0f), glm::vec3(pos(rng), 10.0f, pos(rng))));
-        scene.addMeshInstance(scene.meshManager->addMeshInstances(instance));
+        auto transformation = MeshTransformation(glm::translate(glm::mat4(1.0f), glm::vec3(pos(rng), 10.0f, pos(rng))));
+        scene.addMeshEntity(mesh, GPUMaterialHandle{}, transformation, "Sphere");
     }
 }
 void handleMouse(
@@ -148,61 +146,7 @@ void handleMouse(
         state.mousePressed = false;
     }
 }
-void addPBRSphereGrid(Scene &pbrScene, GPUMeshHandle sphereMeshId)
-{
 
-    int areaWidth = 200;
-    int areaHeight = 200;
-    int spacing = 15;
-    for (int row = 0; row < 5; row++)
-    {
-        float metallic = 1.0f - float(row) / 4.0f;
-        float yPos = -row * spacing;
-
-        for (int col = 0; col < 5; col++)
-        {
-
-            float roughness = float(col) / 4.0f;
-            float xPos = col * spacing;
-
-            Material material;
-
-            material.parameters.metallic = metallic;
-            material.parameters.roughness = roughness;
-            material.parameters.albedo = glm::vec4(0.4f, 0.9f, 1.0f, 1.0f);
-
-            auto materialHandle = pbrScene.assetManager()->registerMaterial(std::make_unique<Material>(std::move(material)), "PBR Material");
-            auto gpuMaterialHandle = pbrScene.materialManager->addMaterial(materialHandle);
-            MeshTransformation transformation;
-            transformation.translate(glm::vec3(xPos, yPos, 0.0f));
-            auto pc = transformation.getTransform();
-            MeshInstance instance;
-            instance.mesh = sphereMeshId;
-            instance.material = gpuMaterialHandle;
-            instance.transformation = transformation;
-            pbrScene.addMeshInstance(pbrScene.meshManager->addMeshInstances(instance));
-        }
-    }
-};
-
-void addWallTestCluster(Scene &scene, GPUMeshHandle sphereMeshId)
-{
-    int rows = 3, cols = 3, spacing = 40;
-    for (int row = 0; row < rows; row++)
-    {
-        for (int col = 0; col < cols; col++)
-        {
-            MeshTransformation t;
-            t.translate(glm::vec3(-40.0f + col * spacing, 10.0f, -40.0f + row * spacing));
-            auto pc = t.getTransform();
-
-            MeshInstance instance;
-            instance.mesh = sphereMeshId;
-            instance.transformation = t;
-            scene.addMeshInstance(scene.meshManager->addMeshInstances(instance));
-        }
-    }
-}
 int main()
 {
     glfwInit();
@@ -216,12 +160,12 @@ int main()
     std::shared_ptr<DeviceType> device = std::make_shared<DeviceType>(window);
     std::shared_ptr<RHISwapchain> swapchain(
         device->createSwapchain(nullptr));
-
-    std::shared_ptr<AssetManager> assetManager = std::make_shared<AssetManager>();
-    std::shared_ptr<GPUResourceCache> gpuResourceCache = std::make_shared<GPUResourceCache>(device);
-    std::shared_ptr<MaterialManager> materialManager = std::make_shared<MaterialManager>(device, assetManager, gpuResourceCache);
-    std::shared_ptr<MeshManager> meshManager = std::make_shared<MeshManager>(device, assetManager);
-    Scene mainScene{device, meshManager, materialManager, assetManager};
+    auto entityStore = std::make_shared<EntityStore>();
+    auto assetManager = std::make_shared<AssetManager>();
+    auto gpuResourceCache = std::make_shared<GPUResourceCache>(device);
+    auto materialManager = std::make_shared<MaterialManager>(device, assetManager, gpuResourceCache);
+    auto meshManager = std::make_shared<MeshManager>(device, assetManager, entityStore);
+    Scene mainScene{device, meshManager, materialManager, assetManager, entityStore};
 
     auto sphereMeshId = meshManager->addMesh(MeshGenerator::createUVSphere(5, 10, 100));
 

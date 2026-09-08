@@ -41,10 +41,10 @@ namespace nitro::renderer
 
         geometry::MeshTransformation m_oldTransformation;
         geometry::MeshTransformation m_newTransformation;
-        MeshInstanceHandle m_handle;
+        EntityHandle m_handle;
 
     public:
-        TransformCommand(geometry::MeshTransformation oldTransformation, geometry::MeshTransformation newTransformation, MeshInstanceHandle handle);
+        TransformCommand(geometry::MeshTransformation oldTransformation, geometry::MeshTransformation newTransformation, EntityHandle handle);
         ~TransformCommand() override = default;
         void undo(Scene &s) override;
         void execute(Scene &s) override;
@@ -52,11 +52,11 @@ namespace nitro::renderer
     };
     class DeleteMeshInstanceCommand : public IEditorCommand
     {
-        MeshInstanceHandle m_handle;
-        MeshInstance m_instance;
+        EntityHandle m_handle;
+        Entity m_entity;
 
     public:
-        DeleteMeshInstanceCommand(MeshInstanceHandle handle, MeshInstance instance) : m_handle(handle), m_instance(instance)
+        DeleteMeshInstanceCommand(EntityHandle handle, Entity entity) : m_handle(handle), m_entity(entity)
         {
         }
         void undo(Scene &s) override;
@@ -66,11 +66,14 @@ namespace nitro::renderer
     };
     class CreateMeshInstanceCommand : public IEditorCommand
     {
-        MeshInstanceHandle m_handle{};
-        MeshInstance m_instance;
+        EntityHandle m_handle{};
+        GPUMeshHandle m_meshHandle;
+        GPUMaterialHandle m_materialHandle;
+        geometry::MeshTransformation m_transformation;
+        std::optional<Entity> m_entity;
 
     public:
-        CreateMeshInstanceCommand(MeshInstance instance) : m_instance(instance)
+        CreateMeshInstanceCommand(GPUMeshHandle mesh, GPUMaterialHandle material, geometry::MeshTransformation transformation) : m_meshHandle(mesh), m_materialHandle(material), m_transformation(transformation)
         {
         }
         void undo(Scene &s) override;

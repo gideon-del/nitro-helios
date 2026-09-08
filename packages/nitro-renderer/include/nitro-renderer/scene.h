@@ -8,6 +8,7 @@
 #include "editor-commands.h"
 #include "nitro-assets/manager.h"
 #include "gpu-resource-cache.h"
+#include "entity-store.h"
 #include <filesystem>
 namespace nitro::renderer
 {
@@ -23,9 +24,9 @@ namespace nitro::renderer
     struct PickDebug
     {
         geometry::Ray ray;
-        std::vector<MeshInstanceHandle> tested;
-        std::vector<MeshInstanceHandle> hit;
-        OptionalMeshInstanceHandle best;
+        std::vector<EntityHandle> tested;
+        std::vector<EntityHandle> hit;
+        OptionalEntityHandle best;
     };
 
     struct SceneFrameResource
@@ -36,10 +37,11 @@ namespace nitro::renderer
     struct Scene
     {
 
-        Scene(std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<MeshManager> meshManager, std::shared_ptr<MaterialManager> materialManager, std::shared_ptr<assets::AssetManager> assetManager)
+        Scene(std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<MeshManager> meshManager, std::shared_ptr<MaterialManager> materialManager, std::shared_ptr<assets::AssetManager> assetManager, std::shared_ptr<EntityStore> entityStore)
             : m_device(std::move(device)), meshManager(std::move(meshManager)), materialManager(std::move(materialManager)),
               m_commands(EditorCommandStack(*this)),
-              m_assetManager(std::move(assetManager))
+              m_assetManager(std::move(assetManager)),
+              m_entityStore(std::move(entityStore))
 
         {
             m_sceneInstanceIdBuffers.create(
@@ -68,7 +70,7 @@ namespace nitro::renderer
             cmd->drawIndexedIndirect(
                 drawCommandsBuffer,
                 0,
-                static_cast<uint32_t>(m_instanceIds.size()),
+                m_meshInstanceCount,
                 sizeof(rhi::DrawIndexedIndirectArgs));
 
             // cmd->drawIndexedIndirectCount(
@@ -89,8 +91,9 @@ namespace nitro::renderer
 
             m_dirtySceneInstanceIdBufferMask = 0;
         }
+        uint32_t meshCount() const { return m_meshInstanceCount; }
         rhi::RHIBuffer *sceneInstanceIdBuffer() const { return m_sceneInstanceIdBuffers.current(m_device->getCurrentFrameIndex()).instanceIdBuffer; }
-        const std::vector<MeshInstanceHandle> &instanceIds() const { return m_instanceIds; }
+
         SpatialGrid &spatialGrid()
         {
             return m_grid;
@@ -98,49 +101,63 @@ namespace nitro::renderer
 
         const PickDebug &lastPick() const { return m_lastPick; }
 
-        void setSelectedInstance(const MeshInstanceHandle &handle)
+        void setSelectedInstance(const EntityHandle &handle)
         {
-            m_selectedInstance = handle;
+            m_selectedEntity = handle;
         }
 
         EditorCommandStack &commands() { return m_commands; }
         std::shared_ptr<assets::AssetManager> assetManager() { return m_assetManager; }
+        std::shared_ptr<EntityStore> entityStore() { return m_entityStore; }
 
-        const OptionalMeshInstanceHandle &selectedInstance() const { return m_selectedInstance; }
+        const OptionalEntityHandle &selectedEntity() const { return m_selectedEntity; }
         void loadGltfScene(std::string filePath, std::shared_ptr<rhi::RHIDevice> device);
-        void addMeshInstance(const MeshInstanceHandle &handle);
 
-        void updateMeshInstance(const MeshInstanceHandle &handle);
-        void reclaimMeshInstanceSlot(const MeshInstanceHandle &handle);
-        void reactivateMeshInstanceSlot(MeshInstanceHandle &handle, MeshInstance instance);
-        void deactivateMeshInstanceSlot(const MeshInstanceHandle &handle);
+        void updateEntity(const EntityHandle &handle);
+        void reclaimEntitySlot(const EntityHandle &handle);
+        void reactivateEntitySlot(EntityHandle &handle, Entity entity);
+        void deactivateEntitySlot(const EntityHandle &handle);
         void pushCommand(std::unique_ptr<IEditorCommand> cmd);
 
         void flush();
-        OptionalMeshInstanceHandle pickMeshInstance(const geometry::Ray &ray);
+        OptionalEntityHandle pickEntity(const geometry::Ray &ray);
         void clear();
         void serialize(const std::filesystem::path &filepath);
         bool load(const std::filesystem::path &filepath);
         std::shared_ptr<MeshManager> meshManager;
         std::shared_ptr<MaterialManager> materialManager;
 
+        EntityHandle addMeshEntity(GPUMeshHandle mesh, GPUMaterialHandle material, const geometry::MeshTransformation &xf, std::string name);
+        EntityHandle addMeshEntity(EntityID &id, GPUMeshHandle mesh, GPUMaterialHandle material, const geometry::MeshTransformation &xf, std::string name);
+
         static constexpr uint32_t s_MAX_DRAW_COMMANDS = 100000;
+        static constexpr uint32_t s_VERSION = 2;
 
     private:
         PerFrame<SceneFrameResource> m_sceneInstanceIdBuffers;
         uint8_t m_dirtySceneInstanceIdBufferMask = 0;
         std::shared_ptr<rhi::RHIDevice> m_device;
-        std::vector<MeshInstanceHandle> m_instanceIds;
         SpatialGrid m_grid;
-        OptionalMeshInstanceHandle m_selectedInstance;
+        OptionalEntityHandle m_selectedEntity;
         PickDebug m_lastPick;
         EditorCommandStack m_commands;
         std::shared_ptr<assets::AssetManager> m_assetManager;
-
-        void rebuildInstanceIdFrameBuffer(uint32_t frameIdx);
+        std::shared_ptr<EntityStore> m_entityStore;
+        uint32_t m_meshInstanceCount = 0;
+        void
+        rebuildInstanceIdFrameBuffer(uint32_t frameIdx);
         void markInstanceIdBuffersDirty()
         {
             m_dirtySceneInstanceIdBufferMask = (1 << g_MAX_FRAMES_IN_FLIGHT) - 1;
+        }
+        void increaseMeshInstanceCount()
+        {
+            m_meshInstanceCount++;
+        }
+        void decreaseMeshInstanceCount()
+        {
+            if (m_meshInstanceCount > 0)
+                m_meshInstanceCount--;
         }
     };
 } // namespace nitro::renderer

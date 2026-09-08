@@ -146,16 +146,16 @@ namespace nitro::renderer
             {
                 geometry::Ray ray = ctx.camera->reconstructRayFromUV(uv);
 
-                ctx.scene->pickMeshInstance(ray);
+                ctx.scene->pickEntity(ray);
             }
         }
-        auto &selectedInstance = ctx.scene->selectedInstance();
+        auto &selectedEntity = ctx.scene->selectedEntity();
         bool usingNow = ImGuizmo::IsUsing();
-        if (selectedInstance.has_value() && selectedInstance->isValid())
+        if (selectedEntity.has_value() && selectedEntity->isValid())
         {
 
-            auto *inst = ctx.scene->meshManager->getMeshInstance(selectedInstance.value());
-            glm::mat4 model = inst->transformation.getTransform().model;
+            auto *entity = ctx.scene->entityStore()->get(selectedEntity.value());
+            glm::mat4 model = entity->transformation.getTransform().model;
 
             glm::mat4 view = ctx.camera->view();
             glm::mat4 proj = ctx.camera->proj();
@@ -169,30 +169,30 @@ namespace nitro::renderer
             {
                 float t[3], r[3], s[3];
                 ImGuizmo::DecomposeMatrixToComponents(&model[0][0], t, r, s);
-                inst->transformation.setTranslation({t[0], t[1], t[2]});
-                inst->transformation.setRotationEuler({r[0], r[1], r[2]});
-                inst->transformation.setScale({s[0], s[1], s[2]});
-                ctx.scene->updateMeshInstance(selectedInstance.value());
+                entity->transformation.setTranslation({t[0], t[1], t[2]});
+                entity->transformation.setRotationEuler({r[0], r[1], r[2]});
+                entity->transformation.setScale({s[0], s[1], s[2]});
+                ctx.scene->updateEntity(*selectedEntity);
             }
 
             if (usingNow && !m_wasUsingGizmo)
-                m_dragStartTransform = inst->transformation;
+                m_dragStartTransform = entity->transformation;
 
             if (!usingNow && m_wasUsingGizmo) // falling edge
                 ctx.scene->pushCommand(
                     std::make_unique<TransformCommand>(m_dragStartTransform,
-                                                       inst->transformation,
-                                                       *selectedInstance));
+                                                       entity->transformation,
+                                                       *selectedEntity));
         }
 
         m_wasUsingGizmo = usingNow;
 
-        if (!ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_F) && selectedInstance.has_value() && selectedInstance.value().isValid())
+        if (!ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_F) && selectedEntity.has_value() && selectedEntity.value().isValid())
         {
-            auto instance = ctx.scene->meshManager->getMeshInstance(selectedInstance.value());
+            auto entity = ctx.scene->entityStore()->get(*selectedEntity);
 
-            const auto &mn = instance->worldAABBMin;
-            const auto &mx = instance->worldAABBMax;
+            const auto &mn = entity->worldAABBMin;
+            const auto &mx = entity->worldAABBMax;
             glm::vec3 size = mx - mn;
             glm::vec3 center = (mn + mx) * 0.5f;
 
@@ -226,25 +226,29 @@ namespace nitro::renderer
                 ctx.scene->commands().redo();
         }
 
-        if (!io.WantTextInput && viewportHovered && selectedInstance.has_value() && selectedInstance->isValid())
+        if (!io.WantTextInput && viewportHovered && selectedEntity.has_value() && selectedEntity->isValid())
         {
-            auto *inst = ctx.scene->meshManager->getMeshInstance(*selectedInstance);
+            auto entity = ctx.scene->entityStore()->get(*selectedEntity);
 
-            if (inst && (ImGui::IsKeyPressed(ImGuiKey_Delete) || ImGui::IsKeyPressed(ImGuiKey_Backspace)))
+            if (entity && (ImGui::IsKeyPressed(ImGuiKey_Delete) || ImGui::IsKeyPressed(ImGuiKey_Backspace)))
             {
                 ctx.scene->pushCommand(
-                    std::make_unique<DeleteMeshInstanceCommand>(*selectedInstance, *inst));
+                    std::make_unique<DeleteMeshInstanceCommand>(*selectedEntity, *entity));
             }
 
-            if (inst && (io.KeyMods & ImGuiMod_Shortcut) && ImGui::IsKeyPressed(ImGuiKey_D, false))
+            if (entity && (io.KeyMods & ImGuiMod_Shortcut) && ImGui::IsKeyPressed(ImGuiKey_D, false))
             {
-                MeshInstance copy = *inst;
+                auto copy = *entity;
                 glm::mat4 invView = glm::inverse(ctx.camera->view());
                 glm::vec3 right = glm::normalize(glm::vec3(invView[0]));
-                glm::vec3 extent = inst->worldAABBMax - inst->worldAABBMin;
+                glm::vec3 extent = entity->worldAABBMax - entity->worldAABBMin;
 
                 copy.transformation.translate(right * glm::length(extent) * 1.1f);
-                ctx.scene->pushCommand(std::make_unique<CreateMeshInstanceCommand>(copy));
+                if (entity->meshInstance)
+                {
+                    auto instance = ctx.scene->meshManager->getMeshInstance(*entity->meshInstance);
+                    ctx.scene->pushCommand(std::make_unique<CreateMeshInstanceCommand>(instance->mesh, instance->material, copy.transformation));
+                }
             }
         }
 
@@ -260,10 +264,10 @@ namespace nitro::renderer
                      ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
                          ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoNav);
 
-        ImGui::Text("Instances: %zu", ctx.scene->instanceIds().size());
+        ImGui::Text("Instances: %zu", ctx.scene->meshCount());
         ImGui::Text("Pool slots: %zu", ctx.scene->meshManager->poolCapacity());
-        if (selectedInstance)
-            ImGui::Text("Selected: %u", selectedInstance->index);
+        if (selectedEntity)
+            ImGui::Text("Selected: %u", selectedEntity->index);
         else
             ImGui::TextUnformatted("Selected: none");
         ImGui::Text("Last pick: %zu tested, %zu hit",

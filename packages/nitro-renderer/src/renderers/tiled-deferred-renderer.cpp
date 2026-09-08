@@ -253,7 +253,7 @@ namespace nitro::renderer
                 auto frameIdx = m_device->getCurrentFrameIndex();
 
                 MeshCompactPushConstant pc;
-                pc.objectCount = static_cast<uint32_t>(ctx.scene->instanceIds().size());
+                pc.objectCount = ctx.scene->meshCount();
 
                 pc.frustumCullEnabled = settings.frustumCullEnabled ? 1 : 0;
                 pc.lodEnabled = settings.lodEnabled ? 1 : 0;
@@ -951,41 +951,41 @@ namespace nitro::renderer
                     {
                         for (auto &h : lastPick.tested)
                         {
-                            auto instance = ctx.scene->meshManager->getMeshInstance(h);
-                            if (!instance)
+                            auto entity = ctx.scene->entityStore()->get(h);
+                            if (!entity)
                             {
                                 continue;
                             }
-                            m_debugDrawPass->drawAABB(instance->worldAABBMin, instance->worldAABBMax, DebugColor::Tested);
+                            m_debugDrawPass->drawAABB(entity->worldAABBMin, entity->worldAABBMax, DebugColor::Tested);
                         }
                     }
 
                     for (auto &h : lastPick.hit)
                     {
-                        auto instance = ctx.scene->meshManager->getMeshInstance(h);
-                        if (!instance)
+                        auto entity = ctx.scene->entityStore()->get(h);
+                        if (!entity)
                         {
                             continue;
                         }
-                        m_debugDrawPass->drawAABB(instance->worldAABBMin, instance->worldAABBMax, DebugColor::Hit);
+                        m_debugDrawPass->drawAABB(entity->worldAABBMin, entity->worldAABBMax, DebugColor::Hit);
                     }
 
                     if (lastPick.best.has_value())
                     {
-                        auto instance = ctx.scene->meshManager->getMeshInstance(lastPick.best.value());
+                        auto entity = ctx.scene->entityStore()->get(lastPick.best.value());
 
-                        if (instance)
+                        if (entity)
                         {
-                            m_debugDrawPass->drawAABB(instance->worldAABBMin, instance->worldAABBMax, DebugColor::Best);
+                            m_debugDrawPass->drawAABB(entity->worldAABBMin, entity->worldAABBMax, DebugColor::Best);
                         }
                     }
                 }
-                auto selectedHandle = ctx.scene->selectedInstance();
+                auto selectedHandle = ctx.scene->selectedEntity();
 
                 if (selectedHandle.has_value() && selectedHandle.value().isValid())
                 {
-                    auto instance = ctx.scene->meshManager->getMeshInstance(selectedHandle.value());
-                    m_debugDrawPass->drawAABB(instance->worldAABBMin, instance->worldAABBMax, DebugColor::Selected);
+                    auto entity = ctx.scene->entityStore()->get(selectedHandle.value());
+                    m_debugDrawPass->drawAABB(entity->worldAABBMin, entity->worldAABBMax, DebugColor::Selected);
                 }
                 m_debugDrawPass->execute(cmd, ctx.camera->viewProj());
                 m_currentSceneTextureID = debugTexture;
