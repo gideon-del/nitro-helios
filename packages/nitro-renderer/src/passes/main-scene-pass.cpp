@@ -94,7 +94,7 @@ namespace nitro::renderer
 
         ImGui::End();
         // renderGraph.drawImGui();
-        m_inspectorPanel.draw(ctx, m_gizmoOp, m_gizmoMode, m_dragStartTransform);
+        m_inspectorPanel.draw(ctx, m_gizmoOp, m_gizmoMode, m_dragStartTransform, m_device);
         m_heirarchyPanel.draw(ctx, settings);
         ImGui::Begin("Viewport");
 
@@ -233,7 +233,7 @@ namespace nitro::renderer
             if (entity && (ImGui::IsKeyPressed(ImGuiKey_Delete) || ImGui::IsKeyPressed(ImGuiKey_Backspace)))
             {
                 ctx.scene->pushCommand(
-                    std::make_unique<DeleteMeshInstanceCommand>(*selectedEntity, *entity));
+                    std::make_unique<DeleteEntityCommand>(*selectedEntity, *entity));
             }
 
             if (entity && (io.KeyMods & ImGuiMod_Shortcut) && ImGui::IsKeyPressed(ImGuiKey_D, false))

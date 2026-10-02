@@ -321,42 +321,28 @@ namespace nitro::renderer
     {
 
         auto entity = m_entityStore->get(handle);
-
-        if (!entity || !entity->meshInstance)
-            return;
-        auto instance = meshManager->getMeshInstance(*entity->meshInstance);
-
-        if (!instance)
-        {
-            return;
-        }
-
-        auto gpuMesh = meshManager->getGPUMesh(instance->mesh);
-        if (!gpuMesh)
-        {
-            return;
-        }
-        auto mesh = m_assetManager->getAsset(gpuMesh->meshHandle);
-
-        if (!mesh)
+        if (!entity)
         {
             return;
         }
 
         m_grid.removeEntity(handle, entity->cells);
 
-        geometry::MeshTransformation::computeWorldAABB(
-            entity->transformation.getTransform().model,
-            mesh->aabbMin,
-            mesh->aabbMax,
-            entity->worldAABBMin,
-            entity->worldAABBMax);
+        if (entity->meshInstance)
+        {
+            calculateMeshInstanceAABB(*entity);
+            meshManager->markMeshInstanceAsDirty(*entity->meshInstance);
+        }
+
+        if (entity->pointLight)
+        {
+            calculatePointLightAABB(*entity);
+            m_lightManager->markPointLightDirty(*entity->pointLight);
+        }
 
         entity->cells = m_grid.worldToCellRange(entity->worldAABBMin, entity->worldAABBMax);
 
         m_grid.addEntity(handle, entity->cells);
-
-        meshManager->markMeshInstanceAsDirty(*entity->meshInstance);
     }
 
     void Scene::pushCommand(std::unique_ptr<IEditorCommand> cmd)
@@ -366,7 +352,6 @@ namespace nitro::renderer
 
     void Scene::reclaimEntitySlot(const EntityHandle &handle)
     {
-
         m_entityStore->reclaimSlot(handle);
     }
 
@@ -374,35 +359,50 @@ namespace nitro::renderer
     {
 
         auto entity = m_entityStore->get(handle);
-        if (entity)
-        {
+        if (!entity)
+            return;
+        m_grid.removeEntity(handle, entity->cells);
 
-            m_grid.removeEntity(handle, entity->cells);
+        if (entity->meshInstance)
+        {
+            meshManager->deactivateMeshInstance(*entity->meshInstance);
+            markInstanceIdBuffersDirty();
+            decreaseMeshInstanceCount();
+        }
+        if (entity->pointLight)
+        {
+            m_lightManager->deactivateSlot(*entity->pointLight);
+            decreaseLightCount();
         }
 
         if (m_selectedEntity && m_selectedEntity == handle)
             m_selectedEntity = std::nullopt;
 
-        decreaseMeshInstanceCount();
-
         m_entityStore->deactivateSlot(handle);
-        markInstanceIdBuffersDirty();
     };
 
-    void Scene::reactivateEntitySlot(EntityHandle &handle, Entity entity)
+    void Scene::reactivateEntitySlot(EntityHandle &handle, Entity entity, std::optional<MeshInstance> meshInstance, std::optional<PointLight> pointLight)
     {
         auto activated = m_entityStore->reactivateSlot(handle, entity);
 
         assert(activated);
 
-        increaseMeshInstanceCount();
         auto ent = m_entityStore->get(handle);
-        if (ent)
-        {
 
-            m_grid.addEntity(handle, ent->cells);
+        if (ent->meshInstance && meshInstance)
+        {
+            meshManager->reactivateMeshInstance(*ent->meshInstance, *meshInstance);
+            increaseMeshInstanceCount();
+            markInstanceIdBuffersDirty();
         }
-        markInstanceIdBuffersDirty();
+
+        if (ent->pointLight && pointLight)
+        {
+            m_lightManager->reactivateSlot(*ent->pointLight, *pointLight);
+            increaseLightCount();
+        }
+
+        m_grid.addEntity(handle, ent->cells);
     }
 
     void Scene::flush()
@@ -556,6 +556,8 @@ namespace nitro::renderer
         m_commands.clear();
         materialManager->clear();
         meshManager->clear();
+        m_meshInstanceCount = 0;
+        m_lightCount = 0;
     };
 
     bool Scene::load(const std::filesystem::path &filepath)
@@ -631,7 +633,7 @@ namespace nitro::renderer
                         }
                     }
 
-                                       addMeshEntity(*entityId, gpuMesh, gpuMat, xf, name);
+                    addMeshEntity(*entityId, gpuMesh, gpuMat, xf, name);
                 };
             }
 
@@ -655,28 +657,12 @@ namespace nitro::renderer
     };
     EntityHandle Scene::addMeshEntity(EntityID &id, GPUMeshHandle mesh, GPUMaterialHandle material, const geometry::MeshTransformation &xf, std::string name)
     {
-        auto gpuMesh = meshManager->getGPUMesh(mesh);
-        if (!gpuMesh)
-        {
-            return {};
-        }
-
-        auto cpuMesh = m_assetManager->getAsset(gpuMesh->meshHandle);
-        if (!cpuMesh)
-        {
-            return {};
-        }
 
         auto entityHandle = m_entityStore->create(name);
 
         auto entity = m_entityStore->get(entityHandle);
         entity->transformation = xf;
-        geometry::MeshTransformation::computeWorldAABB(
-            xf.getTransform().model,
-            cpuMesh->aabbMin,
-            cpuMesh->aabbMax,
-            entity->worldAABBMin,
-            entity->worldAABBMax);
+
         MeshInstance instance;
         instance.mesh = mesh;
         instance.material = material;
@@ -686,6 +672,8 @@ namespace nitro::renderer
 
         entity->meshInstance = instanceHandle;
 
+        calculateMeshInstanceAABB(*entity);
+
         entity->cells = m_grid.worldToCellRange(entity->worldAABBMin, entity->worldAABBMax);
         m_grid.addEntity(entityHandle, entity->cells);
         markInstanceIdBuffersDirty();
@@ -693,4 +681,76 @@ namespace nitro::renderer
         return entityHandle;
     };
 
+    void Scene::calculateMeshInstanceAABB(Entity &entity)
+    {
+
+        if (!entity.meshInstance)
+            return;
+
+        auto instance = meshManager->getMeshInstance(*entity.meshInstance);
+
+        if (!instance)
+            return;
+
+        auto gpuMesh = meshManager->getGPUMesh(instance->mesh);
+        if (!gpuMesh)
+        {
+            return;
+        }
+
+        auto cpuMesh = m_assetManager->getAsset(gpuMesh->meshHandle);
+        if (!cpuMesh)
+        {
+            return;
+        }
+
+        geometry::MeshTransformation::computeWorldAABB(
+            entity.transformation.getTransform().model,
+            cpuMesh->aabbMin,
+            cpuMesh->aabbMax,
+            entity.worldAABBMin,
+            entity.worldAABBMax);
+    };
+    EntityHandle Scene::addPointLightEntity(float radius, float intensity, glm::vec3 color)
+    {
+        auto id = EntityID::generate();
+        return addPointLightEntity(id, radius, intensity, color);
+    }
+
+    EntityHandle Scene::addPointLightEntity(EntityID &id, float radius, float intensity, glm::vec3 color)
+    {
+        auto entityHandle = m_entityStore->createWithId(id, "Point Light");
+
+        auto entity = m_entityStore->get(entityHandle);
+
+        auto pointLightHandle = m_lightManager->addPointLight(radius, intensity);
+
+        auto pointLight = m_lightManager->getPointLight(pointLightHandle);
+
+        pointLight->entity = entityHandle;
+        entity->pointLight = pointLightHandle;
+
+        calculatePointLightAABB(*entity);
+
+        entity->cells = m_grid.worldToCellRange(entity->worldAABBMin, entity->worldAABBMax);
+
+        m_grid.addEntity(entityHandle, entity->cells);
+        increaseLightCount();
+
+        return entityHandle;
+    }
+
+    void Scene::calculatePointLightAABB(Entity &entity)
+    {
+        if (!entity.pointLight)
+            return;
+
+        auto pointLight = m_lightManager->getPointLight(*entity.pointLight);
+
+        if (!pointLight)
+            return;
+        auto position = entity.transformation.baseTranslation();
+        entity.worldAABBMin = position - pointLight->radius;
+        entity.worldAABBMax = position + pointLight->radius;
+    }
 } // namespace nitro::renderer

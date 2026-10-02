@@ -30,41 +30,6 @@ struct AppState
     double lastX, lastY;
 };
 
-std::vector<PointLight> createRandomLights(
-    uint32_t count,
-    float areaSize)
-{
-    std::vector<PointLight> lights;
-
-    std::mt19937 rng(42); // fixed seed
-    std::uniform_real_distribution<float> pos(-areaSize, areaSize);
-    std::uniform_real_distribution<float> color(0.2f, 1.0f);
-    // std::uniform_real_distribution<float> radius(10.0f, 50.0f);
-
-    for (uint32_t i = 0; i < count; i++)
-    {
-        PointLight light;
-
-        light.position = glm::vec4(
-            pos(rng),
-            20.0f,
-            pos(rng),
-            1.0f);
-
-        light.color = glm::vec4(
-            color(rng),
-            color(rng),
-            color(rng),
-            1.0f);
-
-        light.radius = 50.0f;
-        light.intensity = 10.0f;
-
-        lights.push_back(light);
-    }
-
-    return lights;
-};
 void handleKeyboard(GLFWwindow *window, OrbitalCamera &camera)
 {
     const float speed = 0.4f;
@@ -165,7 +130,8 @@ int main()
     auto gpuResourceCache = std::make_shared<GPUResourceCache>(device);
     auto materialManager = std::make_shared<MaterialManager>(device, assetManager, gpuResourceCache);
     auto meshManager = std::make_shared<MeshManager>(device, assetManager, entityStore);
-    Scene mainScene{device, meshManager, materialManager, assetManager, entityStore};
+    auto lightManager = std::make_shared<LightManager>(device, entityStore);
+    Scene mainScene{device, meshManager, materialManager, assetManager, entityStore, lightManager};
 
     auto sphereMeshId = meshManager->addMesh(MeshGenerator::createUVSphere(5, 10, 100));
 
@@ -217,7 +183,6 @@ int main()
     RHITimer *timer = device->createTimer();
     RendererSettings rendererSettings;
 
-    rendererSettings.light.pointLights = createRandomLights(10, 500);
     // rendererSettings.light.pointLights = createRandomLights(10, 100);
     RenderContext renderContext;
     renderContext.camera = &camera;
@@ -329,6 +294,7 @@ int main()
         RHICommandBuffer *cmd = device->beginFrame();
         meshManager->flusDirtyMeshInstances();
         materialManager->flush();
+        lightManager->flush();
         renderContext.scene->flush();
         cmd->resetFrameStats();
         timer->beginFrame(cmd);
@@ -357,7 +323,6 @@ int main()
         //     break;
         // }
 
-        materialManager->markAsNotStale();
         auto frameStat = cmd->getFrameStats();
         timer->end(cmd, "frame-time");
         cmd->present();

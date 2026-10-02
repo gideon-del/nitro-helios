@@ -5,6 +5,103 @@
 
 namespace nitro::renderer
 {
+    RGResourceSize RGResourceSize::bufferAbsolute(size_t bytes)
+    {
+        RGResourceSize size;
+
+        size.type = RGResourceSize::Type::Absolute;
+        size.bytesPerTile = bytes;
+
+        return size;
+    };
+
+    RGResourceSize RGResourceSize::bufferScreenRelative(size_t bytesPerPixel, float scale)
+    {
+        RGResourceSize size;
+
+        size.type = RGResourceSize::Type::ScreenRelative;
+        size.bytesPerTile = bytesPerPixel;
+        size.scale = scale;
+
+        return size;
+    };
+    RGResourceSize RGResourceSize::bufferTileRelative(uint32_t tileSize, size_t bytesPerTile)
+    {
+        RGResourceSize size;
+
+        size.type = RGResourceSize::Type::TileRelative;
+        size.bytesPerTile = bytesPerTile;
+        size.tileSize = tileSize;
+
+        return size;
+    };
+
+    RGResourceSize RGResourceSize::textureAbsolute(uint32_t w, uint32_t h)
+    {
+        RGResourceSize size;
+
+        size.type = RGResourceSize::Type::Absolute;
+        size.width = std::max(w, 1u);
+        size.height = std::max(h, 1u);
+
+        return size;
+    };
+    RGResourceSize RGResourceSize::textureScreenRelative(float scale)
+    {
+        RGResourceSize size;
+
+        size.type = RGResourceSize::Type::ScreenRelative;
+        size.scale = scale;
+
+        return size;
+    };
+    uint32_t RGResourceSize::calculateTextureWidth(const uint32_t screenWidth)
+    {
+        switch (type)
+        {
+        case Type::ScreenRelative:
+            return static_cast<uint32_t>(float(screenWidth) * scale);
+
+        default:
+
+            return std::max(width, 1u);
+        }
+    }
+    uint32_t RGResourceSize::calculateTextureHeight(const uint32_t screenHeight)
+    {
+        switch (type)
+        {
+        case Type::ScreenRelative:
+            return static_cast<uint32_t>(float(screenHeight) * scale);
+
+        default:
+
+            return std::max(height, 1u);
+        }
+    }
+    size_t RGResourceSize::calculateBufferSize(const uint32_t screenWidth, const uint32_t screenHeight)
+    {
+        switch (type)
+        {
+        case Type::ScreenRelative:
+        {
+            uint32_t w = uint32_t(screenWidth * scale);
+            uint32_t h = uint32_t(screenHeight * scale);
+            return std::max(size_t(1), size_t(w) * h * bytesPerTile);
+        }
+        case Type::TileRelative:
+        {
+
+            uint32_t tilesX = (screenWidth + tileSize - 1) / tileSize;
+            uint32_t tilesY = (screenHeight + tileSize - 1) / tileSize;
+            return std::max(size_t(1), size_t(tilesX) * tilesY * bytesPerTile);
+        }
+
+        default:
+
+            return std::max(bytesPerTile, size_t(1));
+        }
+    }
     RGTextureID RenderGraph::declareTexture(RGTextureDesc desc)
     {
         RGTextureID id = ++m_nextId;
@@ -237,8 +334,8 @@ namespace nitro::renderer
                 textureDesc.usage = rhi::TextureDesc::Usage::RenderTarget | rhi::TextureDesc::Usage::ShaderRead;
             }
 
-            textureDesc.size.width = desc.width ? desc.width : frameWidth;
-            textureDesc.size.height = desc.height ? desc.height : frameHeight;
+            textureDesc.size.width = desc.size.calculateTextureWidth(frameWidth);
+            textureDesc.size.height = desc.size.calculateTextureHeight(frameHeight);
             textureDesc.isAliased = isAlias;
             textureDesc.mipmaps = desc.mips;
             return textureDesc;
@@ -318,7 +415,7 @@ namespace nitro::renderer
         for (auto &[tid, desc] : m_textures)
         {
 
-            if (desc.width != 0 || desc.height != 0)
+            if (desc.size.type != RGResourceSize::Type::ScreenRelative)
                 continue;
             rhi::TextureDesc textureDesc;
             textureDesc.usage = rhi::TextureDesc::Usage::ShaderRead;
@@ -357,13 +454,14 @@ namespace nitro::renderer
         device->endCommandBuffer(cmd);
     }
 
-    void RenderGraph::allocateBuffers(std::shared_ptr<rhi::RHIDevice> device)
+    void RenderGraph::allocateBuffers(std::shared_ptr<rhi::RHIDevice> device, uint32_t frameWidth, uint32_t frameHeight)
     {
+        deleteBuffers(device);
         for (auto &[bid, desc] : m_buffers)
         {
             rhi::BufferDesc bufferDesc;
 
-            bufferDesc.size = desc.size;
+            bufferDesc.size = desc.size.calculateBufferSize(frameWidth, frameHeight);
             bufferDesc.usage = desc.usage;
             bufferDesc.storage = isSharedStorageBuffer(bid) ? rhi::BufferDesc::StorageMode::Shared : rhi::BufferDesc::StorageMode::GPU;
             auto &allocation = m_allocatedBuffers[bid];
@@ -375,6 +473,34 @@ namespace nitro::renderer
             {
                 if (!allocation.slots[i])
                     allocation.slots[i] = device->createBuffer(bufferDesc);
+            }
+        };
+    }
+    void RenderGraph::reallocateScreenBuffers(std::shared_ptr<rhi::RHIDevice> device, uint32_t frameWidth, uint32_t frameHeight)
+    {
+        device->waitIdle();
+        for (auto &[bid, desc] : m_buffers)
+        {
+
+            if (desc.size.type == RGResourceSize::Type::Absolute)
+                continue;
+            rhi::BufferDesc bufferDesc;
+
+            bufferDesc.size = desc.size.calculateBufferSize(frameWidth, frameHeight);
+            bufferDesc.usage = desc.usage;
+            bufferDesc.storage = isSharedStorageBuffer(bid) ? rhi::BufferDesc::StorageMode::Shared : rhi::BufferDesc::StorageMode::GPU;
+            auto &allocation = m_allocatedBuffers[bid];
+
+            allocation.transient = desc.transient;
+
+            uint32_t slotCount = desc.transient ? g_MAX_FRAMES_IN_FLIGHT : 1;
+            for (uint32_t i = 0; i < slotCount; i++)
+            {
+                if (allocation.slots[i])
+                {
+                    device->destroyBuffer(allocation.slots[i]);
+                }
+                allocation.slots[i] = device->createBuffer(bufferDesc);
             }
         };
     }
@@ -695,8 +821,8 @@ namespace nitro::renderer
         for (auto &lt : lifetimes)
         {
             auto &desc = m_textures[lt.id];
-            uint32_t w = desc.width ? desc.width : frameWidth;
-            uint32_t h = desc.height ? desc.height : frameHeight;
+            uint32_t w = desc.size.calculateTextureWidth(frameWidth);
+            uint32_t h = desc.size.calculateTextureHeight(frameHeight);
             size_t neededSize = (size_t)w * h * rhi::getImageFormatSize(desc.format);
             if (!desc.transient)
             {

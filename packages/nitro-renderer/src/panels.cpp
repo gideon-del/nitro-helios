@@ -393,7 +393,7 @@ namespace nitro::renderer
         }
     }
 
-    void InspectorPanel::draw(const RenderContext &ctx, ImGuizmo::OPERATION &gizmoOp, ImGuizmo::MODE &mode, geometry::MeshTransformation &m_editBefore)
+    void InspectorPanel::draw(const RenderContext &ctx, ImGuizmo::OPERATION &gizmoOp, ImGuizmo::MODE &mode, geometry::MeshTransformation &m_editBefore, std::shared_ptr<rhi::RHIDevice> device)
     {
         ImGui::Begin("Inspector");
 
@@ -410,6 +410,11 @@ namespace nitro::renderer
 
             ctx.scene->pushCommand(
                 std::make_unique<CreateMeshInstanceCommand>(meshHandle, materialHandle, geometry::MeshTransformation{}));
+        }
+        if (ImGui::Button("Add  Point Light"))
+        {
+            ctx.scene->pushCommand(
+                std::make_unique<CreatePointLightCommand>());
         }
         auto &selectedEntity = ctx.scene->selectedEntity();
 
@@ -525,24 +530,8 @@ namespace nitro::renderer
         ImGui::EndChild();
 
         ImGui::Separator();
-        ImGui::Text("Material");
-
-        // auto *mat = ctx.scene->materialManager->getMaterial(entity->material);
-        // if (mat)
-        // {
-        //     ImGui::Text("Albedo    %.2f, %.2f, %.2f, %.2f",
-        //                 mat->parameters.albedo.r, mat->parameters.albedo.g,
-        //                 mat->parameters.albedo.b, mat->parameters.albedo.a);
-        //     ImGui::Text("Metallic  %.3f", mat->parameters.metallic);
-        //     ImGui::Text("Roughness %.3f", mat->parameters.roughness);
-
-        //     ImGui::Text("Textures");
-        //     ImGui::BulletText("Albedo:    %s", mat->textures.albedo ? "yes" : "—");
-        //     ImGui::BulletText("Normal:    %s", mat->textures.normalMap ? "yes" : "—");
-        //     ImGui::BulletText("MetalRough:%s", mat->textures.metallicRoughness ? "yes" : "—");
-        //     ImGui::BulletText("Occlusion: %s", mat->textures.occlusionMap ? "yes" : "—");
-        //     ImGui::BulletText("Emissive:  %s", mat->textures.emissive ? "yes" : "—");
-        // }
+        drawMeshInstancePanels(*selectedEntity, *entity, *ctx.scene, device);
+        drawPointLightPanel(*selectedEntity, *entity, *ctx.scene);
 
         if (ImGui::Button("Focus"))
         {
@@ -553,7 +542,7 @@ namespace nitro::renderer
         {
 
             ctx.scene->pushCommand(
-                std::make_unique<DeleteMeshInstanceCommand>(*selectedEntity, *entity));
+                std::make_unique<DeleteEntityCommand>(*selectedEntity, *entity));
         }
         if (ImGui::Button("Reset Transform"))
         {
@@ -565,6 +554,127 @@ namespace nitro::renderer
         ImGui::End();
     }
 
+    void InspectorPanel::drawMeshInstancePanels(const EntityHandle &handle, Entity &entity, Scene &scene, std::shared_ptr<rhi::RHIDevice> device)
+    {
+
+        if (!entity.meshInstance)
+            return;
+
+        auto instance = scene.meshManager->getMeshInstance(*entity.meshInstance);
+        if (!instance)
+            return;
+        ImGui::Text("Material");
+
+        auto uploadToSlot = [&](uint32_t &slotIndex, assets::TextureHandle &assetSlot, rhi::TextureDesc::ImageFormat format)
+        {
+            NFD::Guard g;
+            NFD::UniquePath outPath;
+            nfdfilteritem_t filters[2] = {{"PNG", "png"}, {"JPEG", "jpg,jpeg"}};
+            if (NFD::OpenDialog(outPath, filters, 2) == NFD_OKAY)
+            {
+                auto texHandle = scene.assetManager()->import(outPath.get());
+                assetSlot = texHandle;
+                uint32_t newIndex = scene.materialManager->addTexture(texHandle, format);
+                slotIndex = newIndex;
+                scene.materialManager->markMaterialBufferAsDirty();
+            }
+        };
+
+        auto textureSlot = [&](const char *label, uint32_t &texIndex, assets::TextureHandle &assetSlot, rhi::TextureDesc::ImageFormat format)
+        {
+            ImGui::PushID(label);
+            ImGui::BeginGroup();
+            ImGui::TextUnformatted(label);
+
+            bool empty = (texIndex == INVALID_TEXTURE_INDEX);
+            if (empty)
+            {
+
+                if (ImGui::Button("＋", ImVec2(64, 64)))
+                {
+                    uploadToSlot(texIndex, assetSlot, format);
+                }
+            }
+            else
+            {
+                rhi::RHITexture *tex = scene.materialManager->getTexture(texIndex);
+
+                if (tex)
+                {
+                    if (ImGui::ImageButton(label, (ImTextureID)device->getImGuiTextureRef(tex),
+                                           ImVec2(64, 64)))
+                    {
+                        uploadToSlot(texIndex, assetSlot, format);
+                    }
+                }
+            }
+            ImGui::EndGroup();
+            ImGui::PopID();
+        };
+
+        auto mat = scene.materialManager->getMaterial(instance->material);
+        if (mat)
+        {
+            auto assetMat = scene.assetManager()->getAsset(mat->assetHandle);
+            if (ImGui::ColorEdit4("Albedo", &mat->parameters.albedo.x))
+                scene.materialManager->markMaterialBufferAsDirty();
+            if (ImGui::DragFloat("Metallic", &mat->parameters.metallic, 0.01f, 0.0f, 1.0f))
+                scene.materialManager->markMaterialBufferAsDirty();
+            if (ImGui::DragFloat("Roughness", &mat->parameters.roughness, 0.01f, 0.0f, 1.0f))
+                scene.materialManager->markMaterialBufferAsDirty();
+
+            ImGui::Text("Textures");
+            if (assetMat)
+            {
+
+                textureSlot("Albedo", mat->textures.albedo, assetMat->textures.albedo, rhi::TextureDesc::ImageFormat::ColorSRGB8);
+                ImGui::SameLine();
+                textureSlot("Normal", mat->textures.normalMap, assetMat->textures.normalMap, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+                ImGui::SameLine();
+                textureSlot("MetalRoughness", mat->textures.metallicRoughness, assetMat->textures.metallicRoughness, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+                ImGui::SameLine();
+                textureSlot("Occlusion", mat->textures.occlusionMap, assetMat->textures.occlusionMap, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+                ImGui::SameLine();
+                textureSlot("Emissive", mat->textures.emissive, assetMat->textures.emissive, rhi::TextureDesc::ImageFormat::ColorRGBA8);
+            }
+        }
+    };
+
+    void InspectorPanel::drawPointLightPanel(const EntityHandle &handle, Entity &entity, Scene &scene)
+    {
+
+        if (!entity.pointLight)
+            return;
+        auto pointLight = scene.lightManager()->getPointLight(*entity.pointLight);
+
+        if (!pointLight)
+            return;
+
+        auto color = pointLight->color;
+
+        if (ImGui::ColorEdit3("Color", &color.r))
+        {
+            pointLight->color = color;
+            scene.lightManager()->markPointLightDirty(*entity.pointLight);
+        }
+
+        auto radius = pointLight->radius;
+
+        if (ImGui::DragFloat("Radius", &radius, 0.1f))
+        {
+            pointLight->radius = radius;
+            scene.lightManager()->markPointLightDirty(*entity.pointLight);
+            scene.updateEntity(handle);
+        }
+
+        auto intensity = pointLight->intensity;
+
+        if (ImGui::DragFloat("Intensity", &intensity, 0.1f))
+        {
+            pointLight->intensity = intensity;
+            scene.lightManager()->markPointLightDirty(*entity.pointLight);
+        }
+    }
     void HierarchyPanel::draw(const RenderContext &ctx, RendererSettings &settings)
     {
         ImGui::Begin("Hierarchy");

@@ -47,7 +47,11 @@ namespace nitro::renderer
 
     struct InspectorPanel
     {
-        void draw(const RenderContext &ctx, ImGuizmo::OPERATION &gizmoOp, ImGuizmo::MODE &mode, geometry::MeshTransformation &m_editBefore);
+        void draw(const RenderContext &ctx, ImGuizmo::OPERATION &gizmoOp, ImGuizmo::MODE &mode, geometry::MeshTransformation &m_editBefore, std::shared_ptr<rhi::RHIDevice> device);
+
+    private:
+        void drawMeshInstancePanels(const EntityHandle &handle, Entity &entity, Scene &scene, std::shared_ptr<rhi::RHIDevice> device);
+        void drawPointLightPanel(const EntityHandle &handle, Entity &entity, Scene &scene);
     };
     struct HierarchyPanel
     {

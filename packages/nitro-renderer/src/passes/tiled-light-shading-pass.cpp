@@ -90,36 +90,59 @@ namespace nitro::renderer
             });
     }
 
-    void TileLightShadingPass::bindResources(const RGResources &resources, const TileLightShadingTextureIDs textures, const PerFrame<TileLightingComputeResource> &tileResources)
+    void TileLightShadingPass::bindDescriptorSet(const RGResources &rgResources, const TiledLightPassRGResource &rgResourceIds, TiledLightPassResource &resource, rhi::RHIBuffer *pointLightBuffer)
     {
-        for (int i = 0; i < g_MAX_FRAMES_IN_FLIGHT; i++)
-        {
+        auto frameidx = m_device->getCurrentFrameIndex();
+        resource.lastDepthTexture = rgResources.getTexture(rgResourceIds.depthTexture);
+        resource.lastNormalTexture = rgResources.getTexture(rgResourceIds.normalTexture);
+        resource.lastPointLightBuffer = pointLightBuffer;
+        resource.lastTileLightCountBuffer = rgResources.getBuffer(rgResourceIds.tileLightCount, frameidx);
+        resource.lastTileLightIndicesBuffer = rgResources.getBuffer(rgResourceIds.tileLightIndices, frameidx);
+        resource.lastTileLightDebugBuffer = rgResources.getBuffer(rgResourceIds.tileLightDebug, frameidx);
 
-            auto &resource = m_resources.current(i);
-            auto tileResource = tileResources.current(i);
-            resource.descriptorSet->writeBuffer(resource.uniformBuffer, 2);
+        resource.descriptorSet->writeBuffer(resource.uniformBuffer, 2);
 
-            rhi::TextureBinding textureBinding;
-            textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
-            textureBinding.texture = resources.getTexture(textures.gDepth);
-            resource.descriptorSet->writeTexture(textureBinding, 3, rhi::ImageLayout::ShaderReadOnly);
-            resource.descriptorSet->writeTexture(textureBinding, 3, ImageLayout::ShaderReadOnly);
-            textureBinding.texture = resources.getTexture(textures.gNormal);
-            resource.descriptorSet->writeTexture(textureBinding, 4, ImageLayout::ShaderReadOnly);
-            resource.descriptorSet->writeBuffer(tileResource.pointLightBuffer, 5);
-            resource.descriptorSet->writeBuffer(tileResource.tileLightCountBuffer, 6);
-            resource.descriptorSet->writeBuffer(tileResource.tileLightIndicesBuffer, 7);
-            resource.descriptorSet->writeBuffer(tileResource.tileLightDebugBuffer, 8);
-            resource.descriptorSet->commit();
-        }
+        rhi::TextureBinding textureBinding;
+        textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+        textureBinding.texture = resource.lastDepthTexture;
+        resource.descriptorSet->writeTexture(textureBinding, 3, ImageLayout::ShaderReadOnly);
+        textureBinding.texture = resource.lastNormalTexture;
+        resource.descriptorSet->writeTexture(textureBinding, 4, ImageLayout::ShaderReadOnly);
+        resource.descriptorSet->writeBuffer(resource.lastPointLightBuffer, 5);
+        resource.descriptorSet->writeBuffer(resource.lastTileLightCountBuffer, 6);
+        resource.descriptorSet->writeBuffer(resource.lastTileLightIndicesBuffer, 7);
+        resource.descriptorSet->writeBuffer(resource.lastTileLightDebugBuffer, 8);
+        resource.descriptorSet->commit();
+    }
+    bool TileLightShadingPass::isDescriptorSetStale(const RGResources &rgResources, const TiledLightPassRGResource &rgResourceIds, TiledLightPassResource &resource, rhi::RHIBuffer *pointLightBuffer)
+    {
+
+        auto frameidx = m_device->getCurrentFrameIndex();
+        return resource.lastDepthTexture != rgResources.getTexture(rgResourceIds.depthTexture) ||
+               resource.lastNormalTexture != rgResources.getTexture(rgResourceIds.normalTexture) ||
+               resource.lastPointLightBuffer != pointLightBuffer ||
+               resource.lastTileLightCountBuffer != rgResources.getBuffer(rgResourceIds.tileLightCount, frameidx) ||
+               resource.lastTileLightIndicesBuffer != rgResources.getBuffer(rgResourceIds.tileLightIndices, frameidx) ||
+               resource.lastTileLightDebugBuffer != rgResources.getBuffer(rgResourceIds.tileLightDebug, frameidx);
+    }
+
+    bool TileLightShadingPass::isRenderPassStale(const RGResources &rgResources, const TiledLightPassRGResource &rgResourceIds)
+    {
+
+        return m_lastPointLightTexture != rgResources.getTexture(rgResourceIds.pointLightTexture) || m_renderPass == nullptr;
+    };
+
+    void TileLightShadingPass::updateRenderPass(const RGResources &rgResources, const TiledLightPassRGResource &rgResourceIds)
+    {
 
         if (m_renderPass)
         {
             m_device->destroyRenderPass(m_renderPass);
         }
+        m_lastPointLightTexture = rgResources.getTexture(rgResourceIds.pointLightTexture);
         rhi::RenderPassDesc renderPassDesc;
         rhi::RenderPassDesc::Attachment colorAttachment;
-        colorAttachment.texture = resources.getTexture(textures.tileLightTex);
+        colorAttachment.texture = m_lastPointLightTexture;
         colorAttachment.load = rhi::RenderPassDesc::LoadOp::Clear;
         colorAttachment.store = rhi::RenderPassDesc::StoreOp::Store;
         renderPassDesc.colorAttachments = {colorAttachment};
@@ -147,12 +170,34 @@ namespace nitro::renderer
 
         m_width = width;
         m_height = height;
+
+        m_lastPointLightTexture = nullptr;
+        for (auto &r : m_resources)
+        {
+            r.lastDepthTexture = nullptr;
+            r.lastNormalTexture = nullptr;
+            r.lastTileLightCountBuffer = nullptr;
+            r.lastTileLightIndicesBuffer = nullptr;
+            r.lastTileLightDebugBuffer = nullptr;
+            r.lastPointLightBuffer = nullptr;
+        }
     }
 
-    void TileLightShadingPass::execute(rhi::RHICommandBuffer *cmd, TiledLightPassUBO ubo)
+    void TileLightShadingPass::execute(rhi::RHICommandBuffer *cmd, const RGResources &rgResources, const TiledLightPassRGResource &rgResourceIds, Scene &scene, TiledLightPassUBO ubo)
     {
         auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
 
+        auto pointLightBuffer = scene.lightManager()->getPointLightBuffer();
+        if (isDescriptorSetStale(rgResources, rgResourceIds, resource, pointLightBuffer))
+        {
+            bindDescriptorSet(rgResources, rgResourceIds, resource, pointLightBuffer);
+        }
+
+        if (isRenderPassStale(rgResources, rgResourceIds))
+        {
+
+            updateRenderPass(rgResources, rgResourceIds);
+        }
         resource.uniformBuffer->upload(&ubo, sizeof(TiledLightPassUBO));
 
         cmd->beginRenderPass(m_renderPass);

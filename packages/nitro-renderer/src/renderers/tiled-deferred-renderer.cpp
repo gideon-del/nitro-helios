@@ -204,7 +204,10 @@ namespace nitro::renderer
         m_debugDrawPass->resize(width, height);
 
         m_renderGraph.allocateTextures(m_device, width, height);
+        m_renderGraph.reallocateScreenBuffers(m_device, width, height);
         m_renderGraph.bindPassResources(m_renderGraph.buildResources());
+
+        std::cout << "Resize Called" << std::endl;
     };
 
     void TiledDeferredRenderer::execute(rhi::RHICommandBuffer *cmd, const RenderContext &ctx, RendererSettings &settings, rhi::RHITimer *timer)
@@ -226,15 +229,16 @@ namespace nitro::renderer
     {
 
         auto drawCountId = m_renderGraph.declareBuffer({"Draw Count",
-                                                        sizeof(uint32_t),
+                                                        RGResourceSize::bufferAbsolute(sizeof(uint32_t)),
                                                         rhi::BufferDesc::Usage::Indirect,
                                                         true});
         auto drawCommandsId = m_renderGraph.declareBuffer({"Draw Command Buffer",
-                                                           sizeof(DrawIndexedIndirectArgs) * Scene::s_MAX_DRAW_COMMANDS,
+                                                           RGResourceSize::bufferAbsolute(sizeof(DrawIndexedIndirectArgs) * Scene::s_MAX_DRAW_COMMANDS),
                                                            rhi::BufferDesc::Usage::Indirect,
                                                            true});
         auto hizTex = m_renderGraph.declareTexture({"Hiz Depth",
-                                                    rhi::TextureDesc::ImageFormat::ColorR32, 0, 0, true, HIZ_MIP_COUNT});
+                                                    rhi::TextureDesc::ImageFormat::ColorR32,
+                                                    RGResourceSize::textureScreenRelative(), true, HIZ_MIP_COUNT});
 
         m_renderGraph.addPass({
             "Mesh Compact pass",
@@ -268,15 +272,16 @@ namespace nitro::renderer
         });
 
         auto depth = m_renderGraph.declareTexture({"GBuffer Depth",
-                                                   rhi::TextureDesc::ImageFormat::Depth32Float, 0, 0});
+                                                   rhi::TextureDesc::ImageFormat::Depth32Float,
+                                                   RGResourceSize::textureScreenRelative()});
         auto albedo = m_renderGraph.declareTexture({"GBuffer Albedo",
-                                                    rhi::TextureDesc::ImageFormat::ColorRGBA8});
+                                                    rhi::TextureDesc::ImageFormat::ColorRGBA8, RGResourceSize::textureScreenRelative()});
         auto normal = m_renderGraph.declareTexture({"GBuffer Normal",
-                                                    rhi::TextureDesc::ImageFormat::ColorRG8U});
+                                                    rhi::TextureDesc::ImageFormat::ColorRG8U, RGResourceSize::textureScreenRelative()});
         auto metallicRoughness = m_renderGraph.declareTexture({"GBuffer Metallic Roughness",
-                                                               rhi::TextureDesc::ImageFormat::ColorRGBA8});
+                                                               rhi::TextureDesc::ImageFormat::ColorRGBA8, RGResourceSize::textureScreenRelative()});
         auto emissive = m_renderGraph.declareTexture({"GBuffer Emissive",
-                                                      rhi::TextureDesc::ImageFormat::ColorRGBA16});
+                                                      rhi::TextureDesc::ImageFormat::ColorRGBA16, RGResourceSize::textureScreenRelative()});
 
         m_renderGraph.addPass({
             "Depth Prepass",
@@ -343,11 +348,11 @@ namespace nitro::renderer
         );
 
         auto hizDrawCountId = m_renderGraph.declareBuffer({" Hi-z Draw Count",
-                                                           sizeof(uint32_t),
+                                                           RGResourceSize::bufferAbsolute(sizeof(uint32_t)),
                                                            rhi::BufferDesc::Usage::Indirect,
                                                            true});
         auto hizDrawCommandsId = m_renderGraph.declareBuffer({"Hi-z Draw Command Buffer",
-                                                              sizeof(DrawIndexedIndirectArgs) * Scene::s_MAX_DRAW_COMMANDS,
+                                                              RGResourceSize::bufferAbsolute(sizeof(DrawIndexedIndirectArgs) * Scene::s_MAX_DRAW_COMMANDS),
                                                               rhi::BufferDesc::Usage::Indirect,
                                                               true});
 
@@ -419,7 +424,7 @@ namespace nitro::renderer
         });
 
         auto ssaoTex = m_renderGraph.declareTexture({"SSAO Texture",
-                                                     rhi::TextureDesc::ImageFormat::ColorRGBA16, 0, 0, true});
+                                                     rhi::TextureDesc::ImageFormat::ColorRGBA16, RGResourceSize::textureScreenRelative(), true});
 
         SSAOPassTextureIDs ssaoTextures{depth, normal, ssaoTex};
         m_renderGraph.addPass({
@@ -446,21 +451,41 @@ namespace nitro::renderer
         });
 
         auto pointLightTex = m_renderGraph.declareTexture({"Tile Light Texture",
-                                                           rhi::TextureDesc::ImageFormat::ColorRGBA16});
+                                                           rhi::TextureDesc::ImageFormat::ColorRGBA16, RGResourceSize::textureScreenRelative()});
 
-        TileLightShadingTextureIDs tileLightTextures{depth, normal, pointLightTex};
+        auto tileLightIndicesBuffer = m_renderGraph.declareBuffer({.name = "Tile Light Index Buffer",
+                                                                   .size = RGResourceSize::bufferTileRelative(16, sizeof(uint) * TiledLightingComputePass::c_MAX_LIGHT_PER_TILE),
+                                                                   .usage = rhi::BufferDesc::Usage::Storage,
+                                                                   .transient = true});
+        auto tileLightCountBuffer = m_renderGraph.declareBuffer({.name = "Tile Light Count Buffer",
+                                                                 .size = RGResourceSize::bufferTileRelative(16, sizeof(uint)),
+                                                                 .usage = rhi::BufferDesc::Usage::Storage,
+                                                                 .transient = true});
+
+        auto tileLightDebugBuffer = m_renderGraph.declareBuffer({.name = "Tile Light Debug Buffer",
+                                                                 .size = RGResourceSize::bufferTileRelative(16, sizeof(TileDebug)),
+                                                                 .usage = rhi::BufferDesc::Usage::Storage,
+                                                                 .transient = true});
+
+        TileLightingComputeRGResource tileLightComputeResource{
+            .tileLightCount = tileLightCountBuffer,
+            .tileLightIndices = tileLightIndicesBuffer,
+            .tileLightDebug = tileLightDebugBuffer,
+            .depthTexture = depth};
         m_renderGraph.addPass({
-            "Tile Light Pass",
-            {{depth, rhi::ResourceState::ShaderRead}, {normal, rhi::ResourceState::ShaderRead}},
-            {{pointLightTex, rhi::ResourceState::RenderTarget}},
+            "Tile Light Compute Pass",
+            {{depth, rhi::ResourceState::ShaderRead}},
             {},
             {},
-            [tileLightTextures, this](const RGResources &resources)
             {
-                m_tileComputePass->bindResource(resources, tileLightTextures.gDepth);
-                m_tileLightPass->bindResources(resources, tileLightTextures, m_tileComputePass->getFrameResources());
+                {tileLightCountBuffer, rhi::ResourceState::ShaderWrite},
+                {tileLightDebugBuffer, rhi::ResourceState::ShaderWrite},
+                {tileLightIndicesBuffer, rhi::ResourceState::ShaderWrite},
             },
-            [tileLightTextures, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            [](const RGResources &resources) {
+
+            },
+            [tileLightComputeResource, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
             {
                 TiledCameraUBO computeUBO;
                 computeUBO.farPlane = ctx.camera->far();
@@ -468,10 +493,35 @@ namespace nitro::renderer
                 computeUBO.screenSize = settings.viewportSize;
                 computeUBO.invProj = glm::inverse(ctx.camera->proj());
                 computeUBO.view = ctx.camera->view();
-                computeUBO.totalLightCount = static_cast<uint>(settings.light.pointLights.size());
+                computeUBO.totalLightCount = ctx.scene->lightCount();
 
-                m_tileComputePass->execute(cmd, settings.light, computeUBO);
+                m_tileComputePass->execute(cmd, resources, tileLightComputeResource, *ctx.scene, computeUBO);
+            },
+        });
 
+        TiledLightPassRGResource tileLightRGResources{
+            .tileLightCount = tileLightCountBuffer,
+            .tileLightIndices = tileLightIndicesBuffer,
+            .tileLightDebug = tileLightDebugBuffer,
+            .depthTexture = depth,
+            .normalTexture = normal,
+            .pointLightTexture = pointLightTex};
+        m_renderGraph.addPass({
+            "Tile Light Shading Pass",
+            {{depth, rhi::ResourceState::ShaderRead}, {normal, rhi::ResourceState::ShaderRead}},
+            {{pointLightTex, rhi::ResourceState::RenderTarget}},
+            {
+                {tileLightCountBuffer, rhi::ResourceState::ShaderRead},
+                {tileLightDebugBuffer, rhi::ResourceState::ShaderRead},
+                {tileLightIndicesBuffer, rhi::ResourceState::ShaderRead},
+
+            },
+            {},
+            [](const RGResources &resources) {
+
+            },
+            [tileLightRGResources, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
+            {
                 TiledLightPassUBO lightPassUBO;
 
                 lightPassUBO.invViewProj = ctx.camera->invViewProj();
@@ -480,12 +530,12 @@ namespace nitro::renderer
                     std::ceil(float(settings.viewportSize.x) / 16.0f));
                 lightPassUBO.screenSize = settings.viewportSize;
                 lightPassUBO.showHeatMap = settings.selectedDebugMode == DebugMode::HeatMap ? 1 : 0;
-                m_tileLightPass->execute(cmd, lightPassUBO);
+                m_tileLightPass->execute(cmd, resources, tileLightRGResources, *ctx.scene, lightPassUBO);
             },
         });
 
         auto skyboxTex = m_renderGraph.declareTexture({"Skybox",
-                                                       rhi::TextureDesc::ImageFormat::ColorRGBA16});
+                                                       rhi::TextureDesc::ImageFormat::ColorRGBA16, RGResourceSize::textureScreenRelative()});
 
         SkyboxTextures skyboxTextures{m_cubemapTexture, skyboxTex};
         m_renderGraph.addPass({
@@ -514,8 +564,8 @@ namespace nitro::renderer
             cascadeTextures.push_back(m_renderGraph.declareTexture({
                 "Shadow map" + std::to_string(i + 1),
                 rhi::TextureDesc::ImageFormat::Depth32Float,
-                ShadowPass::c_ShadowResolution,
-                ShadowPass::c_ShadowResolution,
+                RGResourceSize::textureAbsolute(ShadowPass::c_ShadowResolution, ShadowPass::c_ShadowResolution),
+
             }));
         }
 
@@ -554,7 +604,7 @@ namespace nitro::renderer
         });
 
         auto lightShadedTex = m_renderGraph.declareTexture({"HDR Light Output",
-                                                            rhi::TextureDesc::ImageFormat::ColorRGBA16});
+                                                            rhi::TextureDesc::ImageFormat::ColorRGBA16, RGResourceSize::textureScreenRelative()});
 
         DeferredLightingTextureIDs deferredLightIds{
             gBufferIds,
@@ -627,26 +677,26 @@ namespace nitro::renderer
         });
 
         auto particleBuffer = m_renderGraph.declareBuffer({"Particle Buffer",
-                                                           sizeof(ParticleDesc) * ParticleUpdatePass::s_MAX_PARTICLE_COUNT,
+                                                           RGResourceSize::bufferAbsolute(sizeof(ParticleDesc) * ParticleUpdatePass::s_MAX_PARTICLE_COUNT),
                                                            rhi::BufferDesc::Usage::Storage});
         auto deadListBuffer = m_renderGraph.declareBuffer({"Dead List Buffer",
-                                                           (sizeof(uint32_t) * ParticleUpdatePass::s_MAX_PARTICLE_COUNT) + sizeof(uint32_t),
+                                                           RGResourceSize::bufferAbsolute((sizeof(uint32_t) * ParticleUpdatePass::s_MAX_PARTICLE_COUNT) + sizeof(uint32_t)),
                                                            rhi::BufferDesc::Usage::Storage});
         auto aliveListBuffer = m_renderGraph.declareBuffer({"Alive List Buffer",
-                                                            (sizeof(uint32_t) * ParticleUpdatePass::s_MAX_PARTICLE_COUNT),
+                                                            RGResourceSize::bufferAbsolute((sizeof(uint32_t) * ParticleUpdatePass::s_MAX_PARTICLE_COUNT)),
                                                             rhi::BufferDesc::Usage::Storage});
         auto aliveCountBuffer = m_renderGraph.declareBuffer({"Alive Count Buffer",
-                                                             (sizeof(uint32_t)),
+                                                             RGResourceSize::bufferAbsolute((sizeof(uint32_t))),
                                                              rhi::BufferDesc::Usage::Storage | rhi::BufferDesc::Usage::TransferDst});
         auto emitterBuffer = m_renderGraph.declareBuffer({"Emitter Buffer",
-                                                          (sizeof(EmitterDesc) * ParticleEmitterSystem::s_MAX_EMITTERS),
+                                                          RGResourceSize::bufferAbsolute((sizeof(EmitterDesc) * ParticleEmitterSystem::s_MAX_EMITTERS)),
                                                           rhi::BufferDesc::Usage::Storage | rhi::BufferDesc::Usage::TransferDst});
 
         auto indirectDrawBuffer = m_renderGraph.declareBuffer({"Indirect Draw Buffer",
-                                                               sizeof(rhi::DrawIndirectArgs),
+                                                               RGResourceSize::bufferAbsolute(sizeof(rhi::DrawIndirectArgs)),
                                                                rhi::BufferDesc::Usage::Indirect});
         auto indirectDispatchBuffer = m_renderGraph.declareBuffer({"Indirect Dispatch Buffer",
-                                                                   sizeof(rhi::DrawIndirectArgs),
+                                                                   RGResourceSize::bufferAbsolute(sizeof(rhi::DrawIndirectArgs)),
                                                                    rhi::BufferDesc::Usage::Indirect});
         m_renderGraph.addPass({
             "Particle Emitter",
@@ -755,7 +805,7 @@ namespace nitro::renderer
         });
 
         auto particleTexture = m_renderGraph.declareTexture({"Particle Texture",
-                                                             rhi::TextureDesc::ImageFormat::ColorRGBA16});
+                                                             rhi::TextureDesc::ImageFormat::ColorRGBA16, RGResourceSize::textureScreenRelative()});
 
         m_renderGraph.addPass(
             {"Copy Light to Particle",
@@ -801,7 +851,7 @@ namespace nitro::renderer
         });
 
         auto bloomTexture = m_renderGraph.declareTexture({"Bloom Texture",
-                                                          rhi::TextureDesc::ImageFormat::ColorRGBA16, 0, 0, true});
+                                                          rhi::TextureDesc::ImageFormat::ColorRGBA16, RGResourceSize::textureScreenRelative(), true});
 
         m_renderGraph.addPass({
             "Bloom",
@@ -822,7 +872,7 @@ namespace nitro::renderer
 
         auto readbackBuffer = m_renderGraph.declareBuffer({
             "Auto Exposure Readback buffer",
-            16,
+            RGResourceSize::bufferAbsolute(16),
             rhi::BufferDesc::Usage::TransferDst,
         });
 
@@ -846,7 +896,7 @@ namespace nitro::renderer
         });
 
         auto colorGradedTexture = m_renderGraph.declareTexture({"Color Grade",
-                                                                rhi::TextureDesc::ImageFormat::ColorRGBA16, 0, 0, true});
+                                                                rhi::TextureDesc::ImageFormat::ColorRGBA16, RGResourceSize::textureScreenRelative(), true});
 
         m_renderGraph.addPass({
             "Color Grading",
@@ -870,7 +920,7 @@ namespace nitro::renderer
         });
 
         auto tonemapTexture = m_renderGraph.declareTexture({"ToneMap",
-                                                            rhi::TextureDesc::ImageFormat::ColorRGBA8});
+                                                            rhi::TextureDesc::ImageFormat::ColorRGBA8, RGResourceSize::textureScreenRelative()});
 
         m_renderGraph.addPass({
             "Tone Map",
@@ -893,7 +943,7 @@ namespace nitro::renderer
         });
 
         auto fxaaTexture = m_renderGraph.declareTexture({"FXAA",
-                                                         rhi::TextureDesc::ImageFormat::ColorRGBA8, 0, 0, true});
+                                                         rhi::TextureDesc::ImageFormat::ColorRGBA8, RGResourceSize::textureScreenRelative(), true});
 
         m_renderGraph.addPass({
             "FXAA",
@@ -915,7 +965,7 @@ namespace nitro::renderer
         });
 
         auto debugTexture = m_renderGraph.declareTexture({"Debug Draw",
-                                                          rhi::TextureDesc::ImageFormat::ColorRGBA8, 0, 0, false});
+                                                          rhi::TextureDesc::ImageFormat::ColorRGBA8, RGResourceSize::textureScreenRelative(), false});
         m_renderGraph.addPass({
             "Copy FXAA Pass",
             {{fxaaTexture, rhi::ResourceState::CopySrc}},
@@ -1019,10 +1069,11 @@ namespace nitro::renderer
 
         m_renderGraph.compile();
         m_renderGraph.allocateTextures(m_device, m_swapchain->getWidth(), m_swapchain->getHeight());
-        m_renderGraph.allocateBuffers(m_device);
+        m_renderGraph.allocateBuffers(m_device, m_swapchain->getWidth(), m_swapchain->getHeight());
+
         auto resources = m_renderGraph.buildResources();
         m_renderGraph.bindPassResources(resources);
-        // m_particleEmitterPass->uploadInitialEmitter(resources, emitterBuffer);
+
         m_particleUpdatePass->uploadDeadList(resources, deadListBuffer);
         m_compiledFrameGraph = m_renderGraph.compileFrameGraph();
 

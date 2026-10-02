@@ -33,12 +33,21 @@ namespace nitro::renderer
     };
     struct TileLightingComputeResource
     {
-        rhi::RHIBuffer *tileLightCountBuffer;
-        rhi::RHIBuffer *tileLightIndicesBuffer;
-        rhi::RHIBuffer *tileLightDebugBuffer;
-        rhi::RHIBuffer *pointLightBuffer;
+        rhi::RHIBuffer *lastTileLightCountBuffer = nullptr;
+        rhi::RHIBuffer *lastTileLightIndicesBuffer = nullptr;
+        rhi::RHIBuffer *latTileLightDebugBuffer = nullptr;
+        rhi::RHIBuffer *lastPointLightBuffer = nullptr;
+        rhi::RHITexture *lastDepthTexture = nullptr;
         rhi::RHIBuffer *cameraUniformBuffer;
         rhi::RHIDescriptorSet *descriptorSet;
+    };
+
+    struct TileLightingComputeRGResource
+    {
+        RGBufferID tileLightCount;
+        RGBufferID tileLightIndices;
+        RGBufferID tileLightDebug;
+        RGTextureID depthTexture;
     };
 
     class TiledLightingComputePass
@@ -52,9 +61,9 @@ namespace nitro::renderer
                                  bool isMetal);
         ~TiledLightingComputePass();
         void resize(uint32_t width, uint32_t height);
-        void execute(rhi::RHICommandBuffer *cmd, LightingSettings &settings, TiledCameraUBO cameraUBO);
+        void execute(rhi::RHICommandBuffer *cmd, const RGResources &rgResources, const TileLightingComputeRGResource &rgResourceIds, Scene &scene, TiledCameraUBO cameraUBO);
         PerFrame<TileLightingComputeResource> &getFrameResources() { return m_resources; };
-        void bindResource(const RGResources &resources, const RGTextureID depth);
+
         static constexpr uint32_t c_MAX_LIGHT_PER_TILE = 256;
         static constexpr uint32_t c_TILE_GROUP_SIZE = 16;
 
@@ -65,7 +74,9 @@ namespace nitro::renderer
 
         PerFrame<TileLightingComputeResource> m_resources;
         uint32_t m_width, m_height, m_tileSizeX, m_tileSizeY, m_maxPointLights;
-        void m_destroyBuffers();
-        void m_createBuffers(TileLightingComputeResource &resource);
+
+    private:
+               bool isFrameResourceStale(const RGResources &rgResources, const TileLightingComputeRGResource &rgResourceIds, rhi::RHIBuffer *pointLightBuffer, TileLightingComputeResource &resource);
+        void bindFrameResource(const RGResources &rgResource, const TileLightingComputeRGResource &rgResourceIds, rhi::RHIBuffer *pointLightBuffer, TileLightingComputeResource &resource);
     };
 } // namespace nitro::renderer

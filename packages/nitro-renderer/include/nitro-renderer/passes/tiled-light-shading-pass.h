@@ -11,8 +11,25 @@ namespace nitro::renderer
 {
     struct TiledLightPassResource
     {
+        rhi::RHIBuffer *lastTileLightCountBuffer = nullptr;
+        rhi::RHIBuffer *lastTileLightIndicesBuffer = nullptr;
+        rhi::RHIBuffer *lastTileLightDebugBuffer = nullptr;
+        rhi::RHIBuffer *lastPointLightBuffer = nullptr;
+        rhi::RHITexture *lastDepthTexture = nullptr;
+
+        rhi::RHITexture *lastNormalTexture = nullptr;
         rhi::RHIBuffer *uniformBuffer;
         rhi::RHIDescriptorSet *descriptorSet;
+    };
+
+    struct TiledLightPassRGResource
+    {
+        RGBufferID tileLightCount;
+        RGBufferID tileLightIndices;
+        RGBufferID tileLightDebug;
+        RGTextureID depthTexture;
+        RGTextureID normalTexture;
+        RGTextureID pointLightTexture;
     };
 
     struct TiledLightPassUBO
@@ -26,12 +43,6 @@ namespace nitro::renderer
         float pad[3];
     };
 
-    struct TileLightShadingTextureIDs
-    {
-        RGTextureID gDepth;
-        RGTextureID gNormal;
-        RGTextureID tileLightTex;
-    };
     class TileLightShadingPass
     {
 
@@ -43,17 +54,23 @@ namespace nitro::renderer
                              bool isMetal);
         ~TileLightShadingPass();
         void resize(uint32_t width, uint32_t height);
-        void bindResources(const RGResources &resources, const TileLightShadingTextureIDs textures, const PerFrame<TileLightingComputeResource> &tileResources);
 
-        void execute(rhi::RHICommandBuffer *cmd, TiledLightPassUBO ubo);
+        void execute(rhi::RHICommandBuffer *cmd, const RGResources &rgResources, const TiledLightPassRGResource &rgResourceIds, Scene &scene, TiledLightPassUBO ubo);
 
     private:
         std::shared_ptr<rhi::RHIDevice> m_device;
         rhi::RHITexture *m_lightTexture;
         rhi::RHIPipeline *m_pipeline;
         rhi::RHIDescriptorLayout *m_descriptorLayout;
-        rhi::RHIRenderPass *m_renderPass;
+        rhi::RHIRenderPass *m_renderPass = nullptr;
         PerFrame<TiledLightPassResource> m_resources;
         uint32_t m_width, m_height;
+        rhi::RHITexture *m_lastPointLightTexture = nullptr;
+
+        bool isDescriptorSetStale(const RGResources &rgResources, const TiledLightPassRGResource &rgResourceIds, TiledLightPassResource &resource, rhi::RHIBuffer *pointLightBuffer);
+        void bindDescriptorSet(const RGResources &rgResources, const TiledLightPassRGResource &rgResourceIds, TiledLightPassResource &resource, rhi::RHIBuffer *pointLightBuffer);
+
+        bool isRenderPassStale(const RGResources &rgResources, const TiledLightPassRGResource &rgResourceIds);
+        void updateRenderPass(const RGResources &rgResources, const TiledLightPassRGResource &rgResourceIds);
     };
 } // namespace nitro::renderer

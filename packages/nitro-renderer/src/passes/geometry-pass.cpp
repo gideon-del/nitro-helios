@@ -69,6 +69,7 @@ namespace nitro::renderer
         auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
         if (isSceneBuffersStale(scene, resource))
         {
+            std::cout << "Bind Geometry descriptor set" << std::endl;
             bindSceneBuffers(scene, resource);
         }
 
@@ -98,6 +99,8 @@ namespace nitro::renderer
         resource.descriptorSet->writeBindlessTextures(scene.materialManager->getTextures(), 5);
         resource.descriptorSet->writeSampler(m_device->defaultSamplers().anisotropicRepeat, 6);
         resource.descriptorSet->commit();
+
+        scene.materialManager->markAsNotStale();
     }
 
     bool GeometryPass::isSceneBuffersStale(Scene &scene, GeometryPassResource &resource)
@@ -156,5 +159,11 @@ namespace nitro::renderer
 
         m_width = width;
         m_height = height;
+
+        for (auto &r : m_resources)
+        {
+            r.lastMeshInstanceBuffer = nullptr;
+            r.lastMaterialBuffer = nullptr;
+        }
     }
 }

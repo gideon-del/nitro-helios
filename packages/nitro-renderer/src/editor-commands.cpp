@@ -81,18 +81,34 @@ namespace nitro::renderer
         s.updateEntity(m_handle);
     }
 
-    void DeleteMeshInstanceCommand::undo(Scene &s)
+    void DeleteEntityCommand::undo(Scene &s)
     {
 
-        s.reactivateEntitySlot(m_handle, m_entity);
+        s.reactivateEntitySlot(m_handle, m_entity, m_meshInstance, m_pointLight);
     };
-    void DeleteMeshInstanceCommand::execute(Scene &s)
+    void DeleteEntityCommand::execute(Scene &s)
     {
 
+        if (m_entity.pointLight)
+        {
+            auto light = s.lightManager()->getPointLight(*m_entity.pointLight);
+            if (light)
+            {
+                m_pointLight = *light;
+            }
+        }
+        if (m_entity.meshInstance)
+        {
+            auto meshInstance = s.meshManager->getMeshInstance(*m_entity.meshInstance);
+            if (meshInstance)
+            {
+                m_meshInstance = *meshInstance;
+            }
+        }
         s.deactivateEntitySlot(m_handle);
     };
 
-    void DeleteMeshInstanceCommand::OnDiscard(Scene &s)
+    void DeleteEntityCommand::OnDiscard(Scene &s)
     {
 
         s.reclaimEntitySlot(m_handle);
@@ -106,16 +122,46 @@ namespace nitro::renderer
     {
         if (m_handle.isValid() && m_entity)
         {
-            s.reactivateEntitySlot(m_handle, *m_entity);
+            s.reactivateEntitySlot(m_handle, *m_entity, m_meshInstance, std::nullopt);
             return;
         }
         m_handle = s.addMeshEntity(m_meshHandle, m_materialHandle, m_transformation, "Entity");
         auto entity = s.entityStore()->get(m_handle);
 
         m_entity = *entity;
+
+        auto meshInstance = s.meshManager->getMeshInstance(*entity->meshInstance);
+
+        m_meshInstance = *meshInstance;
     };
 
     void CreateMeshInstanceCommand::OnDiscard(Scene &s)
+    {
+        s.reclaimEntitySlot(m_handle);
+    };
+
+    void CreatePointLightCommand::undo(Scene &s)
+    {
+        s.deactivateEntitySlot(m_handle);
+    };
+    void CreatePointLightCommand::execute(Scene &s)
+    {
+        if (m_handle.isValid() && m_entity)
+        {
+            s.reactivateEntitySlot(m_handle, *m_entity, std::nullopt, m_pointLight);
+            return;
+        }
+        m_handle = s.addPointLightEntity(m_radius, m_intensity, m_color);
+        auto entity = s.entityStore()->get(m_handle);
+
+        m_entity = *entity;
+
+        auto pointLight = s.lightManager()->getPointLight(*entity->pointLight);
+
+        m_pointLight = *pointLight;
+    };
+
+    void CreatePointLightCommand::OnDiscard(Scene &s)
     {
         s.reclaimEntitySlot(m_handle);
     };

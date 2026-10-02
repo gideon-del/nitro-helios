@@ -9,6 +9,7 @@
 #include "nitro-assets/manager.h"
 #include "gpu-resource-cache.h"
 #include "entity-store.h"
+#include "light-manager.h"
 #include <filesystem>
 namespace nitro::renderer
 {
@@ -37,11 +38,12 @@ namespace nitro::renderer
     struct Scene
     {
 
-        Scene(std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<MeshManager> meshManager, std::shared_ptr<MaterialManager> materialManager, std::shared_ptr<assets::AssetManager> assetManager, std::shared_ptr<EntityStore> entityStore)
+        Scene(std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<MeshManager> meshManager, std::shared_ptr<MaterialManager> materialManager, std::shared_ptr<assets::AssetManager> assetManager, std::shared_ptr<EntityStore> entityStore, std::shared_ptr<LightManager> lightManager)
             : m_device(std::move(device)), meshManager(std::move(meshManager)), materialManager(std::move(materialManager)),
               m_commands(EditorCommandStack(*this)),
               m_assetManager(std::move(assetManager)),
-              m_entityStore(std::move(entityStore))
+              m_entityStore(std::move(entityStore)),
+              m_lightManager(std::move(lightManager))
 
         {
             m_sceneInstanceIdBuffers.create(
@@ -109,13 +111,15 @@ namespace nitro::renderer
         EditorCommandStack &commands() { return m_commands; }
         std::shared_ptr<assets::AssetManager> assetManager() { return m_assetManager; }
         std::shared_ptr<EntityStore> entityStore() { return m_entityStore; }
+        std::shared_ptr<LightManager> lightManager() { return m_lightManager; }
 
+        uint32_t lightCount() const { return m_lightCount; }
         const OptionalEntityHandle &selectedEntity() const { return m_selectedEntity; }
         void loadGltfScene(std::string filePath, std::shared_ptr<rhi::RHIDevice> device);
 
         void updateEntity(const EntityHandle &handle);
         void reclaimEntitySlot(const EntityHandle &handle);
-        void reactivateEntitySlot(EntityHandle &handle, Entity entity);
+        void reactivateEntitySlot(EntityHandle &handle, Entity entity, std::optional<MeshInstance> meshInstance, std::optional<PointLight> pointLight);
         void deactivateEntitySlot(const EntityHandle &handle);
         void pushCommand(std::unique_ptr<IEditorCommand> cmd);
 
@@ -129,6 +133,8 @@ namespace nitro::renderer
 
         EntityHandle addMeshEntity(GPUMeshHandle mesh, GPUMaterialHandle material, const geometry::MeshTransformation &xf, std::string name);
         EntityHandle addMeshEntity(EntityID &id, GPUMeshHandle mesh, GPUMaterialHandle material, const geometry::MeshTransformation &xf, std::string name);
+        EntityHandle addPointLightEntity(float radius, float intensity, glm::vec3 color);
+        EntityHandle addPointLightEntity(EntityID &id, float radius, float intensity, glm::vec3 color);
 
         static constexpr uint32_t s_MAX_DRAW_COMMANDS = 100000;
         static constexpr uint32_t s_VERSION = 2;
@@ -144,6 +150,10 @@ namespace nitro::renderer
         std::shared_ptr<assets::AssetManager> m_assetManager;
         std::shared_ptr<EntityStore> m_entityStore;
         uint32_t m_meshInstanceCount = 0;
+        uint32_t m_lightCount = 0;
+        std::shared_ptr<LightManager> m_lightManager;
+
+    private:
         void
         rebuildInstanceIdFrameBuffer(uint32_t frameIdx);
         void markInstanceIdBuffersDirty()
@@ -159,5 +169,18 @@ namespace nitro::renderer
             if (m_meshInstanceCount > 0)
                 m_meshInstanceCount--;
         }
+
+        void increaseLightCount()
+        {
+            m_lightCount++;
+        }
+        void decreaseLightCount()
+        {
+            if (m_lightCount > 0)
+                m_lightCount--;
+        }
+
+        void calculateMeshInstanceAABB(Entity &entity);
+        void calculatePointLightAABB(Entity &entity);
     };
 } // namespace nitro::renderer

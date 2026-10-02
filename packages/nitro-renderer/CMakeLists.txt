@@ -49,6 +49,7 @@ add_library(nitro-renderer STATIC
  src/spatial-grid.cpp
  src/editor-commands.cpp
  src/entity-store.cpp
+ src/light-manager.cpp
 )
 
 find_package(glm REQUIRED)

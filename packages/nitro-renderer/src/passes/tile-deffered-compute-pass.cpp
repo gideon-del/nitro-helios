@@ -66,7 +66,12 @@ namespace nitro::renderer
                            [&](uint32_t frameIdx)
                            {
                                TileLightingComputeResource resource;
-                               m_createBuffers(resource);
+
+                               rhi::BufferDesc uboDesc;
+                               uboDesc.storage = rhi::BufferDesc::StorageMode::Shared;
+                               uboDesc.usage = rhi::BufferDesc::Usage::Uniform;
+                               uboDesc.size = sizeof(TiledCameraUBO);
+                               resource.cameraUniformBuffer = m_device->createBuffer(uboDesc);
 
                                resource.descriptorSet = m_device->createDescriptorSet(m_descriptorLayout);
 
@@ -74,92 +79,18 @@ namespace nitro::renderer
                            });
     }
 
-    void TiledLightingComputePass::bindResource(const RGResources &resources, const RGTextureID depth)
-    {
-        for (auto &resource : m_resources)
-        {
-            resource.descriptorSet->writeBuffer(resource.cameraUniformBuffer, 2);
-            rhi::TextureBinding textureBinding;
-            textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
-            textureBinding.texture = resources.getTexture(depth);
-            resource.descriptorSet->writeTexture(textureBinding, 3, rhi::ImageLayout::ShaderReadOnly);
-            resource.descriptorSet->writeBuffer(resource.pointLightBuffer, 4);
-            resource.descriptorSet->writeBuffer(resource.tileLightCountBuffer, 5);
-            resource.descriptorSet->writeBuffer(resource.tileLightIndicesBuffer, 6);
-            resource.descriptorSet->writeBuffer(resource.tileLightDebugBuffer, 7);
-
-            resource.descriptorSet->commit();
-        }
-    }
-
-    void TiledLightingComputePass::m_destroyBuffers()
-    {
-        for (auto &resource : m_resources)
-        {
-            m_device->destroyBuffer(resource.pointLightBuffer);
-            m_device->destroyBuffer(resource.tileLightCountBuffer);
-            m_device->destroyBuffer(resource.tileLightIndicesBuffer);
-            m_device->destroyBuffer(resource.tileLightDebugBuffer);
-            m_device->destroyBuffer(resource.cameraUniformBuffer);
-        }
-    }
-
     TiledLightingComputePass::~TiledLightingComputePass()
     {
 
-        m_destroyBuffers();
         for (auto &resource : m_resources)
         {
 
             m_device->destroyDescriptorSet(resource.descriptorSet);
+            m_device->destroyBuffer(resource.cameraUniformBuffer);
         }
 
         m_device->destroyComputePipeline(m_computePipeline);
         m_device->destroyDescriptorLayout(m_descriptorLayout);
-    };
-
-    void TiledLightingComputePass::m_createBuffers(TileLightingComputeResource &resource)
-    {
-
-        rhi::BufferDesc uboDesc;
-        uint32_t totalTiles = m_tileSizeX * m_tileSizeY;
-        uboDesc.storage = rhi::BufferDesc::StorageMode::Shared;
-        uboDesc.usage = rhi::BufferDesc::Usage::Uniform;
-        uboDesc.size = sizeof(TiledCameraUBO);
-
-        resource.cameraUniformBuffer = m_device->createBuffer(uboDesc);
-
-        rhi::BufferDesc lightDesc;
-
-        lightDesc.storage = rhi::BufferDesc::StorageMode::Shared;
-        lightDesc.usage = rhi::BufferDesc::Usage::Storage;
-        lightDesc.size = sizeof(PointLight) * m_maxPointLights;
-
-        resource.pointLightBuffer = m_device->createBuffer(lightDesc);
-
-        rhi::BufferDesc lightCountDesc;
-
-        lightCountDesc.storage = rhi::BufferDesc::StorageMode::Shared;
-        lightCountDesc.usage = rhi::BufferDesc::Usage::Storage;
-        lightCountDesc.size = sizeof(uint) * totalTiles;
-
-        resource.tileLightCountBuffer = m_device->createBuffer(lightCountDesc);
-
-        rhi::BufferDesc tileDebugDesc;
-
-        tileDebugDesc.storage = rhi::BufferDesc::StorageMode::Shared;
-        tileDebugDesc.usage = rhi::BufferDesc::Usage::Storage;
-        tileDebugDesc.size = sizeof(TileDebug) * totalTiles;
-
-        resource.tileLightDebugBuffer = m_device->createBuffer(tileDebugDesc);
-
-        rhi::BufferDesc lightIndicesDesc;
-
-        lightIndicesDesc.storage = rhi::BufferDesc::StorageMode::Shared;
-        lightIndicesDesc.usage = rhi::BufferDesc::Usage::Storage;
-        lightIndicesDesc.size = sizeof(uint) * totalTiles * TiledLightingComputePass::c_MAX_LIGHT_PER_TILE;
-
-        resource.tileLightIndicesBuffer = m_device->createBuffer(lightIndicesDesc);
     };
 
     void TiledLightingComputePass::resize(uint32_t width, uint32_t height)
@@ -168,38 +99,61 @@ namespace nitro::renderer
         m_height = height;
         m_tileSizeX = static_cast<uint32_t>(ceil(float(m_width) / float(TiledLightingComputePass::c_TILE_GROUP_SIZE)));
         m_tileSizeY = static_cast<uint32_t>(ceil(float(m_height) / float(TiledLightingComputePass::c_TILE_GROUP_SIZE)));
-
-        m_destroyBuffers();
-        for (auto &resource : m_resources)
-        {
-
-            m_createBuffers(resource);
-        }
     }
 
-    void TiledLightingComputePass::execute(rhi::RHICommandBuffer *cmd, LightingSettings &settings, TiledCameraUBO cameraUBO)
+    bool TiledLightingComputePass::isFrameResourceStale(const RGResources &rgResources, const TileLightingComputeRGResource &rgResourceIds, rhi::RHIBuffer *pointLightBuffer, TileLightingComputeResource &resource)
+    {
+        auto frameIdx = m_device->getCurrentFrameIndex();
+        auto tileIndicesBuffer = rgResources.getBuffer(rgResourceIds.tileLightIndices, frameIdx);
+        auto tileCountBuffer = rgResources.getBuffer(rgResourceIds.tileLightCount, frameIdx);
+        auto tileDebugBuffer = rgResources.getBuffer(rgResourceIds.tileLightDebug, frameIdx);
+        auto depthTexture = rgResources.getTexture(rgResourceIds.depthTexture);
+
+        return resource.lastDepthTexture != depthTexture || resource.lastPointLightBuffer != pointLightBuffer || resource.lastTileLightCountBuffer != tileCountBuffer || resource.lastTileLightIndicesBuffer != tileIndicesBuffer || resource.latTileLightDebugBuffer != tileDebugBuffer;
+    }
+
+    void TiledLightingComputePass::bindFrameResource(const RGResources &rgResources, const TileLightingComputeRGResource &rgResourceIds, rhi::RHIBuffer *pointLightBuffer, TileLightingComputeResource &resource)
+    {
+        auto frameIdx = m_device->getCurrentFrameIndex();
+        auto tileIndicesBuffer = rgResources.getBuffer(rgResourceIds.tileLightIndices, frameIdx);
+        auto tileCountBuffer = rgResources.getBuffer(rgResourceIds.tileLightCount, frameIdx);
+        auto tileDebugBuffer = rgResources.getBuffer(rgResourceIds.tileLightDebug, frameIdx);
+        auto depthTexture = rgResources.getTexture(rgResourceIds.depthTexture);
+
+        resource.lastPointLightBuffer = pointLightBuffer;
+        resource.lastDepthTexture = depthTexture;
+        resource.lastTileLightCountBuffer = tileCountBuffer;
+        resource.lastTileLightIndicesBuffer = tileIndicesBuffer;
+        resource.latTileLightDebugBuffer = tileDebugBuffer;
+
+        resource.descriptorSet->writeBuffer(resource.cameraUniformBuffer, 2);
+        rhi::TextureBinding textureBinding;
+        textureBinding.sampler = m_device->defaultSamplers().linearRepeat;
+        textureBinding.texture = depthTexture;
+        resource.descriptorSet->writeTexture(textureBinding, 3, rhi::ImageLayout::ShaderReadOnly);
+        resource.descriptorSet->writeBuffer(pointLightBuffer, 4);
+        resource.descriptorSet->writeBuffer(tileCountBuffer, 5);
+        resource.descriptorSet->writeBuffer(tileIndicesBuffer, 6);
+        resource.descriptorSet->writeBuffer(tileDebugBuffer, 7);
+
+        resource.descriptorSet->commit();
+    }
+    void TiledLightingComputePass::execute(rhi::RHICommandBuffer *cmd, const RGResources &rgResources, const TileLightingComputeRGResource &rgResourceIds, Scene &scene, TiledCameraUBO cameraUBO)
     {
 
         auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
-
+        auto pointLightBuffer = scene.lightManager()->getPointLightBuffer();
+        if (isFrameResourceStale(rgResources, rgResourceIds, pointLightBuffer, resource))
+        {
+            bindFrameResource(rgResources, rgResourceIds, pointLightBuffer, resource);
+        }
         cameraUBO.numTilesX = m_tileSizeX;
         cameraUBO.numTilesY = m_tileSizeY;
         resource.cameraUniformBuffer->upload(&cameraUBO, sizeof(TiledCameraUBO));
-        resource.pointLightBuffer->upload(settings.pointLights.data(), static_cast<uint32_t>(settings.pointLights.size()) * sizeof(PointLight));
+
         cmd->bindComputePipeline(m_computePipeline);
         cmd->bindComputeDescriptorSet(resource.descriptorSet, 0);
         cmd->dispatch(m_tileSizeX, m_tileSizeY, 1);
-
-        rhi::BufferBarrier bufferBarrier;
-        bufferBarrier.before = rhi::ResourceState::ShaderWrite;
-        bufferBarrier.after = rhi::ResourceState::ShaderRead;
-        bufferBarrier.buffer = resource.tileLightCountBuffer;
-        cmd->bufferBarrier(bufferBarrier);
-        bufferBarrier.buffer = resource.tileLightIndicesBuffer;
-        cmd->bufferBarrier(bufferBarrier);
-        bufferBarrier.buffer = resource.tileLightDebugBuffer;
-
-        cmd->bufferBarrier(bufferBarrier);
     };
 
 } // namespace nitro::renderer

@@ -32,7 +32,9 @@ namespace nitro::renderer
 
         if (!gpuTexture)
             return INVALID_TEXTURE_INDEX;
+
         m_textures.push_back(gpuTexture);
+        markMaterialTexturesAsDirty();
         return id;
     }
 

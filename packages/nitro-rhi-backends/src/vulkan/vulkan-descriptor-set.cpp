@@ -208,6 +208,7 @@ namespace nitro::rhi::vulkan
 
     void VulkanDescriptorSet::writeBindlessTextures(const std::vector<RHITexture *> &textures, uint32_t binding)
     {
+        std::cout << "Bindless Texture Size " << textures.size() << " Frame " << m_device->getCurrentFrameIndex() << std::endl;
         if (textures.empty())
             return;
         PendingDescriptorWrite pendingWrite{DescriptorResourceType::Bindless};

@@ -14,11 +14,39 @@ namespace nitro::renderer
     using RGTextureID = RGResourceID;
     using RGBufferID = RGResourceID;
 
+    struct RGResourceSize
+    {
+        enum class Type
+        {
+            Absolute,
+            ScreenRelative,
+            TileRelative
+        } type = Type::Absolute;
+
+        uint32_t width = 1;
+        uint32_t height = 1;
+
+        float scale = 1.0f;
+        uint32_t tileSize = 16;
+        // This represents 3 different  usecase
+        // Total bytes (Absolute), Bytes Per Tile and Bytes per Pixel
+        size_t bytesPerTile = 1;
+
+        uint32_t calculateTextureWidth(const uint32_t screenWidth);
+        uint32_t calculateTextureHeight(const uint32_t screenHeight);
+        size_t calculateBufferSize(const uint32_t screenWidth, const uint32_t screenHeight);
+        static RGResourceSize bufferAbsolute(size_t bytes);
+        static RGResourceSize bufferScreenRelative(size_t bytesPerPixel, float scale = 1.0f);
+        static RGResourceSize bufferTileRelative(uint32_t tileSize, size_t bytesPerTile);
+
+        static RGResourceSize textureAbsolute(uint32_t w, uint32_t h);
+        static RGResourceSize textureScreenRelative(float scale = 1.0f);
+    };
     struct RGTextureDesc
     {
         std::string name;
         rhi::TextureDesc::ImageFormat format;
-        uint32_t width = 0, height = 0;
+        RGResourceSize size;
         bool isStorage = false;
         uint32_t mips = 0;
         bool transient = true;
@@ -26,7 +54,7 @@ namespace nitro::renderer
     struct RGBufferDesc
     {
         std::string name;
-        uint32_t size;
+        RGResourceSize size;
         rhi::BufferDesc::Usage usage;
         bool transient = false;
     };
@@ -146,7 +174,8 @@ namespace nitro::renderer
         void compile();
         void dryRun();
         void allocateTextures(std::shared_ptr<rhi::RHIDevice> device, uint32_t frameWidth, uint32_t frameHeight);
-        void allocateBuffers(std::shared_ptr<rhi::RHIDevice> device);
+        void allocateBuffers(std::shared_ptr<rhi::RHIDevice> device, uint32_t frameWidth, uint32_t frameHeight);
+        void reallocateScreenBuffers(std::shared_ptr<rhi::RHIDevice> device, uint32_t frameWidth, uint32_t frameHeight);
         void reallocateFrameTextures(std::shared_ptr<rhi::RHIDevice> device, uint32_t frameWidth, uint32_t frameHeight);
         void deleteTextures(std::shared_ptr<rhi::RHIDevice> device);
         void deleteBuffers(std::shared_ptr<rhi::RHIDevice> device);

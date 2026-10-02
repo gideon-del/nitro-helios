@@ -57,6 +57,13 @@ namespace nitro::renderer
         rhi::RHIBuffer *getMaterialBuffer() { return m_resources.current(m_device->getCurrentFrameIndex()).materialBuffer; }
         void buildMegaMaterialBuffer();
         GPUMaterial *getMaterial(const GPUMaterialHandle &handle);
+        rhi::RHITexture *getTexture(const uint32_t &idx)
+        {
+            if (idx >= m_textures.size())
+                return nullptr;
+
+            return m_textures[idx];
+        };
         void flush();
         std::optional<assets::MaterialAssetHandle> getAssetHandle(const GPUMaterialHandle &handle);
         void clear();
@@ -64,14 +71,31 @@ namespace nitro::renderer
         {
             auto frameIdx = m_device->getCurrentFrameIndex();
             auto bit = 1 << frameIdx;
-            return (m_dirtMaterialTextures & bit) != 0;
+            bool isStale = (m_dirtMaterialTextures & bit) != 0;
+
+            if (isStale)
+            {
+                std::cout << "Frame Idx " << frameIdx << " is stale " << isStale << std::endl;
+            }
+            return isStale;
         }
         void markAsNotStale()
         {
             auto frameIdx = m_device->getCurrentFrameIndex();
             auto bit = 1 << frameIdx;
+
             m_dirtMaterialTextures &= ~bit;
         };
+        void markMaterialBufferAsDirty()
+        {
+            m_dirtMaterialBuffer = (1 << g_MAX_FRAMES_IN_FLIGHT) - 1;
+        }
+        void markMaterialTexturesAsDirty()
+        {
+            m_dirtMaterialTextures = (1 << g_MAX_FRAMES_IN_FLIGHT) - 1;
+        }
+        uint32_t
+        addTexture(const assets::TextureHandle &handle, rhi::TextureDesc::ImageFormat format);
 
     private:
         std::shared_ptr<rhi::RHIDevice> m_device;
@@ -81,19 +105,10 @@ namespace nitro::renderer
         std::shared_ptr<assets::AssetManager> m_assetManager;
         std::shared_ptr<GPUResourceCache> m_gpuResourceCache;
         std::unordered_map<assets::MaterialAssetHandle, GPUMaterialHandle, assets::MaterialAssetHandleHash> m_assetHandleToGPUHandle;
-        uint32_t
-        addTexture(const assets::TextureHandle &handle, rhi::TextureDesc::ImageFormat format);
+
         uint8_t m_dirtMaterialBuffer = 0;
         uint8_t m_dirtMaterialTextures = 0;
         void buildFrameBuffer(uint32_t frameIdx);
-        void markMaterialBufferAsDirty()
-        {
-            m_dirtMaterialBuffer = (1 << g_MAX_FRAMES_IN_FLIGHT) - 1;
-        }
-        void markMaterialTexturesAsDirty()
-        {
-            m_dirtMaterialTextures = (1 << g_MAX_FRAMES_IN_FLIGHT) - 1;
-        }
     };
 
 } // namespace nitro::renderer

@@ -306,10 +306,11 @@ float maxMip = 4.0;
 
 void main() {
   float depth   = texture(gDepth, fragUV).x;
+   vec3 PLColor = texture(lightShading, fragUV).rgb;
   if(depth >= 1.0)
 {
     vec3 color = texture(environment, fragUV).rgb;
-    outColor = vec4(color,1.0);
+    outColor = vec4(color + PLColor,1.0);
     return;
 }
   vec3 albedo = texture(gAlbedo, fragUV).rgb;
@@ -323,8 +324,8 @@ void main() {
 float ao = material.r;
 
   vec3 finalColor; 
-  // vec3 PLColor = texture(lightShading, fragUV).rgb;
-  vec3 PLColor = vec3(0.0);
+ 
+  // vec3 PLColor = vec3(0.0);
 
 vec3 L =  normalize(frameUbo.lightPosition.xyz - worldPos);
 vec3 V = normalize(frameUbo.cameraPosition.xyz - worldPos);
