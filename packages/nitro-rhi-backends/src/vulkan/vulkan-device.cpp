@@ -490,6 +490,8 @@ namespace nitro::rhi::vulkan
 
         m_heapPool.clear();
         m_heapGraveyard.collectAll();
+
+        m_frames.clear();
         vkQueueWaitIdle(presentQueue);
         vkDestroyCommandPool(device, commandPool, nullptr);
         ImNodes::DestroyContext();
@@ -798,7 +800,7 @@ namespace nitro::rhi::vulkan
 
         for (int i = 0; i < kMaxFramesInFlight; i++)
         {
-            m_frames.push_back(new VulkanCommandBuffer(this, swapchain, cmdBuffers[i], i));
+            m_frames.push_back(std::make_unique<VulkanCommandBuffer>(this, swapchain, cmdBuffers[i], i));
         }
         m_swapchain = swapchain;
         return swapchain;
@@ -847,7 +849,7 @@ namespace nitro::rhi::vulkan
     RHICommandBuffer *VulkanDevice::beginFrame()
     {
 
-        VulkanCommandBuffer *vulkanCommandBuffer = m_frames[m_currentFrame];
+        VulkanCommandBuffer *vulkanCommandBuffer = m_frames[m_currentFrame].get();
 
         vkWaitForFences(device, 1, &vulkanCommandBuffer->inFlight, VK_TRUE, UINT64_MAX);
 

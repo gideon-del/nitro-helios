@@ -9,6 +9,9 @@ namespace nitro::rhi
         uint32_t drawCalls = 0;
         uint32_t triangles = 0;
         uint32_t vertices = 0;
+        uint32_t barrierCalls = 0;
+        uint32_t imageBarriers = 0;
+        uint32_t bufferBarriers = 0;
     };
 
     class RHIBuffer;

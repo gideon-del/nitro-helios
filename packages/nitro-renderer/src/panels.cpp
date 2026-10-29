@@ -142,6 +142,9 @@ namespace nitro::renderer
             ImGui::Text("Draw Calls: %u", stats.drawCalls);
             ImGui::Text("Triangles: %u", stats.triangles);
             ImGui::Text("Vertices: %u", stats.vertices);
+            ImGui::Text("Barriers: %u", stats.barrierCalls);
+            ImGui::Text("Image Barriers: %u", stats.imageBarriers);
+            ImGui::Text("Buffer Barriers: %u", stats.bufferBarriers);
 
             ImGui::Separator();
 

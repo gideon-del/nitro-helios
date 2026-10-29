@@ -128,7 +128,7 @@ namespace nitro::rhi::vulkan
 
         QueueFamilyIndices m_queueFamilyIndices;
         VkFormat m_surfaceFormat;
-        std::vector<VulkanCommandBuffer *> m_frames;
+        std::vector<std::unique_ptr<VulkanCommandBuffer>> m_frames;
         uint32_t m_currentFrame = 0;
         uint64_t m_frameNumber = 0;
         VulkanSwapchain *m_swapchain;

@@ -381,6 +381,10 @@ namespace nitro::rhi::vulkan
         m_FrameStats.drawCalls = 0;
         m_FrameStats.triangles = 0;
         m_FrameStats.vertices = 0;
+
+        m_FrameStats.imageBarriers = 0;
+        m_FrameStats.bufferBarriers = 0;
+        m_FrameStats.barrierCalls = 0;
     }
     void VulkanCommandBuffer::updateVertexCount(uint32_t count)
     {
@@ -700,6 +704,8 @@ namespace nitro::rhi::vulkan
         dependencyInfo.pImageMemoryBarriers = &imageBarrier;
 
         vkCmdPipelineBarrier2(cmd, &dependencyInfo);
+        m_FrameStats.barrierCalls++;
+        m_FrameStats.imageBarriers++;
         vulkanTexture->currentLayout = convertResourceStateToImageLayout(barrier.after);
     }
 
@@ -752,6 +758,9 @@ namespace nitro::rhi::vulkan
             &memoryBarrier,
             0,
             nullptr);
+
+        m_FrameStats.barrierCalls++;
+        m_FrameStats.bufferBarriers++;
     }
 
     void VulkanCommandBuffer::copyTextureToBuffer(RHITexture *texture, RHIBuffer *buffer)

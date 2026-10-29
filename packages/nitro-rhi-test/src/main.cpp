@@ -335,6 +335,9 @@ int main()
         rendererSettings.stats.drawCalls = frameStat.drawCalls;
         rendererSettings.stats.triangles = frameStat.triangles;
         rendererSettings.stats.vertices = frameStat.vertices;
+        rendererSettings.stats.bufferBarriers = frameStat.bufferBarriers;
+        rendererSettings.stats.barrierCalls = frameStat.barrierCalls;
+        rendererSettings.stats.imageBarriers = frameStat.imageBarriers;
         rendererSettings.stats.perpassTimer = timer->getAllResults();
     }
 

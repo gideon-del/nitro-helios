@@ -81,6 +81,9 @@ namespace nitro::renderer
         uint32_t drawCalls;
         uint32_t vertices;
         uint32_t triangles;
+        uint32_t barrierCalls = 0;
+        uint32_t imageBarriers = 0;
+        uint32_t bufferBarriers = 0;
         std::string renderer;
         std::string backend;
         std::unordered_map<std::string, float> perpassTimer;
