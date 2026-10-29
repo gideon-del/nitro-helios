@@ -22,6 +22,7 @@ src/vulkan/vulkan-render-pass.cpp
 src/vulkan/vulkan-timer.cpp
 src/vulkan/vulkan-compute-pipeline.cpp
 src/vulkan/vulkan-sampler.cpp
+src/vulkan/vulkan-heap.cpp
 )
 
 
@@ -58,6 +59,7 @@ if(APPLE)
     )
 
     target_link_libraries(nitro-rhi-metal
+       PUBLIC nitro-core
         PUBLIC nitro-rhi
         PUBLIC glfw
         PUBLIC imgui-backend-metal
@@ -74,6 +76,7 @@ if(APPLE)
 endif()
 
 target_link_libraries(nitro-rhi-backends
+PUBLIC nitro-core
 PUBLIC nitro-rhi
 PUBLIC Vulkan::Vulkan
 PUBLIC glfw

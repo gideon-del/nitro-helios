@@ -19,6 +19,8 @@
 #include <vector>
 #include <set>
 #include <ImGuizmo.h>
+#include "nitro-rhi/rhi-constants.h"
+
 namespace nitro::rhi::vulkan
 {
     VkInstance create_instance()
@@ -448,8 +450,8 @@ namespace nitro::rhi::vulkan
         init_info.PhysicalDevice = physicalDevice;
         init_info.QueueFamily = m_queueFamilyIndices.graphicsFamily.value();
         init_info.Queue = graphicsQueue;
-        init_info.MinImageCount = VulkanDevice::MAX_FRAMES_IN_FLIGHT;
-        init_info.ImageCount = VulkanDevice::MAX_FRAMES_IN_FLIGHT;
+        init_info.MinImageCount = kMaxFramesInFlight;
+        init_info.ImageCount = kMaxFramesInFlight;
         init_info.DescriptorPoolSize = 512;
         init_info.MinAllocationSize = 0;
 
@@ -476,12 +478,25 @@ namespace nitro::rhi::vulkan
     {
 
         vkQueueWaitIdle(graphicsQueue);
+
+        for (auto &[h, ds] : m_imguiTextureCache)
+            ImGui_ImplVulkan_RemoveTexture(ds);
+        m_imguiTextureCache.clear();
+        m_texturePool.clear();
+        m_textureGraveyard.collectAll();
+
+        m_bufferPool.clear();
+        m_bufferGraveyard.collectAll();
+
+        m_heapPool.clear();
+        m_heapGraveyard.collectAll();
         vkQueueWaitIdle(presentQueue);
         vkDestroyCommandPool(device, commandPool, nullptr);
         ImNodes::DestroyContext();
         ImGui_ImplVulkan_Shutdown();
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
+
         vmaDestroyAllocator(allocator);
         vkDestroyRenderPass(device, defaultRenderPass, nullptr);
         vkDestroyDevice(device, nullptr);
@@ -542,29 +557,105 @@ namespace nitro::rhi::vulkan
         endOneTimeCommands(commandBuffer);
     }
 
+    RHIBufferHandle VulkanDevice::create(const BufferDesc &desc)
+    {
+        auto handle = m_bufferPool.emplace(std::make_unique<VulkanBuffer>(this, desc));
+        auto buffer = m_bufferPool.get(handle)->get();
+        assignHandle(*buffer, handle);
+
+        return handle;
+    }
+
+    RHIBuffer *VulkanDevice::resolve(const RHIBufferHandle &handle)
+    {
+        auto buffer = m_bufferPool.get(handle);
+        if (!buffer)
+        {
+            return nullptr;
+        }
+
+        return buffer->get();
+    }
+
     RHIBuffer *VulkanDevice::createBuffer(const BufferDesc &desc)
     {
-        return new VulkanBuffer(this, desc);
+        return resolve(create(desc));
+    }
+
+    void VulkanDevice::destroy(const RHIBufferHandle &handle)
+    {
+        auto vkBuffer = m_bufferPool.get(handle);
+        if (!vkBuffer)
+        {
+            return;
+        }
+
+        m_bufferGraveyard.push(std::move(*vkBuffer), m_frameNumber);
+        m_bufferPool.free(handle);
     }
     void VulkanDevice::destroyBuffer(RHIBuffer *buffer)
     {
-        delete buffer;
+        if (!buffer)
+        {
+            return;
+        }
+
+        destroy(buffer->getHandle());
+    }
+
+    RHITextureHandle VulkanDevice::create(const TextureDesc &desc)
+    {
+        auto handle = m_texturePool.emplace(std::make_unique<VulkanTexture>(this, desc));
+        auto texture = m_texturePool.get(handle)->get();
+
+        assignHandle(*texture, handle);
+
+        return handle;
+    }
+
+    RHITexture *VulkanDevice::resolve(const RHITextureHandle &handle)
+    {
+        auto texture = m_texturePool.get(handle);
+
+        if (!texture)
+        {
+            return nullptr;
+        }
+
+        return texture->get();
+    }
+
+    void VulkanDevice::destroy(const RHITextureHandle &handle)
+    {
+        auto vkTex = m_texturePool.get(handle);
+
+        if (!vkTex)
+        {
+            return;
+        }
+        if (m_imguiTextureCache.count(handle))
+        {
+            ImGui_ImplVulkan_RemoveTexture(m_imguiTextureCache[handle]);
+            m_imguiTextureCache.erase(handle);
+        }
+
+        m_textureGraveyard.push(std::move(*vkTex), m_frameNumber);
+        m_texturePool.free(handle);
     }
 
     RHITexture *VulkanDevice::createTexture(const TextureDesc &desc)
     {
 
-        return new VulkanTexture(this, desc);
+        return resolve(create(desc));
     }
     void VulkanDevice::destroyTexture(RHITexture *texture)
     {
-        auto *vkTex = static_cast<VulkanTexture *>(texture);
-        if (m_imguiTextureCache.count(vkTex))
+        if (!texture)
         {
-            ImGui_ImplVulkan_RemoveTexture(m_imguiTextureCache[vkTex]);
-            m_imguiTextureCache.erase(vkTex);
+            return;
         }
-        delete texture;
+        auto handle = texture->getHandle();
+        destroy(handle);
     }
 
     void VulkanDevice::transitionImageLayout(
@@ -699,13 +790,13 @@ namespace nitro::rhi::vulkan
         allocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         allocateInfo.commandPool = commandPool;
         allocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocateInfo.commandBufferCount = VulkanDevice::MAX_FRAMES_IN_FLIGHT;
+        allocateInfo.commandBufferCount = kMaxFramesInFlight;
 
-        std::vector<VkCommandBuffer> cmdBuffers(VulkanDevice::MAX_FRAMES_IN_FLIGHT);
+        std::vector<VkCommandBuffer> cmdBuffers(kMaxFramesInFlight);
 
         checkVkResult(vkAllocateCommandBuffers(device, &allocateInfo, cmdBuffers.data()), "Frame Command buffer not created");
 
-        for (int i = 0; i < VulkanDevice::MAX_FRAMES_IN_FLIGHT; i++)
+        for (int i = 0; i < kMaxFramesInFlight; i++)
         {
             m_frames.push_back(new VulkanCommandBuffer(this, swapchain, cmdBuffers[i], i));
         }
@@ -760,25 +851,21 @@ namespace nitro::rhi::vulkan
 
         vkWaitForFences(device, 1, &vulkanCommandBuffer->inFlight, VK_TRUE, UINT64_MAX);
 
+        collectGarbage();
         uint32_t imageIdx;
 
-        VkResult acquireResult = vkAcquireNextImageKHR(device, vulkanCommandBuffer->swapchain->swapchain, UINT64_MAX, vulkanCommandBuffer->imageAvailable, VK_NULL_HANDLE, &imageIdx);
-
-        if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR)
+        while (true)
         {
-            checkVkResult(vkResetFences(device, 1, &vulkanCommandBuffer->inFlight), "Unable to reset fence");
-
-            vulkanCommandBuffer->swapchain->resize(
-                surface->getWidth(),
-                surface->getHeight());
-
-            return beginFrame();
-        }
-
-        if (acquireResult != VK_SUBOPTIMAL_KHR)
-        {
-
-            checkVkResult(acquireResult, "Can't acquire next image");
+            VkResult r = vkAcquireNextImageKHR(device, vulkanCommandBuffer->swapchain->swapchain, UINT64_MAX,
+                                               vulkanCommandBuffer->imageAvailable, VK_NULL_HANDLE, &imageIdx);
+            if (r == VK_ERROR_OUT_OF_DATE_KHR)
+            {
+                vulkanCommandBuffer->swapchain->resize(surface->getWidth(), surface->getHeight());
+                continue;
+            }
+            if (r != VK_SUCCESS && r != VK_SUBOPTIMAL_KHR)
+                checkVkResult(r, "Can't acquire next image");
+            break;
         }
 
         checkVkResult(vkResetFences(device, 1, &vulkanCommandBuffer->inFlight), "Unable to reset fence");
@@ -802,7 +889,8 @@ namespace nitro::rhi::vulkan
 
     void VulkanDevice::endFrame(RHICommandBuffer *cmd)
     {
-        m_currentFrame = (m_currentFrame + 1) % VulkanDevice::MAX_FRAMES_IN_FLIGHT;
+        m_currentFrame = (m_currentFrame + 1) % kMaxFramesInFlight;
+        m_frameNumber++;
     }
     void VulkanDevice::endCommandBuffer(RHICommandBuffer *cmd)
     {
@@ -884,15 +972,20 @@ namespace nitro::rhi::vulkan
     }
     void *VulkanDevice::getImGuiTextureRef(RHITexture *texture)
     {
-        auto *vkTex = static_cast<VulkanTexture *>(texture);
+        auto handle = texture->getHandle();
+        auto vkTex = m_texturePool.get(handle);
+        if (!vkTex)
+        {
+            return nullptr;
+        }
 
-        if (m_imguiTextureCache.count(vkTex))
-            return (void *)m_imguiTextureCache[vkTex];
+        if (m_imguiTextureCache.count(handle))
+            return (void *)m_imguiTextureCache[handle];
 
         VkDescriptorSet ds = ImGui_ImplVulkan_AddTexture(
-            vkTex->imageView,
+            vkTex->get()->imageView,
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-        m_imguiTextureCache[vkTex] = ds;
+        m_imguiTextureCache[handle] = ds;
         return (void *)ds;
     }
     MemoryRequirements VulkanDevice::textureMemoryRequirements(const TextureDesc &desc)
@@ -921,7 +1014,10 @@ namespace nitro::rhi::vulkan
         allocInfo.allocationSize = sizeBytes;
         allocInfo.memoryTypeIndex = findVulkanMemoryType(physicalDevice, memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-        auto *heap = new VulkanHeap();
+        auto handle = m_heapPool.emplace(std::make_unique<VulkanHeap>(this));
+        auto heap = m_heapPool.get(handle)->get();
+
+        assignHandle(*heap, handle);
         checkVkResult(vkAllocateMemory(device, &allocInfo, nullptr, &heap->memory), "Heap allocation failed");
         return heap;
     }
@@ -933,15 +1029,27 @@ namespace nitro::rhi::vulkan
         VkImage image;
         checkVkResult(vkCreateImage(device, &imageInfo, nullptr, &image), "Failed to create aliased image");
         checkVkResult(vkBindImageMemory(device, image, vkHeap->memory, offset), "Failed to bind aliased image");
+        auto handle = m_texturePool.emplace(std::make_unique<VulkanTexture>(this, image, desc));
+        auto texture = m_texturePool.get(handle)->get();
 
-        return new VulkanTexture(this, image, desc);
+        assignHandle(*texture, handle);
+        return texture;
     }
 
     void VulkanDevice::destroyHeap(RHIHeap *heap)
     {
-        auto *vkHeap = static_cast<VulkanHeap *>(heap);
-        vkFreeMemory(device, vkHeap->memory, nullptr);
-        delete heap;
+
+        if (!heap)
+            return;
+        auto handle = heap->getHandle();
+
+        auto vkHeap = m_heapPool.get(handle);
+
+        if (!vkHeap)
+            return;
+
+        m_heapGraveyard.push(std::move(*vkHeap), m_frameNumber);
+        m_heapPool.free(handle);
     }
 
     void VulkanDevice::checkMutableComparisonSampler()
@@ -958,4 +1066,13 @@ namespace nitro::rhi::vulkan
         m_mutableComparisonSamplers = portabilityFeatures.mutableComparisonSamplers == VK_TRUE;
     }
 
+    void VulkanDevice::collectGarbage()
+    {
+        if (m_frameNumber < kMaxFramesInFlight)
+            return;
+        auto completed = m_frameNumber - kMaxFramesInFlight;
+        m_textureGraveyard.collect(completed);
+        m_bufferGraveyard.collect(completed);
+        m_heapGraveyard.collect(completed);
+    }
 }

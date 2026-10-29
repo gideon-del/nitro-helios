@@ -1,6 +1,7 @@
 #include <nitro-renderer/passes/depth-prepass.h>
 #include <nitro-geometry/push-constant.h>
 #include <nitro-geometry/vertex.h>
+#include "nitro-rhi/rhi-constants.h"
 namespace nitro::renderer
 {
     DepthPrepass::DepthPrepass(std::shared_ptr<rhi::RHIDevice> device,
@@ -47,7 +48,7 @@ namespace nitro::renderer
         rhi::RenderPassDesc renderPassDesc;
 
         m_resources.create(
-            g_MAX_FRAMES_IN_FLIGHT,
+            rhi::kMaxFramesInFlight,
             [&](uint32_t frame)
             {
                 DepthResource resource;

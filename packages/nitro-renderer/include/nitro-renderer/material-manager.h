@@ -5,6 +5,7 @@
 #include "per-frame.h"
 #include "nitro-assets/manager.h"
 #include "gpu-resource-cache.h"
+#include <nitro-rhi/rhi-constants.h>
 namespace nitro::renderer
 {
 
@@ -88,11 +89,11 @@ namespace nitro::renderer
         };
         void markMaterialBufferAsDirty()
         {
-            m_dirtMaterialBuffer = (1 << g_MAX_FRAMES_IN_FLIGHT) - 1;
+            m_dirtMaterialBuffer = (1 << rhi::kMaxFramesInFlight) - 1;
         }
         void markMaterialTexturesAsDirty()
         {
-            m_dirtMaterialTextures = (1 << g_MAX_FRAMES_IN_FLIGHT) - 1;
+            m_dirtMaterialTextures = (1 << rhi::kMaxFramesInFlight) - 1;
         }
         uint32_t
         addTexture(const assets::TextureHandle &handle, rhi::TextureDesc::ImageFormat format);

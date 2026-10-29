@@ -1,6 +1,8 @@
 #include <nitro-renderer/passes/geometry-pass.h>
 #include <nitro-geometry/push-constant.h>
 #include <nitro-geometry/vertex.h>
+#include "nitro-rhi/rhi-constants.h"
+
 namespace nitro::renderer
 {
     GeometryPass::GeometryPass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, std::string shaderDir, bool isMetal)
@@ -48,7 +50,7 @@ namespace nitro::renderer
         m_pipeline = m_device->createPipeline(pipelineDesc);
 
         m_resources.create(
-            g_MAX_FRAMES_IN_FLIGHT,
+            rhi::kMaxFramesInFlight,
             [&](uint32_t frame)
             {
                 rhi::BufferDesc bufferDesc;

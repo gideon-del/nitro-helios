@@ -1,6 +1,7 @@
 #include <nitro-rhi-backends/vulkan/vulkan-descriptor-layout.h>
 #include <nitro-rhi-backends/vulkan/vulkan-device.h>
 #include <nitro-rhi-backends/vulkan/vulkan-utils.h>
+#include "nitro-rhi/rhi-constants.h"
 
 namespace nitro::rhi::vulkan
 {
@@ -55,7 +56,7 @@ namespace nitro::rhi::vulkan
     VkDescriptorPoolSize convertToPoolSize(const RHIDescriptorBinding &rhiBinding)
     {
         VkDescriptorPoolSize poolSize{};
-        poolSize.descriptorCount = 10000 * VulkanDevice::MAX_FRAMES_IN_FLIGHT;
+        poolSize.descriptorCount = 10000 * kMaxFramesInFlight;
         poolSize.type = convertToDescriptorType(rhiBinding.type);
 
         return poolSize;
@@ -107,7 +108,7 @@ namespace nitro::rhi::vulkan
         descriptorPoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
         if (hasBindless)
             descriptorPoolInfo.flags |= VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
-        descriptorPoolInfo.maxSets = 1000 * VulkanDevice::MAX_FRAMES_IN_FLIGHT;
+        descriptorPoolInfo.maxSets = 1000 * kMaxFramesInFlight;
         descriptorPoolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
         descriptorPoolInfo.pPoolSizes = poolSizes.data();
 

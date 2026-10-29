@@ -1,4 +1,5 @@
 #include <nitro-renderer/passes/auto-exposure-pass.h>
+#include "nitro-rhi/rhi-constants.h"
 
 namespace nitro::renderer
 {
@@ -54,7 +55,7 @@ namespace nitro::renderer
         m_downSampleComputePipeline = m_device->createComputePipeline(computePipelineDesc);
 
         m_readbackBuffers.create(
-            g_MAX_FRAMES_IN_FLIGHT,
+            kMaxFramesInFlight,
             [&](uint32_t frameIdx)
             {
                 ReadbackBuffer readbackBuffer;

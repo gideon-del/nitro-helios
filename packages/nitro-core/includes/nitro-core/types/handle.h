@@ -30,9 +30,9 @@ namespace nitro
     {
         size_t operator()(const Handle<T> &handle) const
         {
-            uint32_t key = handle.index | handle.generation;
+            uint64_t key = (uint64_t(handle.generation) << 32) | handle.index;
 
-            return std::hash<uint32_t>{}(key);
+            return std::hash<uint64_t>{}(key);
         }
     };
 } // namespace nitro

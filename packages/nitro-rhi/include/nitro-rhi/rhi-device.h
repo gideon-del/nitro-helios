@@ -50,8 +50,16 @@ namespace nitro::rhi
         virtual RHIRenderPass *createRenderPass(const RenderPassDesc &desc) = 0;
         virtual void destroyRenderPass(RHIRenderPass *renderPass) = 0;
 
+        virtual RHIBufferHandle create(const BufferDesc &desc) = 0;
+        virtual RHIBuffer *resolve(const RHIBufferHandle &handle) = 0;
+        virtual void destroy(const RHIBufferHandle &handle) = 0;
+
         virtual RHIBuffer *createBuffer(const BufferDesc &desc) = 0;
         virtual void destroyBuffer(RHIBuffer *buffer) = 0;
+
+        virtual RHITextureHandle create(const TextureDesc &desc) = 0;
+        virtual RHITexture *resolve(const RHITextureHandle &handle) = 0;
+        virtual void destroy(const RHITextureHandle &handle) = 0;
 
         virtual RHITexture *createTexture(const TextureDesc &desc) = 0;
         virtual void destroyTexture(RHITexture *texture) = 0;
@@ -63,6 +71,7 @@ namespace nitro::rhi
         virtual void destroyComputePipeline(RHIComputePipeline *pipeline) = 0;
         virtual MemoryRequirements textureMemoryRequirements(const TextureDesc &desc) = 0;
         virtual RHISamplerHandle create(const RHISamplerDesc &desc) = 0;
+
         virtual void destroy(RHISamplerHandle &handle) = 0;
         virtual const DefaultSamplers &defaultSamplers() const = 0;
         virtual void waitIdle() = 0;
@@ -78,5 +87,10 @@ namespace nitro::rhi
         virtual RHIHeap *createHeap(size_t sizeBytes, uint32_t memoryTypeBits) = 0;
         virtual void destroyHeap(RHIHeap *heap) = 0;
         virtual RHITexture *createTextureFromHeap(RHIHeap *heap, const TextureDesc &desc, size_t offset) = 0;
+
+    protected:
+        static void assignHandle(RHITexture &tex, RHITextureHandle h) { tex.m_handle = h; }
+        static void assignHandle(RHIHeap &heap, RHIHeapHandle h) { heap.m_handle = h; }
+        static void assignHandle(RHIBuffer &buffer, RHIBufferHandle handle) { buffer.m_handle = handle; }
     };
 }

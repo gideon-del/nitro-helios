@@ -1,4 +1,5 @@
 #include <nitro-renderer/passes/color-grading-pass.h>
+#include "nitro-rhi/rhi-constants.h"
 
 namespace nitro::renderer
 {
@@ -43,7 +44,7 @@ namespace nitro::renderer
 
         m_computePipeline = m_device->createComputePipeline(computePipelineDesc);
 
-        m_resources.create(g_MAX_FRAMES_IN_FLIGHT,
+        m_resources.create(rhi::kMaxFramesInFlight,
                            [&](uint32_t frameIdx)
                            {
                                SingleInputPassResource resource;

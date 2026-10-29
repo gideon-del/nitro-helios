@@ -7,6 +7,14 @@ namespace nitro::rhi::metal
     class MetalHeap : public RHIHeap
     {
     public:
-        MTL::Heap *heap;
+        MetalHeap() {};
+        ~MetalHeap()
+        {
+            if (heap)
+            {
+                heap->release();
+            }
+        }
+        MTL::Heap *heap = nullptr;
     };
 } // namespace nitro::rhi::metal

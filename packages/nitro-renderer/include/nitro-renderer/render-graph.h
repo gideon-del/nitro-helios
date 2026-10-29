@@ -7,6 +7,7 @@
 #include "nitro-core/graph.h"
 #include <variant>
 #include "per-frame.h"
+#include "nitro-rhi/rhi-constants.h"
 
 namespace nitro::renderer
 {
@@ -87,7 +88,7 @@ namespace nitro::renderer
 
     struct RGAllocatedBuffer
     {
-        std::array<rhi::RHIBuffer *, g_MAX_FRAMES_IN_FLIGHT> slots{};
+        std::array<rhi::RHIBuffer *, kMaxFramesInFlight> slots{};
         bool transient = false;
     };
     struct RGResources
@@ -105,7 +106,7 @@ namespace nitro::renderer
             if (!allocatedBuffers.count(id))
                 return nullptr;
             auto &allocated = allocatedBuffers.at(id);
-            return allocated.transient ? allocated.slots[frameIdx % g_MAX_FRAMES_IN_FLIGHT] : allocated.slots[0];
+            return allocated.transient ? allocated.slots[frameIdx % kMaxFramesInFlight] : allocated.slots[0];
         }
     };
 

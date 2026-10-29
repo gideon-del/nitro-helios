@@ -1,11 +1,12 @@
 #include "nitro-renderer/material-manager.h"
+#include "nitro-rhi/rhi-constants.h"
 
 namespace nitro::renderer
 {
     MaterialManager::MaterialManager(std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<assets::AssetManager> assetManager, std::shared_ptr<GPUResourceCache> gpuResourceCache) : m_device(device), m_assetManager(std::move(assetManager)), m_gpuResourceCache(std::move(gpuResourceCache))
     {
         m_resources.create(
-            g_MAX_FRAMES_IN_FLIGHT,
+            kMaxFramesInFlight,
             [](uint32_t frameIdx)
             {
                 return MaterialManagerFrameResource{};
@@ -92,7 +93,7 @@ namespace nitro::renderer
     void MaterialManager::buildMegaMaterialBuffer()
     {
 
-        for (uint i = 0; i < g_MAX_FRAMES_IN_FLIGHT; i++)
+        for (uint i = 0; i < kMaxFramesInFlight; i++)
         {
             buildFrameBuffer(i);
         }

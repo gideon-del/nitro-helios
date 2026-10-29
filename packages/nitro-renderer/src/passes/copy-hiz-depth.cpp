@@ -1,4 +1,5 @@
 #include "nitro-renderer/passes/copy-hiz-depth.h"
+#include "nitro-rhi/rhi-constants.h"
 
 namespace nitro::renderer
 {
@@ -41,7 +42,7 @@ namespace nitro::renderer
         m_computePipeline = m_device->createComputePipeline(computePipelineDesc);
 
         m_resources.create(
-            g_MAX_FRAMES_IN_FLIGHT,
+            rhi::kMaxFramesInFlight,
             [&](uint32_t frameIdx)
             {
                 CopyHizDepthResource resource;

@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <iostream>
 #include "rhi-utils.h"
+#include "nitro-core/types/handle.h"
 namespace nitro::rhi
 {
     struct BufferDesc
@@ -30,8 +31,18 @@ namespace nitro::rhi
         const void *initialData = nullptr;
     };
 
+    struct RHIBufferTag
+    {
+    };
+
+    using RHIBufferHandle = Handle<RHIBufferTag>;
+    using RHIBufferHandleHash = HandleHash<RHIBufferTag>;
+
     class RHIBuffer
     {
+        RHIBufferHandle m_handle;
+        friend class RHIDevice;
+
     public:
         virtual ~RHIBuffer() = default;
         virtual void upload(const void *data, size_t size, size_t offset = 0) = 0;
@@ -39,6 +50,7 @@ namespace nitro::rhi
 
         virtual void *map() = 0;
         virtual void unmap() = 0;
+        RHIBufferHandle getHandle() const { return m_handle; }
     };
 
     struct BufferBarrier

@@ -3,6 +3,7 @@
 #include <nitro-rhi-backends/vulkan/vulkan-device.h>
 #include <nitro-rhi-backends/vulkan/vulkan-command-buffer.h>
 #include <nitro-rhi-backends/vulkan/vulkan-utils.h>
+#include "nitro-rhi/rhi-constants.h"
 
 namespace nitro::rhi::vulkan
 {
@@ -17,7 +18,7 @@ namespace nitro::rhi::vulkan
         info.queryType = VK_QUERY_TYPE_TIMESTAMP;
         info.queryCount = m_queryCount;
 
-        for (int i = 0; i < VulkanDevice::MAX_FRAMES_IN_FLIGHT; i++)
+        for (int i = 0; i < kMaxFramesInFlight; i++)
         {
             VkQueryPool queryPool;
             checkVkResult(vkCreateQueryPool(m_device->device, &info, nullptr, &queryPool),

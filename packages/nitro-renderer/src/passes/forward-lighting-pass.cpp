@@ -1,6 +1,8 @@
 #include <nitro-renderer/passes/forward-lighting-pass.h>
 #include <nitro-geometry/push-constant.h>
 #include <nitro-geometry/vertex.h>
+#include "nitro-rhi/rhi-constants.h"
+
 namespace nitro::renderer
 {
     ForwardLightingPass::ForwardLightingPass(std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<rhi::RHISwapchain> swapchain, std::vector<rhi::RHITexture *> &cascades, std::string shaderDir, bool isMetal) : m_device(device), m_swapchain(swapchain)
@@ -39,7 +41,7 @@ namespace nitro::renderer
 
         m_pipeline = m_device->createPipeline(pipelineDesc);
 
-        m_resources.create(g_MAX_FRAMES_IN_FLIGHT,
+        m_resources.create(rhi::kMaxFramesInFlight,
                            [&, cascades](uint32_t frame)
                            {
                                ForwardLightingResource resource;

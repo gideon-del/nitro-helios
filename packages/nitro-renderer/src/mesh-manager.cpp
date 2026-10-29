@@ -1,5 +1,6 @@
 #include "nitro-renderer/mesh-manager.h"
 #include "meshoptimizer.h"
+#include "nitro-rhi/rhi-constants.h"
 
 namespace nitro::renderer
 {
@@ -42,7 +43,7 @@ namespace nitro::renderer
     {
 
         m_resources.create(
-            g_MAX_FRAMES_IN_FLIGHT,
+            kMaxFramesInFlight,
             [](uint32_t frameIdx)
             {
                 return MeshManagerResource{};
@@ -133,7 +134,7 @@ namespace nitro::renderer
 
         auto entity = m_entityStore->get(instance.entity);
 
-           markMeshInstanceBufferDirty();
+        markMeshInstanceBufferDirty();
         return m_instances.emplace(std::move(instance));
     }
 
@@ -218,7 +219,7 @@ namespace nitro::renderer
     void MeshManager::buildMegaBuffers()
     {
 
-        for (uint32_t i = 0; i < g_MAX_FRAMES_IN_FLIGHT; i++)
+        for (uint32_t i = 0; i < kMaxFramesInFlight; i++)
         {
             rebuildFrameInstanceBuffer(i);
             buildMegaVertexBuffer(i);
@@ -254,7 +255,7 @@ namespace nitro::renderer
 
         if (instance->dirtyMask == 0)
             m_dirtyInstances.push_back(handle);
-        instance->dirtyMask = (1 << g_MAX_FRAMES_IN_FLIGHT) - 1;
+        instance->dirtyMask = (1 << kMaxFramesInFlight) - 1;
     }
 
     void MeshManager::flusDirtyMeshInstances()
@@ -417,14 +418,14 @@ namespace nitro::renderer
     void MeshManager::deactivateMeshInstance(const MeshInstanceHandle &handle)
     {
         m_instances.deactivate(handle);
-        m_dirtyInstanceBufferMask = (1 << g_MAX_FRAMES_IN_FLIGHT) - 1;
+        m_dirtyInstanceBufferMask = (1 << kMaxFramesInFlight) - 1;
     };
     bool MeshManager::reactivateMeshInstance(MeshInstanceHandle &handle, MeshInstance &instance)
     {
         MeshInstance copied = instance;
         bool ok = m_instances.reactivate(handle, std::move(copied));
         if (ok)
-            m_dirtyInstanceBufferMask = (1 << g_MAX_FRAMES_IN_FLIGHT) - 1;
+            m_dirtyInstanceBufferMask = (1 << kMaxFramesInFlight) - 1;
         return ok;
     }
 

@@ -1,5 +1,6 @@
 #include <nitro-renderer/renderers/tiled-deferred-renderer.h>
 #include <nitro-renderer/utils.h>
+#include "nitro-rhi/rhi-constants.h"
 
 namespace nitro::renderer
 {
@@ -1077,7 +1078,7 @@ namespace nitro::renderer
         m_particleUpdatePass->uploadDeadList(resources, deadListBuffer);
         m_compiledFrameGraph = m_renderGraph.compileFrameGraph();
 
-        for (int i = 0; i < g_MAX_FRAMES_IN_FLIGHT; i++)
+        for (int i = 0; i < rhi::kMaxFramesInFlight; i++)
         {
             uint32_t initialCount = 0;
             resources.getBuffer(drawCountId, i)->upload(&initialCount, sizeof(uint32_t));

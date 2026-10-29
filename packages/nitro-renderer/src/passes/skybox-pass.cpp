@@ -1,4 +1,5 @@
 #include <nitro-renderer/passes/skybox-pass.h>
+#include "nitro-rhi/rhi-constants.h"
 
 namespace nitro::renderer
 {
@@ -48,7 +49,7 @@ namespace nitro::renderer
         m_skyboxTexture = m_device->createTexture(textureDesc);
 
         m_resources.create(
-            g_MAX_FRAMES_IN_FLIGHT,
+            rhi::kMaxFramesInFlight,
             [&](uint32_t frameIdx)
             {
                 SkyboxPassResource resource;

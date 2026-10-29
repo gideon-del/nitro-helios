@@ -1,6 +1,8 @@
 #include <nitro-renderer/passes/debug-draw-pass.h>
 #include <nitro-geometry/mesh-generator.h>
 #include <glm/gtc/matrix_transform.hpp>
+#include "nitro-rhi/rhi-constants.h"
+
 namespace nitro::renderer
 {
     DebugDrawPass::DebugDrawPass(std::shared_ptr<rhi::RHIDevice> device, uint32_t width, uint32_t height, std::string shaderDir, bool isMetal) : m_device(device), m_width(width), m_height(height)
@@ -44,7 +46,7 @@ namespace nitro::renderer
 
         m_pipeline = m_device->createPipeline(pipelineDesc);
 
-        m_resources.create(g_MAX_FRAMES_IN_FLIGHT,
+        m_resources.create(rhi::kMaxFramesInFlight,
                            [&](uint32_t frameIdx)
                            {
                                DebugPassResource resource;

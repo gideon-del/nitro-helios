@@ -1,4 +1,5 @@
 #include <nitro-renderer/passes/tiled-deffered-compute-pass.h>
+#include "nitro-rhi/rhi-constants.h"
 
 namespace nitro::renderer
 {
@@ -62,7 +63,7 @@ namespace nitro::renderer
         renderPassDesc.width = m_width;
         renderPassDesc.height = m_height;
 
-        m_resources.create(g_MAX_FRAMES_IN_FLIGHT,
+        m_resources.create(rhi::kMaxFramesInFlight,
                            [&](uint32_t frameIdx)
                            {
                                TileLightingComputeResource resource;

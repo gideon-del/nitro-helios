@@ -28,5 +28,4 @@ namespace nitro::renderer
         std::vector<T> m_resources;
     };
 
-    static constexpr uint32_t g_MAX_FRAMES_IN_FLIGHT = 2;
 } // namespace nitro::renderer

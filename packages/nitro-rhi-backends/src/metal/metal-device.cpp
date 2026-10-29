@@ -26,6 +26,8 @@ namespace nitro::rhi::metal
         device = MTL::CreateSystemDefaultDevice();
         commandQueue = device->newCommandQueue();
 
+        m_frameEvent = device->newSharedEvent();
+
         m_defaultSamplers.anisotropicRepeat = create(RHISamplerDesc::AnisotropicRepeat());
         m_defaultSamplers.linearClamp = create(RHISamplerDesc::LinearClamp());
         m_defaultSamplers.linearRepeat = create(RHISamplerDesc::LinearRepeat());
@@ -55,22 +57,77 @@ namespace nitro::rhi::metal
     }
     MetalDevice::~MetalDevice()
     {
-        commandQueue->release();
+        waitIdle();
+
+        m_texturePool.clear();
+        m_textureGraveyard.collectAll();
+
+        m_bufferPool.clear();
+        m_bufferGraveyard.collectAll();
+
+        m_heapPool.clear();
+        m_heapGraveyard.collectAll();
 
         ImNodes::DestroyContext();
         ImGui_ImplMetal_Shutdown();
         ImGui_ImplGlfw_Shutdown();
         ImGui::DestroyContext();
+
+        commandQueue->release();
+        m_frameEvent->release();
+
         device->release();
     }
 
+    RHIBufferHandle MetalDevice::create(const BufferDesc &desc)
+    {
+        auto handle = m_bufferPool.emplace(std::make_unique<MetalBuffer>(this, desc));
+        auto buffer = m_bufferPool.get(handle)->get();
+
+        assignHandle(*buffer, handle);
+
+        return handle;
+    }
+    RHIBuffer *MetalDevice::resolve(const RHIBufferHandle &handle)
+    {
+        auto buffer = m_bufferPool.get(handle);
+
+        if (!buffer)
+        {
+            return nullptr;
+        }
+
+        return buffer->get();
+    }
     RHIBuffer *MetalDevice::createBuffer(const BufferDesc &desc)
     {
-        return new MetalBuffer(this, desc);
+        return resolve(create(desc));
+    }
+
+    RHITextureHandle MetalDevice::create(const TextureDesc &desc)
+    {
+        auto handle = m_texturePool.emplace(std::make_unique<MetalTexture>(this, desc));
+        auto texture = m_texturePool.get(handle)->get();
+
+        assignHandle(*texture, handle);
+
+        return handle;
+    }
+
+    RHITexture *MetalDevice::resolve(const RHITextureHandle &handle)
+    {
+        auto texture = m_texturePool.get(handle);
+
+        if (!texture)
+        {
+            return nullptr;
+        }
+
+        return texture->get();
     }
     RHITexture *MetalDevice::createTexture(const TextureDesc &desc)
     {
-        return new MetalTexture(this, desc);
+        return resolve(create(desc));
     }
     RHIDescriptorLayout *MetalDevice::createDescriptorLayout(const std::vector<RHIDescriptorBinding> bindings)
     {
@@ -116,14 +173,43 @@ namespace nitro::rhi::metal
         return new MetalTimer(this);
     }
 
+    void MetalDevice::destroy(const RHIBufferHandle &handle)
+    {
+        auto buffer = m_bufferPool.get(handle);
+        if (!buffer)
+            return;
+        m_bufferGraveyard.push(std::move(*buffer), retireAt());
+
+        m_bufferPool.free(handle);
+    }
     void MetalDevice::destroyBuffer(RHIBuffer *buffer)
     {
-        delete buffer;
+        if (!buffer)
+            return;
+        destroy(buffer->getHandle());
+    }
+
+    void MetalDevice::destroy(const RHITextureHandle &handle)
+    {
+        auto texture = m_texturePool.get(handle);
+
+        if (!texture)
+        {
+            return;
+        }
+
+        m_textureGraveyard.push(std::move(*texture), retireAt());
+        m_texturePool.free(handle);
     }
 
     void MetalDevice::destroyTexture(RHITexture *texture)
     {
-        delete texture;
+        if (!texture)
+        {
+            return;
+        }
+
+        destroy(texture->getHandle());
     }
     void MetalDevice::destroyPipeline(RHIPipeline *pipeline)
     {
@@ -140,6 +226,7 @@ namespace nitro::rhi::metal
     }
     RHICommandBuffer *MetalDevice::beginFrame()
     {
+        waitForFrame();
         if (!m_swapchain)
         {
             throw std::runtime_error("Metal Swapchain not found");
@@ -149,8 +236,20 @@ namespace nitro::rhi::metal
             m_swapchain->currentDrawable->release();
         }
         m_swapchain->currentDrawable = m_swapchain->layer->nextDrawable();
+
+        collectGarbage();
         m_currentCommandBuffer = new MetalCommandBuffer(this, m_swapchain);
         return m_currentCommandBuffer;
+    }
+
+    void MetalDevice::collectGarbage()
+    {
+
+        auto completed = getFrameCompleted();
+
+        m_textureGraveyard.collect(completed);
+        m_bufferGraveyard.collect(completed);
+        m_heapGraveyard.collect(completed);
     }
     RHICommandBuffer *MetalDevice::createCommandBuffer()
     {
@@ -169,8 +268,10 @@ namespace nitro::rhi::metal
     void MetalDevice::endFrame(RHICommandBuffer *cmd)
     {
         MetalCommandBuffer *metalCmd = reinterpret_cast<MetalCommandBuffer *>(cmd);
-
+        metalCmd->commandBuffer->encodeSignalEvent(m_frameEvent, m_frameNumber + 1);
         metalCmd->commandBuffer->commit();
+
+        m_frameNumber++;
         delete cmd;
     }
     void MetalDevice::endCommandBuffer(RHICommandBuffer *cmd)
@@ -181,11 +282,14 @@ namespace nitro::rhi::metal
         metalCmd->commandBuffer->waitUntilCompleted();
         delete cmd;
     }
-    void MetalDevice::waitIdle() {};
+    void MetalDevice::waitIdle()
+    {
+        m_frameEvent->waitUntilSignaledValue(m_frameNumber, UINT64_MAX);
+    };
 
     uint32_t MetalDevice::getCurrentFrameIndex() const
     {
-        return 0;
+        return m_frameNumber % kMaxFramesInFlight;
     }
     void MetalDevice::beginImGuiFrame()
     {
@@ -239,7 +343,11 @@ namespace nitro::rhi::metal
         MTL::HeapDescriptor *heapDesc = MTL::HeapDescriptor::alloc()->init();
         heapDesc->setSize(sizeBytes);
         heapDesc->setStorageMode(MTL::StorageModePrivate);
-        auto *heap = new MetalHeap();
+
+        auto handle = m_heapPool.emplace(std::make_unique<MetalHeap>());
+        auto heap = m_heapPool.get(handle)->get();
+
+        assignHandle(*heap, handle);
         heap->heap = device->newHeap(heapDesc);
         heapDesc->release();
         return heap;
@@ -247,9 +355,15 @@ namespace nitro::rhi::metal
 
     void MetalDevice::destroyHeap(RHIHeap *heap)
     {
-        auto *mtlHeap = static_cast<MetalHeap *>(heap);
-        mtlHeap->heap->release();
-        delete heap;
+        if (!heap)
+            return;
+        auto handle = heap->getHandle();
+        auto heapResource = m_heapPool.get(handle);
+
+        if (!heapResource)
+            return;
+        m_heapGraveyard.push(std::move(*heapResource), retireAt());
+        m_heapPool.free(handle);
     }
 
     RHITexture *MetalDevice::createTextureFromHeap(RHIHeap *heap, const TextureDesc &desc, size_t offset)
@@ -257,6 +371,12 @@ namespace nitro::rhi::metal
         auto *mtlHeap = static_cast<MetalHeap *>(heap);
         MTL::TextureDescriptor *textureDesc = makeMTLTextureDescriptor(desc); // your shared desc-building function
         MTL::Texture *texture = mtlHeap->heap->newTexture(textureDesc, offset);
-        return new MetalTexture(this, texture, desc);
+        auto handle = m_texturePool.emplace(std::make_unique<MetalTexture>(this, texture, desc));
+        auto mtlTexture = m_texturePool.get(handle)->get();
+
+        assignHandle(*mtlTexture, handle);
+        textureDesc->release();
+
+        return mtlTexture;
     }
 } // namespace nitro::rhi::metal

@@ -1,5 +1,6 @@
 #include <nitro-renderer/passes/main-scene-pass.h>
 #include <imgui.h>
+#include "nitro-rhi/rhi-constants.h"
 
 namespace nitro::renderer
 {
@@ -30,7 +31,7 @@ namespace nitro::renderer
         }
 
         m_pipeline = m_device->createPipeline(pipelineDesc);
-        m_resources.create(g_MAX_FRAMES_IN_FLIGHT,
+        m_resources.create(rhi::kMaxFramesInFlight,
                            [&](uint32_t frameIdx)
                            {
                                SingleInputPassResource resource;

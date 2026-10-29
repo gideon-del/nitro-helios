@@ -113,7 +113,7 @@ namespace nitro::rhi::vulkan
         depthDesc.format = TextureDesc::ImageFormat::Depth32Float;
         depthDesc.size = {.width = extent.width, .height = extent.height};
         depthDesc.usage = TextureDesc::Usage::DepthStencil;
-        depthTexture = new VulkanTexture(m_device, depthDesc);
+        depthTexture = static_cast<VulkanTexture *>(m_device->createTexture(depthDesc));
         framebuffers.resize(images.size());
 
         for (int i = 0; i < backBuffers.size(); i++)
@@ -174,6 +174,12 @@ namespace nitro::rhi::vulkan
         framebuffers.clear();
         backBuffers.clear();
         imagesInFlight.clear();
+
+        if (depthTexture)
+        {
+            m_device->destroyTexture(depthTexture);
+            depthTexture = nullptr;
+        }
     }
     VulkanSwapchain::~VulkanSwapchain()
     {

@@ -1,4 +1,5 @@
 #include <nitro-renderer/passes/deferred-lighting-pass.h>
+#include "nitro-rhi/rhi-constants.h"
 
 namespace nitro::renderer
 {
@@ -79,7 +80,7 @@ namespace nitro::renderer
         m_pipeline = m_device->createPipeline(pipelineDesc);
 
         m_resources.create(
-            g_MAX_FRAMES_IN_FLIGHT,
+            rhi::kMaxFramesInFlight,
             [&](uint32_t frame)
             {
                 DeferredLightingResource resource;

@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include "rhi-utils.h"
+#include "nitro-core/types/handle.h"
 namespace nitro::rhi
 {
 
@@ -54,10 +55,23 @@ namespace nitro::rhi
                 static_cast<uint32_t>(flag)) != 0;
     }
 
+    struct RHITextureTag
+    {
+    };
+
+    using RHITextureHandle = Handle<RHITextureTag>;
+
+    using RHITextureHandleHash = HandleHash<RHITextureTag>;
+
     class RHITexture
     {
+        friend class RHIDevice;
+        RHITextureHandle m_handle;
+
     public:
         virtual ~RHITexture() = default;
+
+        RHITextureHandle getHandle() const { return m_handle; }
     };
 
     inline TextureDesc::Usage operator|(TextureDesc::Usage a, TextureDesc::Usage b)

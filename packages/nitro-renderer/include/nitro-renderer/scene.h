@@ -11,6 +11,8 @@
 #include "entity-store.h"
 #include "light-manager.h"
 #include <filesystem>
+#include "nitro-rhi/rhi-constants.h"
+
 namespace nitro::renderer
 {
 
@@ -47,7 +49,7 @@ namespace nitro::renderer
 
         {
             m_sceneInstanceIdBuffers.create(
-                g_MAX_FRAMES_IN_FLIGHT,
+                kMaxFramesInFlight,
                 [](uint32_t frameIdx)
                 {
                     return SceneFrameResource{};
@@ -86,7 +88,7 @@ namespace nitro::renderer
         void buildSceneInstanceId()
         {
 
-            for (uint32_t i = 0; i < g_MAX_FRAMES_IN_FLIGHT; i++)
+            for (uint32_t i = 0; i < kMaxFramesInFlight; i++)
             {
                 rebuildInstanceIdFrameBuffer(i);
             }
@@ -158,7 +160,7 @@ namespace nitro::renderer
         rebuildInstanceIdFrameBuffer(uint32_t frameIdx);
         void markInstanceIdBuffersDirty()
         {
-            m_dirtySceneInstanceIdBufferMask = (1 << g_MAX_FRAMES_IN_FLIGHT) - 1;
+            m_dirtySceneInstanceIdBufferMask = (1 << kMaxFramesInFlight) - 1;
         }
         void increaseMeshInstanceCount()
         {

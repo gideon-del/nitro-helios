@@ -1,4 +1,5 @@
 #include "nitro-renderer/light-manager.h"
+#include "nitro-rhi/rhi-constants.h"
 
 namespace nitro::renderer
 {
@@ -7,7 +8,7 @@ namespace nitro::renderer
           m_entityStore(std::move(entityStore))
     {
         m_frameResources.create(
-            g_MAX_FRAMES_IN_FLIGHT,
+            kMaxFramesInFlight,
             [&](uint32_t frameIdx)
             {
                 LightManagerFrameResource resource;
@@ -49,7 +50,7 @@ namespace nitro::renderer
 
     void LightManager::markLightBufferDirty()
     {
-        m_dirtyPointLightBuffer = (1 << g_MAX_FRAMES_IN_FLIGHT) - 1;
+        m_dirtyPointLightBuffer = (1 << kMaxFramesInFlight) - 1;
     }
     PointLight *LightManager::getPointLight(const PointLightHandle &handle)
     {
@@ -64,7 +65,7 @@ namespace nitro::renderer
 
         // if (pointLight->dirtyMask == 0)
         //     m_dirtyPointLights.push_back(handle);
-        // pointLight->dirtyMask = (1 << g_MAX_FRAMES_IN_FLIGHT) - 1;
+        // pointLight->dirtyMask = (1 << kMaxFramesInFlight) - 1;
 
         markLightBufferDirty();
     }

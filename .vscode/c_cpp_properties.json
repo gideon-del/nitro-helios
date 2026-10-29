@@ -1,26 +1,28 @@
 {
-  "configurations": [
-    {
-      "name": "Mac",
-      "includePath": [
-        "${workspaceFolder}/**",
-        "${workspaceFolder}/**/include",
-        "${workspaceFolder}/packages/nitro-rhi/include",
-        "/opt/homebrew/opt/glfw/include",
-        "${workspaceFolder}/packages/nitro-rhi-backends/include/",
-        "${workspaceFolder}/packages/nitro-rhi-backends/vendor/metal-cpp",
-        "/opt/homebrew/include",
-        "/opt/homebrew/include/**",
-        "${workspaceFolder}/**/include"
-      ],
-      "defines": [],
-      "compilerPath": "/usr/bin/clang++",
-      "cStandard": "c23",
-      "cppStandard": "c++23",
-      "intelliSenseMode": "macos-clang-arm64",
-      "compilerArgs": ["-std=c++23"]
-      // "configurationProvider": "ms-vscode.cmake-tools"
-    }
-  ],
-  "version": 4
+    "configurations": [
+        {
+            "name": "Mac",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/**/include",
+                "${workspaceFolder}/packages/nitro-rhi/include",
+                "/opt/homebrew/opt/glfw/include",
+                "${workspaceFolder}/packages/nitro-rhi-backends/include/",
+                "${workspaceFolder}/packages/nitro-rhi-backends/vendor/metal-cpp",
+                "/opt/homebrew/include",
+                "/opt/homebrew/include/**",
+                "${workspaceFolder}/**/include",
+                "${workspaceFolder}/packages/nitro-core/includes"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/clang++",
+            "cStandard": "c23",
+            "cppStandard": "c++23",
+            "intelliSenseMode": "macos-clang-arm64",
+            "compilerArgs": [
+                "-std=c++23"
+            ]
+        }
+    ],
+    "version": 4
 }

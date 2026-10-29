@@ -1,5 +1,6 @@
 #include <nitro-renderer/passes/cascade-shadow-map-pass.h>
 #include <nitro-geometry/vertex.h>
+#include "nitro-rhi/rhi-constants.h"
 
 namespace nitro::renderer
 {
@@ -7,10 +8,10 @@ namespace nitro::renderer
     {
 
         std::vector<rhi::RHIDescriptorBinding> bindings = {
-            {rhi ::RHIDescriptorBinding::Type::UniformBuffer,
+            {rhi::RHIDescriptorBinding::Type::UniformBuffer,
              rhi::RHIDescriptorBinding::ShaderStage::Vertex,
              2},
-            {rhi ::RHIDescriptorBinding::Type::StorageBuffer,
+            {rhi::RHIDescriptorBinding::Type::StorageBuffer,
              rhi::RHIDescriptorBinding::ShaderStage::Vertex,
              3},
         };
@@ -51,7 +52,7 @@ namespace nitro::renderer
         uboDesc.usage = rhi::BufferDesc::Usage::Uniform;
 
         m_resources.create(
-            g_MAX_FRAMES_IN_FLIGHT,
+            rhi::kMaxFramesInFlight,
             [&](uint32_t frame)
             {
                 CascadeShadowMapResource resource;

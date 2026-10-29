@@ -9,6 +9,7 @@
 #include "nitro-core/types/pool.h"
 #include "nitro-assets/manager.h"
 #include "entity-store.h"
+#include "nitro-rhi/rhi-constants.h"
 
 namespace nitro::renderer
 {
@@ -125,11 +126,11 @@ namespace nitro::renderer
         void buildMegaIndexBuffer(uint32_t frameidx);
         void markMeshDescriptorDirty()
         {
-            m_dirtyDescriptorBufferMask = (1 << g_MAX_FRAMES_IN_FLIGHT) - 1;
+            m_dirtyDescriptorBufferMask = (1 << kMaxFramesInFlight) - 1;
         }
         void markMeshInstanceBufferDirty()
         {
-            m_dirtyInstanceBufferMask = (1 << g_MAX_FRAMES_IN_FLIGHT) - 1;
+            m_dirtyInstanceBufferMask = (1 << kMaxFramesInFlight) - 1;
         }
     };
 } // namespace nitro::renderer

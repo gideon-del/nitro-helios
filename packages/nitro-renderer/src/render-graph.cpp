@@ -2,6 +2,7 @@
 #include <imnodes.h>
 #include <imgui.h>
 #include <algorithm>
+#include "nitro-rhi/rhi-constants.h"
 
 namespace nitro::renderer
 {
@@ -468,7 +469,7 @@ namespace nitro::renderer
 
             allocation.transient = desc.transient;
 
-            uint32_t slotCount = desc.transient ? g_MAX_FRAMES_IN_FLIGHT : 1;
+            uint32_t slotCount = desc.transient ? kMaxFramesInFlight : 1;
             for (uint32_t i = 0; i < slotCount; i++)
             {
                 if (!allocation.slots[i])
@@ -493,7 +494,7 @@ namespace nitro::renderer
 
             allocation.transient = desc.transient;
 
-            uint32_t slotCount = desc.transient ? g_MAX_FRAMES_IN_FLIGHT : 1;
+            uint32_t slotCount = desc.transient ? kMaxFramesInFlight : 1;
             for (uint32_t i = 0; i < slotCount; i++)
             {
                 if (allocation.slots[i])

@@ -1,6 +1,8 @@
 #pragma once
 #include <nitro-rhi/rhi-device.h>
+#include <nitro-rhi/rhi-deffered-deletion-queue.h>
 #include <nitro-rhi/rhi-pool.h>
+#include <nitro-core/types/pool.h>
 #define VK_ENABLE_BETA_EXTENSIONS
 #include <vulkan/vulkan.h>
 
@@ -9,6 +11,7 @@
 #include <vector>
 #include "vulkan-sampler.h"
 #include "vulkan-sampler-cache.h"
+
 struct VmaAllocator_T;
 typedef VmaAllocator_T *VmaAllocator;
 
@@ -29,7 +32,8 @@ namespace nitro::rhi::vulkan
     class VulkanCommandBuffer;
     class VulkanSwapchain;
     class VulkanTexture;
-
+    class VulkanBuffer;
+    class VulkanHeap;
     class VulkanDevice : public RHIDevice
     {
 
@@ -48,8 +52,17 @@ namespace nitro::rhi::vulkan
         RHITimer *createTimer() override;
         RHIRenderPass *createRenderPass(const RenderPassDesc &desc) override;
         void destroyRenderPass(RHIRenderPass *renderPass) override;
+
+        RHIBufferHandle create(const BufferDesc &desc) override;
+        RHIBuffer *resolve(const RHIBufferHandle &handle) override;
+        void destroy(const RHIBufferHandle &handle) override;
+
         RHIBuffer *createBuffer(const BufferDesc &desc) override;
         void destroyBuffer(RHIBuffer *buffer) override;
+
+        RHITextureHandle create(const TextureDesc &desc) override;
+        RHITexture *resolve(const RHITextureHandle &handle) override;
+        void destroy(const RHITextureHandle &handle) override;
 
         RHITexture *createTexture(const TextureDesc &desc) override;
         void destroyTexture(RHITexture *texture) override;
@@ -109,8 +122,6 @@ namespace nitro::rhi::vulkan
         VkQueryPool queryPool;
         float timestampPeriod;
 
-        static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
-
     private:
         VkInstance m_instance;
         VkDebugUtilsMessengerEXT m_messageCallback;
@@ -119,12 +130,24 @@ namespace nitro::rhi::vulkan
         VkFormat m_surfaceFormat;
         std::vector<VulkanCommandBuffer *> m_frames;
         uint32_t m_currentFrame = 0;
+        uint64_t m_frameNumber = 0;
         VulkanSwapchain *m_swapchain;
         RHIPool<VulkanSampler> m_samplers;
         VulkanSamplerCache m_samplerCache;
         DefaultSamplers m_defaultSamplers;
-        std::unordered_map<VulkanTexture *, VkDescriptorSet> m_imguiTextureCache;
+        std::unordered_map<RHITextureHandle, VkDescriptorSet, RHITextureHandleHash> m_imguiTextureCache;
         bool m_mutableComparisonSamplers = false;
+
+        ResourcePool<std::unique_ptr<VulkanTexture>, RHITextureTag> m_texturePool;
+        ResourcePool<std::unique_ptr<VulkanBuffer>, RHIBufferTag> m_bufferPool;
+        ResourcePool<std::unique_ptr<VulkanHeap>, RHIHeapTag> m_heapPool;
+
+        DeferredDeletionQueue<std::unique_ptr<VulkanTexture>> m_textureGraveyard;
+        DeferredDeletionQueue<std::unique_ptr<VulkanBuffer>> m_bufferGraveyard;
+        DeferredDeletionQueue<std::unique_ptr<VulkanHeap>> m_heapGraveyard;
+
+    private:
         void checkMutableComparisonSampler();
+        void collectGarbage();
     };
 }

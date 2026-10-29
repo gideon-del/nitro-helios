@@ -7,10 +7,10 @@
 
 namespace nitro
 {
-    template <typename T>
+    template <typename T, typename Tag = T>
     class ResourcePool
     {
-        using PoolHandle = Handle<T>;
+        using PoolHandle = Handle<Tag>;
 
         struct Slot
         {
@@ -139,7 +139,7 @@ namespace nitro
         {
             if (!isAlive(h))
                 return nullptr;
-            return std::launder(reinterpret_cast<T *>(&m_slots[h.index].storage));
+            return std::launder(reinterpret_cast<const T *>(&m_slots[h.index].storage));
         }
         size_t capacity() const { return m_slots.size(); }
         size_t size() const { return m_slots.size() - m_free.size(); }
