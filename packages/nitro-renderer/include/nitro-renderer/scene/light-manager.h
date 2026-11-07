@@ -1,7 +1,7 @@
 #pragma once
 #include "handles.h"
 #include "nitro-rhi/rhi.h"
-#include "per-frame.h"
+#include "nitro-renderer/legacy/per-frame.h"
 #include "entity-store.h"
 #include "nitro-core/types/pool.h"
 namespace nitro::renderer

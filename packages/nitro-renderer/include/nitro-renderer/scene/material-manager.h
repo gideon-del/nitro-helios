@@ -2,9 +2,9 @@
 #include <nitro-rhi/rhi.h>
 #include <glm/glm.hpp>
 #include "handles.h"
-#include "per-frame.h"
+#include "nitro-renderer/legacy/per-frame.h"
 #include "nitro-assets/manager.h"
-#include "gpu-resource-cache.h"
+#include "nitro-renderer/cache/gpu-resource-cache.h"
 #include <nitro-rhi/rhi-constants.h>
 namespace nitro::renderer
 {

@@ -1,6 +1,6 @@
 #include <nitro-renderer/panels.h>
 #include <imgui.h>
-#include "nitro-renderer/editor-commands.h"
+#include "nitro-renderer/scene/editor-commands.h"
 #include <nfd.hpp>
 #include <iostream>
 namespace nitro::renderer

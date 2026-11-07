@@ -1,6 +1,6 @@
 #define TINYGLTF_NO_STB_IMAGE_WRITE
 #include "tiny_gltf.h"
-#include <nitro-renderer/scene.h>
+#include <nitro-renderer/scene/scene.h>
 #include <chrono>
 #include <unordered_set>
 #include "nitro-geometry/utils.h"

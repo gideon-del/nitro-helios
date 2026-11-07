@@ -1,4 +1,4 @@
-#include <nitro-renderer/mesh-renderer.h>
+#include <nitro-renderer/legacy/mesh-renderer.h>
 
 namespace nitro::renderer
 {

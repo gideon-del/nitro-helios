@@ -1,8 +1,8 @@
 #pragma once
 #include <nitro-rhi/rhi.h>
 #include <glm/glm.hpp>
-#include <nitro-renderer/per-frame.h>
-#include <nitro-renderer/single-texture-pass-resource.h>
+#include <nitro-renderer/legacy/per-frame.h>
+#include <nitro-renderer/legacy/single-texture-pass-resource.h>
 namespace nitro::renderer
 {
     struct BrightnessPassPushConstant

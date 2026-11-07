@@ -10,7 +10,7 @@
                 "${workspaceFolder}/packages/nitro-rhi-backends/include/",
                 "${workspaceFolder}/packages/nitro-rhi-backends/vendor/metal-cpp",
                 "/opt/homebrew/include",
-                "/opt/homebrew/include/**",
+                "/opt/homebrew/include/**/**",
                 "${workspaceFolder}/**/include",
                 "${workspaceFolder}/packages/nitro-core/includes"
             ],

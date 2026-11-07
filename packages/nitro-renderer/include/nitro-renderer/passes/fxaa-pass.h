@@ -1,7 +1,7 @@
 #pragma once
 #include <nitro-rhi/rhi.h>
-#include <nitro-renderer/per-frame.h>
-#include <nitro-renderer/single-texture-pass-resource.h>
+#include <nitro-renderer/legacy/per-frame.h>
+#include <nitro-renderer/legacy/single-texture-pass-resource.h>
 #include <glm/glm.hpp>
 
 namespace nitro::renderer

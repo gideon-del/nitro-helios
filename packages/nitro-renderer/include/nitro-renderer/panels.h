@@ -1,7 +1,7 @@
 #pragma once
 #include "settings.h"
 #include "context.h"
-#include "particle-emitter-system.h"
+#include "nitro-renderer/scene/particle-emitter-system.h"
 #include <nitro-rhi/rhi.h>
 #include "ImGuizmo.h"
 namespace nitro::renderer

@@ -7,7 +7,7 @@
 #include "nitro-geometry/ray.h"
 #include "editor-commands.h"
 #include "nitro-assets/manager.h"
-#include "gpu-resource-cache.h"
+#include "nitro-renderer/cache/gpu-resource-cache.h"
 #include "entity-store.h"
 #include "light-manager.h"
 #include <filesystem>

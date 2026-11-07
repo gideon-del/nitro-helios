@@ -1,9 +1,9 @@
 #pragma once
 #include <nitro-rhi/rhi.h>
 #include <nitro-renderer/passes/geometry-pass.h>
-#include <nitro-renderer/per-frame.h>
+#include <nitro-renderer/legacy/per-frame.h>
 #include <nitro-renderer/settings.h>
-#include <nitro-renderer/render-graph.h>
+#include <nitro-renderer/legacy/render-graph.h>
 #include <glm/glm.hpp>
 
 namespace nitro::renderer
@@ -76,7 +76,7 @@ namespace nitro::renderer
         uint32_t m_width, m_height, m_tileSizeX, m_tileSizeY, m_maxPointLights;
 
     private:
-               bool isFrameResourceStale(const RGResources &rgResources, const TileLightingComputeRGResource &rgResourceIds, rhi::RHIBuffer *pointLightBuffer, TileLightingComputeResource &resource);
+        bool isFrameResourceStale(const RGResources &rgResources, const TileLightingComputeRGResource &rgResourceIds, rhi::RHIBuffer *pointLightBuffer, TileLightingComputeResource &resource);
         void bindFrameResource(const RGResources &rgResource, const TileLightingComputeRGResource &rgResourceIds, rhi::RHIBuffer *pointLightBuffer, TileLightingComputeResource &resource);
     };
 } // namespace nitro::renderer

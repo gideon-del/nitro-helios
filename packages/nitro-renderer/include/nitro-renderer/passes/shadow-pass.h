@@ -4,8 +4,8 @@
 #include <nitro-rhi/rhi-device.h>
 #include <nitro-rhi/rhi-device.h>
 #include <nitro-rhi/rhi-command-buffer.h>
-#include <nitro-renderer/scene.h>
-#include <nitro-renderer/render-graph.h>
+#include <nitro-renderer/scene/scene.h>
+#include <nitro-renderer/legacy/render-graph.h>
 #include <glm/glm.hpp>
 
 namespace nitro::renderer

@@ -1,4 +1,4 @@
-#include "nitro-renderer/spatial-grid.h"
+#include "nitro-renderer/scene/spatial-grid.h"
 #include <cmath>
 #include <algorithm>
 #include <iostream>

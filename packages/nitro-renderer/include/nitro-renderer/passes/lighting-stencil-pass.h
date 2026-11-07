@@ -1,7 +1,7 @@
 // #pragma once
 // #include <nitro-rhi/rhi.h>
 // #include <nitro-renderer/passes/geometry-pass.h>
-// #include <nitro-renderer/per-frame.h>
+// #include <nitro-renderer/legacy/per-frame.h>
 // #include <nitro-renderer/settings.h>
 
 // namespace nitro::renderer

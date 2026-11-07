@@ -1,5 +1,5 @@
 #pragma once
-#include "scene.h"
+#include "nitro-renderer/scene/scene.h"
 #include <nitro-geometry/camera.h>
 #include <random>
 

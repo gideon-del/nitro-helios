@@ -87,6 +87,19 @@ namespace nitro::rhi
         return a;
     }
 
+    inline bool operator==(const TextureDesc &a, const TextureDesc &b)
+    {
+        return a.sampler == b.sampler &&
+               a.format == b.format &&
+               a.usage == b.usage &&
+               a.size.width == b.size.width &&
+               a.size.height == b.size.height &&
+               a.type == b.type &&
+               a.initialData == b.initialData &&
+               a.mipmaps == b.mipmaps &&
+               a.isAliased == b.isAliased;
+    }
+
     struct TextureSubresource
     {
         uint32_t baseMip = 0;

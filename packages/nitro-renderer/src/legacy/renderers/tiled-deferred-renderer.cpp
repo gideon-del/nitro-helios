@@ -1,4 +1,4 @@
-#include <nitro-renderer/renderers/tiled-deferred-renderer.h>
+#include <nitro-renderer/legacy/renderers/tiled-deferred-renderer.h>
 #include <nitro-renderer/utils.h>
 #include "nitro-rhi/rhi-constants.h"
 

@@ -1,5 +1,5 @@
 #pragma once
-#include "nitro-renderer/per-frame.h"
+#include "nitro-renderer/legacy/per-frame.h"
 #include "nitro-rhi/rhi.h"
 #include "glm/glm.hpp"
 

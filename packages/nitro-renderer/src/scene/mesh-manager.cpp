@@ -1,4 +1,4 @@
-#include "nitro-renderer/mesh-manager.h"
+#include "nitro-renderer/scene/mesh-manager.h"
 #include "meshoptimizer.h"
 #include "nitro-rhi/rhi-constants.h"
 

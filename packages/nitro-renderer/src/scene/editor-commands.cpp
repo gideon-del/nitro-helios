@@ -1,5 +1,5 @@
-#include "nitro-renderer/editor-commands.h"
-#include "nitro-renderer/scene.h"
+#include "nitro-renderer/scene/editor-commands.h"
+#include "nitro-renderer/scene/scene.h"
 
 namespace nitro::renderer
 {

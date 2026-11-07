@@ -1,4 +1,4 @@
-#include <nitro-renderer/render-graph.h>
+#include <nitro-renderer/legacy/render-graph.h>
 #include <imnodes.h>
 #include <imgui.h>
 #include <algorithm>

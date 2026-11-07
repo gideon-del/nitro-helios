@@ -1,8 +1,7 @@
 #pragma once
 
-#include <nitro-renderer/frame-resource.h>
-#include <nitro-renderer/per-frame.h>
-#include <nitro-renderer/scene.h>
+#include <nitro-renderer/legacy/per-frame.h>
+#include <nitro-renderer/scene/scene.h>
 #include <glm/glm.hpp>
 #include <nitro-renderer/settings.h>
 namespace nitro::renderer

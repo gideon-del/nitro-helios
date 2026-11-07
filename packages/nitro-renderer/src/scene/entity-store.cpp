@@ -1,4 +1,4 @@
-#include "nitro-renderer/entity-store.h"
+#include "nitro-renderer/scene/entity-store.h"
 
 namespace nitro::renderer
 {

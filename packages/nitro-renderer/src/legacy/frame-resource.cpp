@@ -1,4 +1,4 @@
-#include <nitro-renderer/frame-resource.h>
+#include <nitro-renderer/legacy/frame-resource.h>
 
 namespace nitro::renderer
 {
@@ -6,7 +6,7 @@ namespace nitro::renderer
 
     FrameResource::~FrameResource()
     {
-        }
+    }
 
     void FrameResource::setBuffer(FrameResourceId id, rhi::RHIBuffer *buffer)
     {

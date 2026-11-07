@@ -2,10 +2,10 @@
 #include <nitro-rhi/rhi.h>
 #include <nitro-renderer/panels.h>
 #include <nitro-renderer/settings.h>
-#include <nitro-renderer/render-graph.h>
-#include <nitro-renderer/per-frame.h>
-#include <nitro-renderer/single-texture-pass-resource.h>
-#include <nitro-renderer/particle-emitter-system.h>
+#include <nitro-renderer/legacy/render-graph.h>
+#include <nitro-renderer/legacy/per-frame.h>
+#include <nitro-renderer/legacy/single-texture-pass-resource.h>
+#include <nitro-renderer/scene/particle-emitter-system.h>
 #include "ImGuizmo.h"
 
 namespace nitro::renderer

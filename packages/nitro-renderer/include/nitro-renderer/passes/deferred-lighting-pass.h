@@ -6,11 +6,11 @@
 #include <nitro-rhi/rhi-device.h>
 #include <nitro-rhi/rhi-descriptor-layout.h>
 #include <nitro-rhi/rhi-command-buffer.h>
-#include <nitro-renderer/scene.h>
-#include <nitro-renderer/per-frame.h>
+#include <nitro-renderer/scene/scene.h>
+#include <nitro-renderer/legacy/per-frame.h>
 #include <glm/glm.hpp>
 #include <nitro-renderer/settings.h>
-#include <nitro-renderer/render-graph.h>
+#include <nitro-renderer/legacy/render-graph.h>
 #include <nitro-renderer/passes/cascade-shadow-map-pass.h>
 namespace nitro::renderer
 {

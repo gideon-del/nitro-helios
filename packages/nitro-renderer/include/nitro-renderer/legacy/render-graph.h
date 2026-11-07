@@ -6,8 +6,9 @@
 #include <nitro-renderer/settings.h>
 #include "nitro-core/graph.h"
 #include <variant>
-#include "per-frame.h"
+#include "nitro-renderer/legacy/per-frame.h"
 #include "nitro-rhi/rhi-constants.h"
+#include "nitro-core/utils.h"
 
 namespace nitro::renderer
 {
@@ -120,16 +121,7 @@ namespace nitro::renderer
         std::function<void(rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)> execute;
     };
 
-    template <class... Ts>
-    struct overloaded : Ts...
-    {
-        using Ts::operator()...;
-    };
-
-    template <class... Ts>
-    overloaded(Ts...) -> overloaded<Ts...>;
-
-    struct RGTextureBarrier
+       struct RGTextureBarrier
     {
         RGTextureID textureId;
         rhi::ResourceState from;

@@ -1,11 +1,11 @@
 #pragma once
 #include <nitro-rhi/rhi.h>
 #include <nitro-renderer/passes/render-passes.h>
-#include <nitro-renderer/interface/renderer.h>
+#include <nitro-renderer/legacy/interface/renderer.h>
 #include <nitro-renderer/post-process/post-process.h>
 #include <nitro-renderer/panels.h>
-#include <nitro-renderer/render-graph.h>
-#include <nitro-renderer/particle-emitter-system.h>
+#include <nitro-renderer/legacy/render-graph.h>
+#include <nitro-renderer/scene/particle-emitter-system.h>
 namespace nitro::renderer
 {
     class TiledDeferredRenderer : IRenderer

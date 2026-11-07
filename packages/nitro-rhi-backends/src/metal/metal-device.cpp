@@ -338,7 +338,7 @@ namespace nitro::rhi::metal
             alignment, 0};
     }
 
-    RHIHeap *MetalDevice::createHeap(size_t sizeBytes, uint32_t memoryTypeBits)
+    RHIHeapHandle MetalDevice::create(size_t sizeBytes, uint32_t memoryTypeBits)
     {
         MTL::HeapDescriptor *heapDesc = MTL::HeapDescriptor::alloc()->init();
         heapDesc->setSize(sizeBytes);
@@ -350,14 +350,26 @@ namespace nitro::rhi::metal
         assignHandle(*heap, handle);
         heap->heap = device->newHeap(heapDesc);
         heapDesc->release();
-        return heap;
+        return handle;
+    }
+    RHIHeap *MetalDevice::resolve(const RHIHeapHandle &handle)
+    {
+        auto heap = m_heapPool.get(handle);
+        if (!heap)
+        {
+            return nullptr;
+        }
+
+        return heap->get();
     }
 
-    void MetalDevice::destroyHeap(RHIHeap *heap)
+    RHIHeap *MetalDevice::createHeap(size_t sizeBytes, uint32_t memoryTypeBits)
     {
-        if (!heap)
-            return;
-        auto handle = heap->getHandle();
+        return resolve(create(sizeBytes, memoryTypeBits));
+    }
+
+    void MetalDevice::destroy(const RHIHeapHandle &handle)
+    {
         auto heapResource = m_heapPool.get(handle);
 
         if (!heapResource)
@@ -365,10 +377,21 @@ namespace nitro::rhi::metal
         m_heapGraveyard.push(std::move(*heapResource), retireAt());
         m_heapPool.free(handle);
     }
-
-    RHITexture *MetalDevice::createTextureFromHeap(RHIHeap *heap, const TextureDesc &desc, size_t offset)
+    void MetalDevice::destroyHeap(RHIHeap *heap)
     {
-        auto *mtlHeap = static_cast<MetalHeap *>(heap);
+        if (!heap)
+            return;
+        auto handle = heap->getHandle();
+        destroy(handle);
+    }
+
+    RHITextureHandle MetalDevice::createTextureFromHeap(const RHIHeapHandle &heapHandle, const TextureDesc &desc, size_t offset)
+    {
+        auto heap = m_heapPool.get(heapHandle);
+        assert(heap && "Heap not found");
+
+        auto mtlHeap = heap->get();
+
         MTL::TextureDescriptor *textureDesc = makeMTLTextureDescriptor(desc); // your shared desc-building function
         MTL::Texture *texture = mtlHeap->heap->newTexture(textureDesc, offset);
         auto handle = m_texturePool.emplace(std::make_unique<MetalTexture>(this, texture, desc));
@@ -377,6 +400,15 @@ namespace nitro::rhi::metal
         assignHandle(*mtlTexture, handle);
         textureDesc->release();
 
-        return mtlTexture;
+        return handle;
+    }
+
+    RHITexture *MetalDevice::createTextureFromHeap(RHIHeap *heap, const TextureDesc &desc, size_t offset)
+    {
+        if (!heap)
+        {
+            return nullptr;
+        }
+        resolve(createTextureFromHeap(heap->getHandle(), desc, offset));
     }
 } // namespace nitro::rhi::metal

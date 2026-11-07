@@ -4,7 +4,7 @@
 #include <nitro-rhi/rhi.h>
 #include <glm/glm.hpp>
 #include "spatial-grid-coord.h"
-#include "per-frame.h"
+#include "nitro-renderer/legacy/per-frame.h"
 #include "handles.h"
 #include "nitro-core/types/pool.h"
 #include "nitro-assets/manager.h"

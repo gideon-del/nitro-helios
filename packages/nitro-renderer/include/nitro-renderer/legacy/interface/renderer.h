@@ -1,7 +1,7 @@
 #pragma once
 #include <nitro-rhi/rhi-command-buffer.h>
 #include <nitro-rhi/rhi-timer.h>
-#include <nitro-renderer/settings.h>
+#include "nitro-renderer/settings.h"
 #include <nitro-renderer/context.h>
 
 namespace nitro::renderer

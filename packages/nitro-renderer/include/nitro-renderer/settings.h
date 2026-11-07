@@ -1,8 +1,8 @@
 #pragma once
 #include <glm/glm.hpp>
 #include <nitro-geometry/camera.h>
-#include <nitro-renderer/mesh-renderer.h>
 #include <filesystem>
+#include "nitro-renderer/legacy/mesh-renderer.h"
 namespace nitro::renderer
 {
 

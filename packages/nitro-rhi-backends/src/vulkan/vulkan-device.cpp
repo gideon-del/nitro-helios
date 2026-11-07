@@ -1009,7 +1009,7 @@ namespace nitro::rhi::vulkan
             (uint32_t)requirements.memoryTypeBits};
     };
 
-    RHIHeap *VulkanDevice::createHeap(size_t sizeBytes, uint32_t memoryTypeBits)
+    RHIHeapHandle VulkanDevice::create(size_t sizeBytes, uint32_t memoryTypeBits)
     {
         VkMemoryAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -1021,12 +1021,34 @@ namespace nitro::rhi::vulkan
 
         assignHandle(*heap, handle);
         checkVkResult(vkAllocateMemory(device, &allocInfo, nullptr, &heap->memory), "Heap allocation failed");
-        return heap;
+
+        return handle;
     }
 
-    RHITexture *VulkanDevice::createTextureFromHeap(RHIHeap *heap, const TextureDesc &desc, size_t offset)
+    RHIHeap *VulkanDevice::resolve(const RHIHeapHandle &handle)
     {
-        auto *vkHeap = static_cast<VulkanHeap *>(heap);
+        auto heap = m_heapPool.get(handle);
+
+        if (!heap)
+        {
+            return nullptr;
+        }
+
+        return heap->get();
+    }
+
+    RHIHeap *VulkanDevice::createHeap(size_t sizeBytes, uint32_t memoryTypeBits)
+    {
+        return resolve(create(sizeBytes, memoryTypeBits));
+    }
+    RHITextureHandle VulkanDevice::createTextureFromHeap(const RHIHeapHandle &heapHandle, const TextureDesc &desc, size_t offset)
+    {
+        auto heap = m_heapPool.get(heapHandle);
+
+        assert(heap != nullptr && "Heap not found");
+
+        auto vkHeap = heap->get();
+
         VkImageCreateInfo imageInfo = makeVkImageInfo(desc);
         VkImage image;
         checkVkResult(vkCreateImage(device, &imageInfo, nullptr, &image), "Failed to create aliased image");
@@ -1035,7 +1057,25 @@ namespace nitro::rhi::vulkan
         auto texture = m_texturePool.get(handle)->get();
 
         assignHandle(*texture, handle);
-        return texture;
+        return handle;
+    }
+    RHITexture *VulkanDevice::createTextureFromHeap(RHIHeap *heap, const TextureDesc &desc, size_t offset)
+    {
+
+        if (!heap)
+            return nullptr;
+        return resolve(createTextureFromHeap(heap->getHandle(), desc, offset));
+    }
+
+    void VulkanDevice::destroy(const RHIHeapHandle &handle)
+    {
+        auto vkHeap = m_heapPool.get(handle);
+
+        if (!vkHeap)
+            return;
+
+        m_heapGraveyard.push(std::move(*vkHeap), m_frameNumber);
+        m_heapPool.free(handle);
     }
 
     void VulkanDevice::destroyHeap(RHIHeap *heap)
@@ -1044,14 +1084,7 @@ namespace nitro::rhi::vulkan
         if (!heap)
             return;
         auto handle = heap->getHandle();
-
-        auto vkHeap = m_heapPool.get(handle);
-
-        if (!vkHeap)
-            return;
-
-        m_heapGraveyard.push(std::move(*vkHeap), m_frameNumber);
-        m_heapPool.free(handle);
+        destroy(handle);
     }
 
     void VulkanDevice::checkMutableComparisonSampler()

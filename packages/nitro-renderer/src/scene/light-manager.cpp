@@ -1,4 +1,4 @@
-#include "nitro-renderer/light-manager.h"
+#include "nitro-renderer/scene/light-manager.h"
 #include "nitro-rhi/rhi-constants.h"
 
 namespace nitro::renderer

@@ -91,6 +91,8 @@ namespace nitro::rhi::vulkan
             return VK_SHADER_STAGE_FRAGMENT_BIT;
         case ShaderStage::Vertex:
             return VK_SHADER_STAGE_VERTEX_BIT;
+        case ShaderStage::Compute:
+            return VK_SHADER_STAGE_COMPUTE_BIT;
         }
 
         return VK_SHADER_STAGE_ALL;

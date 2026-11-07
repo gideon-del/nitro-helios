@@ -1,4 +1,4 @@
-#include "nitro-renderer/material-manager.h"
+#include "nitro-renderer/scene/material-manager.h"
 #include "nitro-rhi/rhi-constants.h"
 
 namespace nitro::renderer

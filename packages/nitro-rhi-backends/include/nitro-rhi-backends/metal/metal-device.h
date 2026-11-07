@@ -69,9 +69,15 @@ namespace nitro::rhi::metal
 
         MemoryRequirements textureMemoryRequirements(const TextureDesc &desc) override;
 
+        RHIHeapHandle create(size_t sizeBytes, uint32_t memoryTypeBits) override;
+        RHIHeap *resolve(const RHIHeapHandle &handle) override;
+        void destroy(const RHIHeapHandle &handle) override;
+
         RHIHeap *createHeap(size_t sizeBytes, uint32_t memoryTypeBits) override;
         void destroyHeap(RHIHeap *heap) override;
+
         RHITexture *createTextureFromHeap(RHIHeap *heap, const TextureDesc &desc, size_t offset) override;
+        RHITextureHandle createTextureFromHeap(const RHIHeapHandle &heapHandle, const TextureDesc &desc, size_t offset) override;
 
     private:
         uint64_t getFrameCompleted() const

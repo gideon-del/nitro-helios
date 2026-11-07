@@ -1,8 +1,8 @@
 #pragma once
 #include <nitro-rhi/rhi.h>
 #include <glm/glm.hpp>
-#include <nitro-renderer/render-graph.h>
-#include <nitro-renderer/particle-emitter-system.h>
+#include <nitro-renderer/legacy/render-graph.h>
+#include <nitro-renderer/scene/particle-emitter-system.h>
 
 namespace nitro::renderer
 {

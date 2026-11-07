@@ -1,6 +1,6 @@
 #pragma once
 #include <nitro-rhi/rhi.h>
-#include <nitro-renderer/render-graph.h>
+#include <nitro-renderer/legacy/render-graph.h>
 
 namespace nitro::renderer
 {

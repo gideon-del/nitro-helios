@@ -106,9 +106,16 @@ namespace nitro::rhi::vulkan
         void endCommandBuffer(RHICommandBuffer *cmd) override;
         void waitIdle() override;
 
+        RHIHeapHandle create(size_t sizeBytes, uint32_t memoryTypeBits) override;
+        RHIHeap *resolve(const RHIHeapHandle &handle) override;
+        void destroy(const RHIHeapHandle &handle) override;
+
         RHIHeap *createHeap(size_t sizeBytes, uint32_t memoryTypeBits) override;
         void destroyHeap(RHIHeap *heap) override;
+
         RHITexture *createTextureFromHeap(RHIHeap *heap, const TextureDesc &desc, size_t offset) override;
+        RHITextureHandle createTextureFromHeap(const RHIHeapHandle &heapHandle, const TextureDesc &desc, size_t offset) override;
+
         VkFormat getSurfaceFormat() const;
         bool supportsSamplerComparison() const { return m_mutableComparisonSamplers; };
         VkDevice device;

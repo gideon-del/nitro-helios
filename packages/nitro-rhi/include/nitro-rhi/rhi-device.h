@@ -84,9 +84,16 @@ namespace nitro::rhi
         virtual void beginImGuiFrame() = 0;
         virtual void endImGuiFrame() = 0;
         virtual void drawImGui(RHICommandBuffer *cmd) = 0;
+
+        virtual RHIHeapHandle create(size_t sizeBytes, uint32_t memoryTypeBits) = 0;
+        virtual RHIHeap *resolve(const RHIHeapHandle &handle) = 0;
+        virtual void destroy(const RHIHeapHandle &handle) = 0;
+
         virtual RHIHeap *createHeap(size_t sizeBytes, uint32_t memoryTypeBits) = 0;
         virtual void destroyHeap(RHIHeap *heap) = 0;
+
         virtual RHITexture *createTextureFromHeap(RHIHeap *heap, const TextureDesc &desc, size_t offset) = 0;
+        virtual RHITextureHandle createTextureFromHeap(const RHIHeapHandle &heapHandle, const TextureDesc &desc, size_t offset) = 0;
 
     protected:
         static void assignHandle(RHITexture &tex, RHITextureHandle h) { tex.m_handle = h; }

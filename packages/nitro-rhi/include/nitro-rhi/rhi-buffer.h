@@ -67,6 +67,10 @@ namespace nitro::rhi
             static_cast<uint32_t>(b));
     };
 
+    inline bool operator==(const BufferDesc &a, const BufferDesc &b)
+    {
+        return a.storage == b.storage && a.size == b.size && a.usage == b.usage;
+    };
     inline BufferDesc::Usage &operator|=(BufferDesc::Usage &a,
                                          BufferDesc::Usage b)
     {
