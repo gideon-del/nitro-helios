@@ -60,7 +60,7 @@ namespace nitro::renderer
 
         // View based heaps
 
-        using HeapStorage = std::unordered_map<HeapId, rhi::RHIHeapHandle>;
+        using HeapStorage = std::unordered_map<HeapId, rhi::RHIHeapHandle, HeapIdHash>;
 
         std::unordered_map<RenderViewHandle, HeapStorage, RenderViewHandleHash> m_viewToHeaps;
 

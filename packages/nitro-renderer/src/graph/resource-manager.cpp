@@ -236,13 +236,13 @@ namespace nitro::renderer
 
     void ResourceManager::clearResource(PhysicalBuffer &buffer)
     {
-        buffer.resources.forEach([=](const rhi::RHIBufferHandle &handle)
+        buffer.resources.forEach([&](const rhi::RHIBufferHandle &handle)
                                  { m_device.destroy(handle); });
         buffer.resources.clear();
     }
     void ResourceManager::clearResource(PhysicalTexture &texture)
     {
-        texture.resources.forEach([=](const rhi::RHITextureHandle &handle)
+        texture.resources.forEach([&](const rhi::RHITextureHandle &handle)
                                   { m_device.destroy(handle); });
         texture.resources.clear();
     }
@@ -574,6 +574,10 @@ namespace nitro::renderer
         b->resources.clear();
         b->resources.create(1, [&](uint32_t)
                             { return rhiHandle; });
+    }
+
+    void ResourceManager::rebuildTransientViewTextures(const RenderViewHandle &viewHandle, const Extent2D &extent, const PhysicalTextureLifetime &lifetime)
+    {
     }
 
 } // namespace nitro::renderer

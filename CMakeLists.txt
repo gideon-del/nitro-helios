@@ -92,6 +92,21 @@ if(APPLE)
     )
 
 endif()
+
+
+option(NITRO_BUILD_TESTS "Build unit tests" ON)
+if(NITRO_BUILD_TESTS)
+
+enable_testing()
+include(FetchContent)
+FetchContent_Declare(Catch2 
+GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+ GIT_TAG v3.5.4
+)
+
+ FetchContent_MakeAvailable(Catch2)
+ list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
+endif()
 add_subdirectory(packages/nitro-core)
 add_subdirectory(vendor)  
 add_subdirectory(packages/nitro-assets)

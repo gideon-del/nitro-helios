@@ -409,6 +409,6 @@ namespace nitro::rhi::metal
         {
             return nullptr;
         }
-        resolve(createTextureFromHeap(heap->getHandle(), desc, offset));
+        return resolve(createTextureFromHeap(heap->getHandle(), desc, offset));
     }
 } // namespace nitro::rhi::metal

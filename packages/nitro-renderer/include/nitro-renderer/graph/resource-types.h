@@ -28,11 +28,11 @@ namespace nitro::renderer
         uint32_t calculateTextureHeight(const uint32_t screenHeight);
         size_t calculateBufferSize(const uint32_t screenWidth, const uint32_t screenHeight);
         static ResourceSize bufferAbsolute(size_t bytes);
-        static ResourceSize bufferScreenRelative(size_t bytesPerPixel, float scale = 1.0f);
+        static ResourceSize bufferViewRelative(size_t bytesPerPixel, float scale = 1.0f);
         static ResourceSize bufferTileRelative(uint32_t tileSize, size_t bytesPerTile);
 
         static ResourceSize textureAbsolute(uint32_t w, uint32_t h);
-        static ResourceSize textureScreenRelative(float scale = 1.0f);
+        static ResourceSize textureViewRelative(float scale = 1.0f);
 
         bool operator==(const ResourceSize &) const = default;
     };
@@ -138,21 +138,37 @@ namespace nitro::renderer
         int lastUse = -1;
         int createdAt = -1;
     };
-
+    struct TransientEntry
+    {
+        PhysicalTextureHandle handle;
+        int first, last;
+        rhi::MemoryRequirements requirements;
+    };
     using PhysicalTextureLifetime = std::unordered_map<PhysicalTextureHandle, ResourceLifetimeV2, PhysicalTextureHandleHash>;
-    using HeapId = uint32_t;
+    struct HeapId
+    {
+        uint64_t key;
+
+        bool operator==(const HeapId &) const = default;
+    };
+    struct HeapIdHash
+    {
+        size_t operator()(const HeapId &id) const
+        {
+            return std::hash<uint64_t>()(id.key);
+        }
+    };
     struct AliasGroup
     {
         HeapId id;
         rhi::MemoryRequirements requirement;
-        std::vector<PhysicalTextureHandle> textures;
+        std::vector<TransientEntry> textures;
     };
 
     struct AliasPlan
     {
-        std::unordered_map<HeapId, AliasGroup> groups;
+        std::unordered_map<HeapId, AliasGroup, HeapIdHash> groups;
         std::unordered_map<PhysicalTextureHandle, HeapId, PhysicalTextureHandleHash> textureToHeap;
-        std::unordered_map<PhysicalTextureHandle, Extent2D, PhysicalTextureHandleHash> textureExtents;
     };
 
     struct ResourceFrameInfo
