@@ -1,9 +1,9 @@
-#include "nitro-renderer/graph/resource-manager.h"
+#include "nitro-frame/resources/resource-manager.h"
 #include "nitro-rhi/rhi-constants.h"
 #include "nitro-core/utils.h"
 #include <algorithm>
-
-namespace nitro::renderer
+#include "nitro-frame/resources/alias-planner.h"
+namespace nitro::frame
 {
     template <typename R>
     static bool needsRebuild(const R &r, const Extent2D &extent)
@@ -334,7 +334,7 @@ namespace nitro::renderer
     {
         bool historyLost = buildPersistentViewBuffers(info.handle, info.extent);
         historyLost |= buildPersistentViewTextures(info.handle, info.extent);
-        rebuildTransientViewTextures(info.handle, info.extent, info.lifetimes);
+        rebuildTransientViewTextures(info);
         return historyLost;
     }
 
@@ -376,21 +376,6 @@ namespace nitro::renderer
         }
 
         return historyLost;
-    }
-    std::vector<PhysicalTextureHandle> ResourceManager::sortLifetimeHandle(const PhysicalTextureLifetime &lifetimes)
-    {
-        std::vector<PhysicalTextureHandle> handles;
-
-        for (const auto &[handle, _] : lifetimes)
-            handles.push_back(handle);
-
-        std::sort(handles.begin(), handles.end(),
-                  [](auto a, auto b)
-                  {
-                      return PhysicalTextureHandleHash{}(a) <
-                             PhysicalTextureHandleHash{}(b);
-                  });
-        return handles;
     }
 
     void ResourceManager::destroyResource(PhysicalTextureHandle handle)
@@ -453,7 +438,7 @@ namespace nitro::renderer
         if (auto it = m_viewToHeaps.find(viewHandle); it != m_viewToHeaps.end())
         {
             for (auto &[id, heap] : it->second)
-                m_device.destroy(heap);
+                m_device.destroy(heap.handle);
             m_viewToHeaps.erase(it);
         }
         m_aliasPlans.erase(viewHandle);
@@ -576,8 +561,229 @@ namespace nitro::renderer
                             { return rhiHandle; });
     }
 
-    void ResourceManager::rebuildTransientViewTextures(const RenderViewHandle &viewHandle, const Extent2D &extent, const PhysicalTextureLifetime &lifetime)
+    void ResourceManager::rebuildTransientViewTextures(const ViewBuildInfo &info)
     {
+        auto &cachedAlias = m_aliasPlans[info.handle];
+
+        auto hash = aliasInputHash(info.structureHash, info.extent);
+
+        if (hash == cachedAlias.inputHash && cachedAlias.valid)
+            return;
+
+        std::vector<TransientEntry> entries;
+
+        for (auto &[handle, lifetime] : info.lifetimes)
+        {
+            auto texture = m_textures.get(handle);
+            if (!texture || texture->lifetime != ResourceLifetimeType::Transient)
+                continue;
+
+            auto desc = texture->descriptor;
+
+            desc.size.width = texture->size.calculateTextureWidth(info.extent.width);
+            desc.size.height = texture->size.calculateTextureHeight(info.extent.height);
+
+            auto requirement = m_device.textureMemoryRequirements(desc);
+
+            entries.push_back({
+                .handle = handle,
+                .first = lifetime.createdAt,
+                .last = lifetime.lastUse,
+                .requirements = requirement,
+            });
+        }
+
+        auto newPlan = planAliases(entries);
+
+        auto commands = diffAliasPlan(newPlan, cachedAlias.aliasPlan, info.extent);
+
+        for (auto &command : commands)
+        {
+            std::visit(
+                overloaded{
+                    [&](const DeleteAliasTextureCommand &c)
+                    {
+                        applyAlias(c);
+                    },
+                    [&](const DeleteHeapCommand &c)
+                    {
+                        applyAlias(c, info.handle);
+                    },
+                    [&](const CreateHeapCommand &c)
+                    {
+                        applyAlias(c, info.handle);
+                    },
+                    [&](const CreateAliasTextureCommand &c)
+                    {
+                        applyAlias(c, info.handle, info.extent);
+                    },
+
+                },
+                command);
+        }
+
+        for (auto &[id, group] : newPlan.groups)
+            group.requirement = m_viewToHeaps[info.handle].at(id).requirement;
+
+        cachedAlias.aliasPlan = std::move(newPlan);
+        cachedAlias.inputHash = hash;
+        cachedAlias.valid = true;
     }
 
-} // namespace nitro::renderer
+    std::vector<AliasCommand> ResourceManager::diffAliasPlan(const AliasPlan &newPlan, const AliasPlan &oldPlan, const Extent2D &extent)
+    {
+
+        std::vector<AliasCommand> commands;
+
+        std::unordered_set<HeapId, HeapIdHash> targetedHeaps;
+        std::unordered_set<PhysicalTextureHandle, PhysicalTextureHandleHash> targetedTextures;
+
+        auto heapExists = [&](HeapId id)
+        {
+            return oldPlan.groups.contains(id);
+        };
+
+        for (auto &[id, group] : newPlan.groups)
+        {
+            targetedHeaps.insert(group.id);
+            bool heapChanged = false;
+
+            if (!heapExists(group.id))
+            {
+                commands.push_back(CreateHeapCommand{group.id, group.requirement});
+                heapChanged = true;
+            }
+            else
+            {
+                auto &heap = oldPlan.groups.at(group.id);
+                if (heap.requirement.size < group.requirement.size || heap.requirement.alignment < group.requirement.alignment || (heap.requirement.memoryTypeBits & group.requirement.memoryTypeBits) == 0)
+                {
+                    commands.push_back(DeleteHeapCommand{group.id});
+                    commands.push_back(CreateHeapCommand{group.id, group.requirement});
+                    heapChanged = true;
+                }
+            }
+
+            for (auto &entry : group.textures)
+            {
+                auto *texture = m_textures.get(entry.handle);
+
+                if (!texture || texture->lifetime != ResourceLifetimeType::Transient)
+                    continue;
+
+                targetedTextures.insert(entry.handle);
+
+                auto currentHeap = oldPlan.textureToHeap.find(entry.handle);
+
+                bool existed = currentHeap != oldPlan.textureToHeap.end();
+                bool moved = existed && currentHeap->second != group.id;
+                bool resized = existed &&
+                               texture->builtExtent != extent;
+                if (!existed || moved || heapChanged || resized)
+                {
+                    if (existed)
+                        commands.push_back(DeleteAliasTextureCommand{entry.handle});
+                    commands.push_back(CreateAliasTextureCommand{group.id, entry.handle});
+                }
+            }
+        }
+
+        for (auto it = oldPlan.textureToHeap.begin(); it != oldPlan.textureToHeap.end();)
+        {
+
+            if (targetedTextures.find(it->first) == targetedTextures.end())
+            {
+                commands.push_back(DeleteAliasTextureCommand{it->first});
+            }
+            ++it;
+        }
+
+        for (auto &[id, heap] : oldPlan.groups)
+        {
+            if (targetedHeaps.find(id) == targetedHeaps.end())
+            {
+                commands.push_back(DeleteHeapCommand{id});
+            }
+        }
+
+        auto phase = [](const AliasCommand &c)
+        {
+            return std::visit([](const auto &x) -> int
+                              {
+        using T = std::decay_t<decltype(x)>;
+
+       if constexpr (std::is_same_v<T, DeleteAliasTextureCommand>)
+   { return 0;}
+    else if constexpr (std::is_same_v<T, DeleteHeapCommand>)
+    {  return 1;}
+    else if constexpr (std::is_same_v<T, CreateHeapCommand>)
+    {return 2;}
+    else
+    { return 3;} }, c);
+        };
+
+        std::stable_sort(commands.begin(), commands.end(), [&](const auto &a, const auto &b)
+                         { return phase(a) < phase(b); });
+
+        return commands;
+    }
+
+    void ResourceManager::applyAlias(const CreateHeapCommand &command, RenderViewHandle view)
+    {
+        auto &viewHeaps = m_viewToHeaps[view];
+
+        auto heapHandle = m_device.create(command.requirement.size, command.requirement.memoryTypeBits);
+
+        viewHeaps[command.id] = {
+            .handle = heapHandle,
+            .requirement = command.requirement};
+    }
+
+    void ResourceManager::applyAlias(const CreateAliasTextureCommand &command, const RenderViewHandle &view, const Extent2D &extent)
+    {
+        auto &viewHeaps = m_viewToHeaps[view];
+
+        auto it = viewHeaps.find(command.id);
+        assert(it != viewHeaps.end() && "alias command refers to a heap that doesn't exist");
+        const auto &heap = it->second;
+        auto texture = m_textures.get(command.texture);
+
+        if (!texture)
+            return;
+        auto desc = texture->descriptor;
+        desc.size.width = texture->size.calculateTextureWidth(extent.width);
+        desc.size.height = texture->size.calculateTextureHeight(extent.height);
+
+        clearResource(*texture);
+
+        auto count = 1;
+
+        texture->resources.create(count, [&](uint32_t frameIdx)
+                                  { return m_device.createTextureFromHeap(heap.handle, desc, 0); });
+        texture->builtExtent = extent;
+        texture->dirty = false;
+    }
+
+    void ResourceManager::applyAlias(const DeleteAliasTextureCommand &command)
+    {
+        auto texture = m_textures.get(command.texture);
+        if (!texture)
+            return;
+
+        clearResource(*texture);
+    }
+
+    void ResourceManager::applyAlias(const DeleteHeapCommand &command, RenderViewHandle view)
+    {
+        auto &viewHeaps = m_viewToHeaps[view];
+
+        auto it = viewHeaps.find(command.id);
+        assert(it != viewHeaps.end() && "alias command refers to a heap that doesn't exist");
+        const auto &heap = it->second;
+
+        m_device.destroy(heap.handle);
+
+        viewHeaps.erase(it);
+    }
+
+} // namespace nitro::frame

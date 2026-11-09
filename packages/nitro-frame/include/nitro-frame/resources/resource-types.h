@@ -4,10 +4,10 @@
 #include "nitro-core/types/size.h"
 #include "nitro-core/utils.h"
 #include "nitro-rhi/rhi-texture.h"
-#include "nitro-renderer/render-view.h"
+#include "nitro-frame/view/render-view.h"
 #include <variant>
 
-namespace nitro::renderer
+namespace nitro::frame
 {
     struct ResourceSize
     {
@@ -187,7 +187,6 @@ namespace nitro::renderer
     {
         HeapId id;
         PhysicalTextureHandle texture;
-        Extent2D extent;
     };
     struct DeleteAliasTextureCommand
     {
@@ -205,4 +204,4 @@ namespace nitro::renderer
         DeleteAliasTextureCommand,
         DeleteHeapCommand>;
 
-} // namespace nitro::renderer
+} // namespace nitro::frame

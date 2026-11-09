@@ -12,6 +12,7 @@ namespace nitro::tests
         uint32_t m_destroys = 0;
         uint32_t m_next = 1;
         DefaultSamplers m_samplers{};
+        uint32_t m_heapCreates = 0, m_heapLive = 0;
 
     public:
         CountingDevice() {}
@@ -79,7 +80,12 @@ namespace nitro::tests
         RHIComputePipeline *createComputePipeline(const ComputePipelineDesc &desc) override { return nullptr; }
         void destroyComputePipeline(RHIComputePipeline *pipeline) override {}
 
-        MemoryRequirements textureMemoryRequirements(const TextureDesc &desc) override { return {}; }
+        MemoryRequirements textureMemoryRequirements(const TextureDesc &desc) override
+        {
+            return {.size = size_t(desc.size.width) * desc.size.height * 4,
+                    .alignment = 64 * 1024,
+                    .memoryTypeBits = 0b011};
+        }
         RHISamplerHandle create(const RHISamplerDesc &desc) override { return {}; }
 
         void destroy(RHISamplerHandle &handle) override {};
@@ -106,20 +112,38 @@ namespace nitro::tests
         void endImGuiFrame() override {};
         void drawImGui(RHICommandBuffer *cmd) override {};
 
-        RHIHeapHandle create(size_t sizeBytes, uint32_t memoryTypeBits) override { return {}; };
+        RHIHeapHandle create(size_t sizeBytes, uint32_t memoryTypeBits) override
+        {
+            ++m_heapCreates;
+            ++m_heapLive;
+            return {m_next++, 1};
+        };
 
         RHIHeap *resolve(const RHIHeapHandle &handle) override { return nullptr; }
-        void destroy(const RHIHeapHandle &handle) override {}
+        void destroy(const RHIHeapHandle &handle) override
+        {
+            m_heapLive--;
+        }
 
         RHIHeap *createHeap(size_t sizeBytes, uint32_t memoryTypeBits) override { return nullptr; }
-        void destroyHeap(RHIHeap *heap) override {}
+        void destroyHeap(RHIHeap *heap) override
+        {
+            m_heapLive--;
+        }
 
         RHITexture *createTextureFromHeap(RHIHeap *heap, const TextureDesc &desc, size_t offset) override { return nullptr; }
 
-        RHITextureHandle createTextureFromHeap(const RHIHeapHandle &heapHandle, const TextureDesc &desc, size_t offset) override { return {}; }
+        RHITextureHandle createTextureFromHeap(const RHIHeapHandle &heapHandle, const TextureDesc &desc, size_t offset) override
+        {
+            ++m_creates;
+            ++m_live;
+            return {m_next++, 1};
+        }
 
         uint32_t getCreateCount() const { return m_creates; }
         uint32_t getLiveCount() const { return m_live; }
         uint32_t getDestroyCount() const { return m_destroys; }
+        uint32_t getHeapCreateCount() const { return m_heapCreates; }
+        uint32_t getHeapLiveCount() const { return m_heapLive; }
     };
 }

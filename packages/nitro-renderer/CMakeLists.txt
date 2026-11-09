@@ -14,18 +14,6 @@ target_include_directories(nitro-renderer
 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-if(NITRO_BUILD_TESTS)
-
-file(GLOB_RECURSE NITRO_RENDERER_TESTS CONFIGURE_DEPENDS
-        ${CMAKE_CURRENT_SOURCE_DIR}/tests/*.test.cpp)
-
-  add_executable(nitro-renderer-tests ${NITRO_RENDERER_TESTS})
-  
-  target_link_libraries(nitro-renderer-tests PRIVATE nitro-renderer Catch2::Catch2WithMain)
-  target_include_directories(nitro-renderer-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests)
-  include(Catch)
-  catch_discover_tests(nitro-renderer-tests)
-endif()
 
 target_link_libraries(nitro-renderer 
 PUBLIC nitro-assets
@@ -33,6 +21,7 @@ PUBLIC nitro-rhi
 PUBLIC nitro-geometry
 PUBLIC glm::glm
 PUBLIC nitro-core
+PUBLIC nitro-frame
 PRIVATE imgui-core
 PRIVATE imnodes
 PRIVATE meshoptimizer

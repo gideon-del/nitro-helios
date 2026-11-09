@@ -1,6 +1,6 @@
-#include "nitro-renderer/graph/resource-types.h"
+#include "nitro-frame/resources/resource-types.h"
 
-namespace nitro::renderer
+namespace nitro::frame
 {
     ResourceSize ResourceSize::bufferAbsolute(size_t bytes)
     {
@@ -99,4 +99,4 @@ namespace nitro::renderer
             return std::max(bytesPerTile, size_t(1));
         }
     }
-} // namespace nitro::renderer
+} // namespace nitro::frame

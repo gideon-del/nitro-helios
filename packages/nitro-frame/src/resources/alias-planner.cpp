@@ -1,6 +1,6 @@
-#include "nitro-renderer/graph/alias-planner.h"
+#include "nitro-frame/resources/alias-planner.h"
 #include <algorithm>
-namespace nitro::renderer
+namespace nitro::frame
 {
 
     static uint64_t handleKey(const PhysicalTextureHandle &handle)
@@ -87,4 +87,4 @@ namespace nitro::renderer
 
         return plan;
     }
-} // namespace nitro::renderer
+} // namespace nitro::frame

@@ -1,6 +1,6 @@
 #pragma once
 #include <vector>
-namespace nitro::renderer
+namespace nitro::frame
 {
     template <typename T>
     class MultiBuffer
@@ -55,4 +55,4 @@ namespace nitro::renderer
             m_slots.clear();
         }
     };
-} // namespace nitro::renderer
+} // namespace nitro::frame

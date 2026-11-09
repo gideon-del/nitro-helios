@@ -1,10 +1,10 @@
 #pragma once
-#include "nitro-renderer/graph/resource-types.h"
-#include "nitro-renderer/graph/multi-buffer.h"
+#include "nitro-frame/resources/resource-types.h"
+#include "nitro-frame/resources/multi-buffer.h"
 #include "nitro-core/types/pool.h"
 #include <unordered_map>
 #include <unordered_set>
-namespace nitro::renderer
+namespace nitro::frame
 {
     struct ViewBuildInfo
     {
@@ -59,8 +59,12 @@ namespace nitro::renderer
         std::unordered_map<RenderViewHandle, CachedAliasPlan, RenderViewHandleHash> m_aliasPlans;
 
         // View based heaps
-
-        using HeapStorage = std::unordered_map<HeapId, rhi::RHIHeapHandle, HeapIdHash>;
+        struct HeapResource
+        {
+            rhi::RHIHeapHandle handle;
+            rhi::MemoryRequirements requirement;
+        };
+        using HeapStorage = std::unordered_map<HeapId, HeapResource, HeapIdHash>;
 
         std::unordered_map<RenderViewHandle, HeapStorage, RenderViewHandleHash> m_viewToHeaps;
 
@@ -114,24 +118,23 @@ namespace nitro::renderer
         void enforceOptions(const GPUResourceOptions &options, const ResourceSize &size);
 
         uint32_t getResourceCount(const ResourceInstanceType &type, uint32_t historyCount);
-        std::vector<PhysicalTextureHandle> sortLifetimeHandle(const PhysicalTextureLifetime &lifetime);
+
         bool buildPersistentResource(const PhysicalTextureHandle &handle, const Extent2D size = {});
         bool buildPersistentResource(const PhysicalBufferHandle &handle, const Extent2D size = {});
 
         bool buildPersistentViewTextures(const RenderViewHandle &viewHandle, const Extent2D &extent);
         bool buildPersistentViewBuffers(const RenderViewHandle &viewHandle, const Extent2D &extent);
 
-        void rebuildTransientViewTextures(const RenderViewHandle &viewHandle, const Extent2D &extent, const PhysicalTextureLifetime &lifetime);
+        void rebuildTransientViewTextures(const ViewBuildInfo &info);
 
         std::optional<PhysicalTextureHandle> lookupTextureHandle(const ResourceKey &key);
         std::optional<PhysicalBufferHandle> lookupBufferHandle(const ResourceKey &key);
 
-        AliasPlan calculateAliasPlan(const PhysicalTextureLifetime &lifetimes, const Extent2D &size);
-        std::vector<AliasCommand> diffAliasPlan(const AliasPlan &newPlan);
+        std::vector<AliasCommand> diffAliasPlan(const AliasPlan &newPlan, const AliasPlan &oldPlan, const Extent2D &extent);
 
         void applyAlias(const CreateHeapCommand &command, RenderViewHandle view);
-        void applyAlias(const CreateAliasTextureCommand &command, RenderViewHandle view);
+        void applyAlias(const CreateAliasTextureCommand &command, const RenderViewHandle &view, const Extent2D &extent);
         void applyAlias(const DeleteAliasTextureCommand &command);
         void applyAlias(const DeleteHeapCommand &command, RenderViewHandle view);
     };
-} // namespace nitro::renderer
+} // namespace nitro::frame
