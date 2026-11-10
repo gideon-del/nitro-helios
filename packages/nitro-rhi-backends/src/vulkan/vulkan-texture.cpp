@@ -18,10 +18,10 @@ namespace nitro::rhi::vulkan
             return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
             break;
         case ResourceState::DepthRead:
-            return VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL;
+            return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
             break;
         case ResourceState::DepthWrite:
-            return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+            return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
             break;
         case ResourceState::Present:
             return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
@@ -40,6 +40,7 @@ namespace nitro::rhi::vulkan
             break;
 
         default:
+            assert(state != ResourceState::IndirectDraw && "Indirect draw are for buffers only");
             return VK_IMAGE_LAYOUT_UNDEFINED;
             break;
         }
@@ -160,7 +161,9 @@ namespace nitro::rhi::vulkan
         imageInfo.format = convertToFormat(desc.format);
         imageInfo.imageType = convertVkImageType(desc.type);
         imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        imageInfo.mipLevels = 1 + desc.mipmaps;
+
+        assert(desc.mipmaps > 0);
+        imageInfo.mipLevels = desc.mipmaps;
         imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
         imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
@@ -232,9 +235,11 @@ namespace nitro::rhi::vulkan
         format = convertToFormat(desc.format);
         width = desc.size.width;
         height = desc.size.height;
+        assert(desc.mipmaps > 0);
         mipmapLevels = desc.mipmaps;
         totalLayers = (desc.type == TextureDesc::Type::Cube) ? 6 : 1;
 
+        m_resourceState = TextureState(mipmapLevels, totalLayers);
         m_isCubeMap = desc.type == rhi::TextureDesc::Type::Cube;
 
         imageAspect = convertToAspectFlag(desc.usage);
@@ -255,6 +260,8 @@ namespace nitro::rhi::vulkan
             m_device->copyBufferToImage(stagingBuffer.buffer, image, stagingDesc.size,
                                         {width, height, 1});
             currentLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+            m_resourceState.updateRange(ResourceState::ShaderRead, 0, 1, 0, 1);
         }
 
         if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::DepthStencil))
@@ -273,6 +280,8 @@ namespace nitro::rhi::vulkan
                 imageAspect);
             m_device->endOneTimeCommands(cmd);
             currentLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+            m_resourceState.updateAll(ResourceState::DepthWrite);
         }
 
         VkImageViewCreateInfo imageViewInfo{};
@@ -286,7 +295,7 @@ namespace nitro::rhi::vulkan
         imageViewInfo.subresourceRange.baseMipLevel = 0;
         imageViewInfo.subresourceRange.layerCount = totalLayers;
 
-        imageViewInfo.subresourceRange.levelCount = 1 + desc.mipmaps;
+        imageViewInfo.subresourceRange.levelCount = desc.mipmaps;
         imageViewInfo.viewType = convertVkImageViewType(desc.type);
 
         checkVkResult(vkCreateImageView(
@@ -296,7 +305,7 @@ namespace nitro::rhi::vulkan
                           &imageView),
                       "Unable to create a image view");
 
-        for (int mip = 0; mip <= mipmapLevels; mip++)
+        for (int mip = 0; mip < mipmapLevels; mip++)
         {
             for (int face = 0; face < totalLayers; face++)
             {

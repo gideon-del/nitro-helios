@@ -42,6 +42,9 @@ namespace nitro::rhi
     {
         RHIBufferHandle m_handle;
         friend class RHIDevice;
+        friend class RHICommandBuffer;
+
+        ResourceState m_state = ResourceState::Undefined;
 
     public:
         virtual ~RHIBuffer() = default;
@@ -51,13 +54,13 @@ namespace nitro::rhi
         virtual void *map() = 0;
         virtual void unmap() = 0;
         RHIBufferHandle getHandle() const { return m_handle; }
+        ResourceState state() const { return m_state; }
     };
 
     struct BufferBarrier
     {
         RHIBuffer *buffer;
-        ResourceState before;
-        ResourceState after;
+        ResourceState to;
     };
 
     inline BufferDesc::Usage operator|(BufferDesc::Usage a, BufferDesc::Usage b)

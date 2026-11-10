@@ -421,4 +421,9 @@ namespace nitro::rhi::metal
         // Decide when Metal backend actually needs GPU-driven rendering.
         throw std::runtime_error("drawIndexedIndirectCount not yet implemented on Metal backend");
     }
+
+    void MetalCommandBuffer::emitBarriers(std::span<const ResolvedTextureBarrier> textures, std::span<const ResolvedBufferBarrier> buffers)
+    {
+        // TODO
+    }
 } // namespace nitro::rhi::metal

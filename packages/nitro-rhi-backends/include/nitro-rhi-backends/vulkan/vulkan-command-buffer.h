@@ -57,6 +57,9 @@ namespace nitro::rhi::vulkan
         VkSemaphore imageAvailable;
         VulkanSwapchain *swapchain;
 
+    protected:
+        void emitBarriers(std::span<const ResolvedTextureBarrier> textures, std::span<const ResolvedBufferBarrier> buffers) override;
+
     private:
         VulkanDevice *m_device;
         uint32_t m_imageIdx = 0;

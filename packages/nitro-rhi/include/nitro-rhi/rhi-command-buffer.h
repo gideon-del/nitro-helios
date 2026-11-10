@@ -1,6 +1,9 @@
 #pragma once
 #include <cstdint>
 #include <cstddef>
+#include <span>
+#include "rhi-texture.h"
+#include "rhi-buffer.h"
 
 namespace nitro::rhi
 {
@@ -14,14 +17,11 @@ namespace nitro::rhi
         uint32_t bufferBarriers = 0;
     };
 
-    class RHIBuffer;
-    class RHITexture;
     class RHIPipeline;
     class RHIComputePipeline;
     class RHIDescriptorSet;
     class RHIRenderPass;
-    struct TextureBarrier;
-    struct BufferBarrier;
+
     struct RHIRenderPassDesc
     {
         float clearColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
@@ -72,6 +72,39 @@ namespace nitro::rhi
         uint32_t y;
         uint32_t z;
     };
+
+    struct ResolvedTextureBarrier
+    {
+        RHITexture *texture;
+        ResourceState from;
+        ResourceState to;
+        TextureSubresource range;
+    };
+
+    struct ResolvedBufferBarrier
+    {
+        RHIBuffer *buffer;
+        ResourceState from;
+        ResourceState to;
+    };
+
+    inline bool isWriteState(ResourceState s)
+    {
+        switch (s)
+        {
+        case ResourceState::ShaderWrite:
+        case ResourceState::RenderTarget:
+        case ResourceState::DepthWrite:
+        case ResourceState::CopyDst:
+            return true;
+        default:
+            return false;
+        }
+    }
+    inline bool needsBarrier(ResourceState from, ResourceState to)
+    {
+        return from != to || isWriteState(to);
+    }
     class RHICommandBuffer
     {
     public:
@@ -112,6 +145,114 @@ namespace nitro::rhi
         virtual void present() = 0;
         virtual void dispatch(uint32_t x, uint32_t y, uint32_t z) = 0;
         virtual void dispatchIndirect(RHIBuffer *indirectBuffer, size_t offset = 0) = 0;
+
+        void barrier(std::span<const TextureBarrier> textures, std::span<const BufferBarrier> buffers = {})
+        {
+
+            std::vector<ResolvedTextureBarrier> textureResolvedBarriers;
+
+            for (auto &barrier : textures)
+            {
+                transition(barrier, textureResolvedBarriers);
+            }
+
+            std::vector<ResolvedBufferBarrier> bufferResolvedBarriers;
+
+            for (auto &barrier : buffers)
+            {
+                transition(barrier, bufferResolvedBarriers);
+            }
+
+            if (textureResolvedBarriers.empty() && bufferResolvedBarriers.empty())
+                return;
+            emitBarriers(textureResolvedBarriers, bufferResolvedBarriers);
+        };
+        void discard(RHITexture &texture) { mutableState(texture).updateAll(ResourceState::Undefined); }
+
+    protected:
+        static TextureState &mutableState(RHITexture &texture) { return texture.m_resourceState; }
+        static ResourceState &mutableState(RHIBuffer &buffer) { return buffer.m_state; }
+        virtual void emitBarriers(std::span<const ResolvedTextureBarrier> textures, std::span<const ResolvedBufferBarrier> buffers) = 0;
+
+    private:
+        void transition(const TextureBarrier &barrier, std::vector<ResolvedTextureBarrier> &batch)
+        {
+            if (!barrier.texture)
+                return;
+
+            auto &state = mutableState(*barrier.texture);
+
+            auto resolvedRange = barrier.range.resolve(state.mipCount(), state.layerCount());
+
+            if (state.isUniform())
+            {
+                auto from = state.get(0);
+                if (!needsBarrier(from, barrier.to))
+                    return;
+                batch.push_back({barrier.texture, from, barrier.to, resolvedRange});
+                if (barrier.range.isAll())
+                    state.updateAll(barrier.to);
+                else
+                    state.updateRange(barrier.to, resolvedRange.baseMip, resolvedRange.mipCount, resolvedRange.baseLayer, resolvedRange.layerCount);
+                return;
+            }
+
+            for (uint32_t layer = resolvedRange.baseLayer; layer < resolvedRange.baseLayer + resolvedRange.layerCount; ++layer)
+            {
+
+                uint32_t runStart = resolvedRange.baseMip;
+                ResourceState runState = state.get(state.subIndex(runStart, layer));
+
+                auto flush = [&](uint32_t end)
+                {
+                    if (needsBarrier(runState, barrier.to))
+                    {
+
+                        TextureSubresource newRange{};
+                        newRange.baseMip = runStart;
+                        newRange.baseLayer = layer;
+                        newRange.mipCount = end - runStart;
+                        newRange.layerCount = 1;
+
+                        batch.push_back({.texture = barrier.texture,
+                                         .from = runState,
+                                         .to = barrier.to,
+                                         .range = newRange});
+                    }
+                };
+
+                for (uint32_t mip = resolvedRange.baseMip; mip < resolvedRange.baseMip + resolvedRange.mipCount; mip++)
+                {
+                    auto subState = state.get(state.subIndex(mip, layer));
+
+                    if (subState != runState)
+                    {
+                        flush(mip);
+                        runState = subState;
+                        runStart = mip;
+                    }
+                }
+
+                flush(resolvedRange.baseMip + resolvedRange.mipCount);
+            }
+            state.updateRange(barrier.to, resolvedRange.baseMip, resolvedRange.mipCount, resolvedRange.baseLayer, resolvedRange.layerCount);
+        }
+
+        void transition(const BufferBarrier &barrier, std::vector<ResolvedBufferBarrier> &batch)
+        {
+
+            if (!barrier.buffer)
+                return;
+            auto &state = mutableState(*barrier.buffer);
+
+            if (needsBarrier(state, barrier.to))
+            {
+                batch.push_back({.buffer = barrier.buffer,
+                                 .from = state,
+                                 .to = barrier.to});
+                state = barrier.to;
+            }
+        }
     };
 
 }

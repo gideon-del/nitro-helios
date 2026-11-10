@@ -856,4 +856,7 @@ namespace nitro::rhi::vulkan
             maxDrawCount,
             stride);
     }
+    void VulkanCommandBuffer::emitBarriers(std::span<const ResolvedTextureBarrier> textures, std::span<const ResolvedBufferBarrier> buffers)
+    {
+    }
 }

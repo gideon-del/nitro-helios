@@ -47,7 +47,7 @@ namespace nitro::rhi::metal
             convertToPixelFormat(desc.format),
             NS::UInteger(desc.size.width),
             NS::UInteger(desc.size.height),
-            desc.mipmaps > 0);
+            false);
         MTL::TextureUsage usage = MTL::TextureUsageUnknown;
 
         if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::RenderTarget) ||
@@ -66,10 +66,7 @@ namespace nitro::rhi::metal
         }
 
         textureDesc->setUsage(usage);
-        if (desc.mipmaps > 0)
-        {
-            textureDesc->setMipmapLevelCount(1 + desc.mipmaps);
-        }
+        textureDesc->setMipmapLevelCount(desc.mipmaps);
 
         // if (hasTextureUsageFlag(desc.usage, TextureDesc::Usage::DepthStencil) &&
         //     hasTextureUsageFlag(desc.usage, TextureDesc::Usage::ShaderRead))
@@ -111,8 +108,11 @@ namespace nitro::rhi::metal
     void MetalTexture::createTextureFaceAndSampler(const TextureDesc &desc)
     {
         m_isCubeMap = desc.type == rhi::TextureDesc::Type::Cube;
+        assert(desc.mipmaps > 0);
         mipLevels = desc.mipmaps;
         totalLayers = m_isCubeMap ? 6 : 1;
+
+        m_resourceState = TextureState(mipLevels, totalLayers);
 
         if (!hasTextureUsageFlag(desc.usage, TextureDesc::Usage::DepthStencil) && desc.initialData != nullptr)
         {
@@ -126,7 +126,7 @@ namespace nitro::rhi::metal
         }
         if (!hasTextureUsageFlag(desc.usage, TextureDesc::Usage::DepthStencil))
         {
-            for (int mip = 0; mip <= mipLevels; mip++)
+            for (int mip = 0; mip < mipLevels; mip++)
             {
                 for (int face = 0; face < totalLayers; face++)
                 {

@@ -1,5 +1,8 @@
 #pragma once
 #include <cstdint>
+#include <algorithm>
+#include <vector>
+#include <cassert>
 #include "rhi-utils.h"
 #include "nitro-core/types/handle.h"
 namespace nitro::rhi
@@ -44,7 +47,7 @@ namespace nitro::rhi
             Cube
         } type = Type::Flat;
         const void *initialData = nullptr;
-        uint32_t mipmaps = 0;
+        uint32_t mipmaps = 1;
         bool isAliased = false;
     };
 
@@ -63,15 +66,88 @@ namespace nitro::rhi
 
     using RHITextureHandleHash = HandleHash<RHITextureTag>;
 
+    struct TextureState
+    {
+
+        TextureState(uint32_t mipCount = 1, uint32_t layers = 1) : perSub(mipCount * layers, ResourceState::Undefined), m_mipCount(mipCount), m_layers(layers)
+        {
+            assert(mipCount >= 1 && layers >= 1);
+        }
+
+        uint32_t mipCount() const { return m_mipCount; }
+        uint32_t layerCount() const { return m_layers; }
+        ResourceState get(uint32_t sub) const { return uniform ? all : perSub[sub]; }
+        uint32_t subIndex(uint32_t mip, uint32_t layer) const { return layer * m_mipCount + mip; }
+
+        void updateRange(ResourceState state, uint32_t baseMip, uint32_t mipCount, uint32_t baseLayer, uint32_t layerCount)
+        {
+            uint32_t maxMip = baseMip + mipCount;
+            uint32_t maxLayer = baseLayer + layerCount;
+
+            assert(maxMip <= m_mipCount);
+            assert(maxLayer <= m_layers);
+
+            for (uint32_t mip = baseMip; mip < maxMip; mip++)
+            {
+                for (uint32_t layer = baseLayer; layer < maxLayer; layer++)
+                {
+                    uint32_t sub = subIndex(mip, layer);
+
+                    if (perSub[sub] == state)
+                        continue;
+                    perSub[sub] = state;
+                }
+            }
+
+            checkUniform();
+        }
+        void updateAll(ResourceState state)
+        {
+
+            all = state;
+            uniform = true;
+            std::fill(perSub.begin(), perSub.end(), state);
+        }
+        const std::vector<ResourceState> &subState() const { return perSub; }
+        bool isUniform() const { return uniform; }
+
+    private:
+        void checkUniform()
+        {
+            for (int i = 1; i < (int)perSub.size(); i++)
+            {
+
+                if (perSub[i - 1] != perSub[i])
+                {
+                    uniform = false;
+                    return;
+                }
+            }
+            uniform = true;
+            all = perSub[0];
+        }
+
+    private:
+        uint32_t m_mipCount = 1, m_layers = 1;
+        ResourceState all = ResourceState::Undefined;
+
+        std::vector<ResourceState> perSub;
+        bool uniform = true;
+    };
     class RHITexture
     {
         friend class RHIDevice;
+        friend class RHICommandBuffer;
         RHITextureHandle m_handle;
+
+    protected:
+        TextureState m_resourceState;
 
     public:
         virtual ~RHITexture() = default;
 
         RHITextureHandle getHandle() const { return m_handle; }
+        const TextureState &state() const { return m_resourceState; }
     };
 
     inline TextureDesc::Usage operator|(TextureDesc::Usage a, TextureDesc::Usage b)
@@ -102,20 +178,42 @@ namespace nitro::rhi
 
     struct TextureSubresource
     {
+        static constexpr uint32_t Remaining = ~0u;
         uint32_t baseMip = 0;
-        uint32_t mipCount = 1;
+        uint32_t mipCount = Remaining;
 
         uint32_t baseLayer = 0;
-        uint32_t layerCount = 1;
+        uint32_t layerCount = Remaining;
+
+        static TextureSubresource all() { return {}; }
+
+        bool isAll() const
+        {
+            return baseMip == 0 && mipCount == Remaining && baseLayer == 0 && layerCount == Remaining;
+        }
+
+        TextureSubresource resolve(uint32_t texMips, uint32_t texLayers) const
+        {
+            assert(baseMip < texMips && baseLayer < texLayers);
+
+            TextureSubresource r = *this;
+
+            if (r.mipCount == Remaining)
+                r.mipCount = texMips - baseMip;
+            if (r.layerCount == Remaining)
+                r.layerCount = texLayers - baseLayer;
+
+            assert(r.baseMip + r.mipCount <= texMips);
+            assert(r.baseLayer + r.layerCount <= texLayers);
+            return r;
+        }
     };
 
     struct TextureBarrier
     {
         RHITexture *texture;
-        ResourceState before;
-        ResourceState after;
-
-        TextureSubresource subresource;
+        ResourceState to;
+        TextureSubresource range;
     };
 
     inline int getImageFormatSize(TextureDesc::ImageFormat format)

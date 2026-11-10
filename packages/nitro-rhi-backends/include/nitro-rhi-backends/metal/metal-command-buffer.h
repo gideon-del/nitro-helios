@@ -56,6 +56,9 @@ namespace nitro::rhi::metal
         MetalSwapchain *swapchain;
         MTL::RenderPassDescriptor *rpd = nullptr;
 
+    protected:
+        void emitBarriers(std::span<const ResolvedTextureBarrier> textures, std::span<const ResolvedBufferBarrier> buffers) override;
+
     private:
         MetalDevice *m_device;
         MetalBuffer *m_currentIndexBuffer = nullptr;
