@@ -50,7 +50,7 @@ namespace nitro::renderer
         rhi::TextureDesc::ImageFormat format;
         RGResourceSize size;
         bool isStorage = false;
-        uint32_t mips = 0;
+        uint32_t mips = 1;
         bool transient = true;
     };
     struct RGBufferDesc
@@ -121,7 +121,7 @@ namespace nitro::renderer
         std::function<void(rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)> execute;
     };
 
-       struct RGTextureBarrier
+    struct RGTextureBarrier
     {
         RGTextureID textureId;
         rhi::ResourceState from;

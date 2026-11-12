@@ -25,6 +25,8 @@ namespace nitro::rhi::metal
             return MTL::PixelFormatDepth32Float;
         case TextureDesc::ImageFormat::Depth32FloatStencil8:
             return MTL::PixelFormatDepth32Float_Stencil8;
+        case TextureDesc::ImageFormat::ColorBGRA8_SRGB:
+            return MTL::PixelFormatBGRA8Unorm_sRGB;
         }
         return MTL::PixelFormatRGBA8Unorm;
     }
@@ -113,6 +115,11 @@ namespace nitro::rhi::metal
         totalLayers = m_isCubeMap ? 6 : 1;
 
         m_resourceState = TextureState(mipLevels, totalLayers);
+        m_format = desc.format;
+        m_extent = {
+            .width = desc.size.width,
+            .height = desc.size.height,
+            .depth = 1};
 
         if (!hasTextureUsageFlag(desc.usage, TextureDesc::Usage::DepthStencil) && desc.initialData != nullptr)
         {
@@ -121,7 +128,7 @@ namespace nitro::rhi::metal
                                                      NS::UInteger(0),
                                                      NS::UInteger(width),
                                                      NS::UInteger(height));
-            size_t bytePerPixel = getImageFormatSize(desc.format);
+            auto bytePerPixel = getImageFormatSize(desc.format);
             texture->replaceRegion(region, NS::UInteger(0), desc.initialData, NS::UInteger(width * bytePerPixel));
         }
         if (!hasTextureUsageFlag(desc.usage, TextureDesc::Usage::DepthStencil))

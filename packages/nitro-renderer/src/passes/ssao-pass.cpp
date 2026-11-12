@@ -114,10 +114,9 @@ namespace nitro::renderer
 
         rhi::TextureBarrier textureBarrier;
         textureBarrier.texture = m_ssaoTexture;
-        textureBarrier.before = rhi::ResourceState::Undefined;
-        textureBarrier.after = rhi::ResourceState::ShaderRead;
+        textureBarrier.to = rhi::ResourceState::ShaderRead;
 
-        cmd->textureBarrier(textureBarrier);
+        cmd->barrier({{textureBarrier}});
 
         m_device->endCommandBuffer(cmd);
     }
@@ -203,10 +202,10 @@ namespace nitro::renderer
         resource.randomSampleBuffer->upload(samples.data(), sizeof(glm::vec4) * samples.size());
         rhi::TextureBarrier textureBarrier;
         textureBarrier.texture = m_ssaoTexture;
-        textureBarrier.before = rhi::ResourceState::ShaderRead;
-        textureBarrier.after = rhi::ResourceState::ShaderWrite;
 
-        cmd->textureBarrier(textureBarrier);
+        textureBarrier.to = rhi::ResourceState::ShaderWrite;
+
+        cmd->barrier({{textureBarrier}});
         cmd->bindComputePipeline(m_ssaoComputePipeline);
         cmd->bindComputeDescriptorSet(resource.descriptorSet, 0);
         cmd->setPushConstant(&pc, sizeof(SSAOPushConstant), 1, true);
@@ -215,10 +214,9 @@ namespace nitro::renderer
 
         cmd->dispatch(groupSizeX, groupSizeY, 1);
 
-        textureBarrier.before = rhi::ResourceState::ShaderWrite;
-        textureBarrier.after = rhi::ResourceState::ShaderRead;
+               textureBarrier.to = rhi::ResourceState::ShaderRead;
 
-        cmd->textureBarrier(textureBarrier);
+        cmd->barrier({{textureBarrier}});
 
         SSAOBlurPushConstant blurPc;
         blurPc.depthSigma = depthSigma;

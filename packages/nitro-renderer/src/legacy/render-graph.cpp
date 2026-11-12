@@ -358,10 +358,9 @@ namespace nitro::renderer
                     m_allocatedTextures[tid] = device->createTexture(textureDesc);
                     rhi::TextureBarrier textureBarrier;
                     textureBarrier.texture = m_allocatedTextures[tid];
-                    textureBarrier.before = rhi::ResourceState::Undefined;
-                    textureBarrier.after = rhi::ResourceState::ShaderRead;
-                    textureBarrier.subresource.mipCount = 1 + textureDesc.mipmaps;
-                    cmd->textureBarrier(textureBarrier);
+                    textureBarrier.to = rhi::ResourceState::ShaderRead;
+                    textureBarrier.range.mipCount = textureDesc.mipmaps;
+                    cmd->barrier({{textureBarrier}});
                 }
                 continue;
             }
@@ -401,9 +400,8 @@ namespace nitro::renderer
                     m_allocatedTextures[tid] = device->createTextureFromHeap(block.heap, textureDesc, 0);
                     rhi::TextureBarrier textureBarrier;
                     textureBarrier.texture = m_allocatedTextures[tid];
-                    textureBarrier.before = rhi::ResourceState::Undefined;
-                    textureBarrier.after = rhi::ResourceState::ShaderRead;
-                    cmd->textureBarrier(textureBarrier);
+                    textureBarrier.to = rhi::ResourceState::ShaderRead;
+                    cmd->barrier({{textureBarrier}});
                 }
             }
         };
@@ -446,11 +444,11 @@ namespace nitro::renderer
 
             rhi::TextureBarrier textureBarrier;
             textureBarrier.texture = m_allocatedTextures[tid];
-            textureBarrier.before = rhi::ResourceState::Undefined;
-            textureBarrier.after = rhi::ResourceState::ShaderRead;
-            textureBarrier.subresource.mipCount = 1 + desc.mips;
 
-            cmd->textureBarrier(textureBarrier);
+            textureBarrier.to = rhi::ResourceState::ShaderRead;
+            textureBarrier.range.mipCount = desc.mips;
+
+            cmd->barrier({{textureBarrier}});
         };
         device->endCommandBuffer(cmd);
     }
@@ -602,20 +600,19 @@ namespace nitro::renderer
                     {
                         rhi::TextureBarrier textureBarrier;
                         textureBarrier.texture = resources.getTexture(barrier.textureId);
-                        textureBarrier.before = barrier.from;
-                        textureBarrier.after = barrier.to;
-                        textureBarrier.subresource.mipCount = 1 + m_textures.at(barrier.textureId).mips;
 
-                        cmd->textureBarrier(textureBarrier);
+                        textureBarrier.to = barrier.to;
+                        textureBarrier.range.mipCount = m_textures.at(barrier.textureId).mips;
+
+                        cmd->barrier({{textureBarrier}});
                     },
                     [&](const RGBufferBarrier &barrier)
                     {
                         rhi::BufferBarrier bufferBarrier;
                         bufferBarrier.buffer = resources.getBuffer(barrier.bufferId, frameIdx);
-                        bufferBarrier.before = barrier.from;
-                        bufferBarrier.after = barrier.to;
+                        bufferBarrier.to = barrier.to;
 
-                        cmd->bufferBarrier(bufferBarrier);
+                        cmd->barrier({}, {{bufferBarrier}});
                     },
                     [&](const int &passIdx)
                     {

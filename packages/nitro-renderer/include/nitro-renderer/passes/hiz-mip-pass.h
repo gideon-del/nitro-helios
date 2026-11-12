@@ -6,7 +6,7 @@
 namespace nitro::renderer
 {
 
-    static constexpr uint32_t HIZ_MIP_COUNT = 8;
+    static constexpr uint32_t HIZ_MIP_COUNT = 6;
     struct HizMipResource
     {
         std::array<rhi::RHIDescriptorSet *, HIZ_MIP_COUNT> descriptorSets{};

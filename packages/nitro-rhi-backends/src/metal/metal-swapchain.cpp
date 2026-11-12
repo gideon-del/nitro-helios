@@ -37,13 +37,13 @@ namespace nitro::rhi::metal
         width = newWidth;
         height = newHeight;
 
-        delete depthTexture;
+        m_device->destroyTexture(depthTexture);
 
         TextureDesc depthTextureDesc;
         depthTextureDesc.size = {width, height};
         depthTextureDesc.usage = TextureDesc::Usage::DepthStencil | TextureDesc::Usage::RenderTarget;
         depthTextureDesc.format = TextureDesc::ImageFormat::Depth32Float;
-        depthTexture = reinterpret_cast<MetalTexture *>(m_device->createTexture(depthTextureDesc));
+        depthTexture = static_cast<MetalTexture *>(m_device->createTexture(depthTextureDesc));
         layer->setDrawableSize(
             CGSizeMake(width, height));
         notifyResizeCallbacks(width, height);
@@ -54,7 +54,7 @@ namespace nitro::rhi::metal
         if (currentDrawable)
             currentDrawable->release();
         if (depthTexture)
-            delete depthTexture;
+            m_device->destroyTexture(depthTexture);
         if (layer)
             layer->release();
     }

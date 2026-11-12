@@ -20,6 +20,7 @@ namespace nitro::rhi::metal
         uint32_t height;
         uint32_t mipLevels;
         uint32_t totalLayers;
+
         MTL::Texture *getFace(int face, int mip = 0)
         {
 

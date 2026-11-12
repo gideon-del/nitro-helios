@@ -76,7 +76,7 @@ namespace nitro::renderer
 
         for (auto &resource : m_resources)
         {
-            for (int i = 0; i < HIZ_MIP_COUNT; i++)
+            for (int i = 0; i < HIZ_MIP_COUNT - 1; i++)
             {
                 rhi::TextureBinding binding;
                 binding.texture = hizTexture;
@@ -100,8 +100,8 @@ namespace nitro::renderer
         for (int i = 0; i < HIZ_MIP_COUNT; i++)
         {
 
-            uint32_t mipWidth = std::max(1u, width >> (i + 1));
-            uint32_t mipHeight = std::max(1u, height >> (i + 1));
+            uint32_t mipWidth = std::max(1u, width >> (i));
+            uint32_t mipHeight = std::max(1u, height >> (i));
 
             uint32_t groupSizeX = (mipWidth + 7) / 8;
             uint32_t groupSizeY = (mipHeight + 7) / 8;
@@ -111,21 +111,19 @@ namespace nitro::renderer
 
             rhi::TextureBarrier barrier;
             barrier.texture = hizTexture;
-            barrier.before = rhi::ResourceState::ShaderRead;
-            barrier.after = rhi::ResourceState::ShaderWrite;
-            barrier.subresource.baseMip = i + 1;
+            barrier.to = rhi::ResourceState::ShaderWrite;
+            barrier.range.baseMip = i + 1;
 
-            cmd->textureBarrier(barrier);
+            cmd->barrier({{barrier}});
 
             cmd->bindComputePipeline(m_computePipeline);
             cmd->bindComputeDescriptorSet(resource.descriptorSets[i], 0);
             cmd->setPushConstant(&pc, sizeof(HizMipPushConstant), 1, true);
             cmd->dispatch(groupSizeX, groupSizeY, 1);
 
-            barrier.before = rhi::ResourceState::ShaderWrite;
-            barrier.after = rhi::ResourceState::ShaderRead;
+            barrier.to = rhi::ResourceState::ShaderRead;
 
-            cmd->textureBarrier(barrier);
+            cmd->barrier({{barrier}});
         }
     };
 

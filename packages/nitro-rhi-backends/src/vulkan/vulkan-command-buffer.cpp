@@ -11,9 +11,12 @@
 
 namespace nitro::rhi::vulkan
 {
+
     VulkanCommandBuffer::VulkanCommandBuffer(VulkanDevice *device, VulkanSwapchain *swapchain,
-                                             VkCommandBuffer cmd, uint32_t frameIdx) : m_device(device), swapchain(swapchain), cmd(cmd), m_frameIdx(frameIdx)
+                                             VkCommandBuffer cmd, uint32_t frameIdx, bool isOneTime) : m_device(device), swapchain(swapchain), cmd(cmd), m_frameIdx(frameIdx)
     {
+        if (isOneTime)
+            return;
         VkSemaphoreCreateInfo semaphoreInfo{};
         semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
@@ -46,17 +49,15 @@ namespace nitro::rhi::vulkan
     void VulkanCommandBuffer::beginRenderPass(const RHIRenderPassDesc &desc)
     {
 
-        m_device->transitionImageLayout(
-            cmd,
-            swapchain->backBuffers[m_imageIdx]->image,
-            0,
-            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-            swapchain->backBuffers[m_imageIdx]->currentLayout,
-            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            VK_IMAGE_ASPECT_COLOR_BIT);
-        swapchain->backBuffers[m_imageIdx]->currentLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        discard(*swapchain->backBuffers[m_imageIdx]);
+        TextureBarrier textureBarrier;
+        textureBarrier.texture = swapchain->backBuffers[m_imageIdx];
+        textureBarrier.to = ResourceState::RenderTarget;
+
+        TextureBarrier depthTextureBarrier;
+        depthTextureBarrier.texture = swapchain->depthTexture;
+        depthTextureBarrier.to = ResourceState::DepthWrite;
+        barrier({{textureBarrier, depthTextureBarrier}});
 
         VkRenderingAttachmentInfo colorAttachment{};
         colorAttachment.sType =
@@ -84,7 +85,7 @@ namespace nitro::rhi::vulkan
             swapchain->depthTexture->imageView;
 
         depthAttachment.imageLayout =
-            VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+            convertResourceStateToImageLayout(ResourceState::DepthWrite);
 
         depthAttachment.loadOp =
             VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -117,12 +118,34 @@ namespace nitro::rhi::vulkan
     {
         VulkanRenderPass *vulkanRenderPass = reinterpret_cast<VulkanRenderPass *>(renderPass);
 
-        vulkanRenderPass->startTransition(cmd);
-        // vulkanRenderPass->renderingInfo.renderArea.extent = swapchain->extent;
-        // if (vulkanRenderPass->depthTexture)
-        // {
-        //     vulkanRenderPass->renderingInfo.renderArea.extent = {vulkanRenderPass->depthTexture->width, vulkanRenderPass->depthTexture->height};
-        // }
+        for (auto texture : vulkanRenderPass->colorTextures)
+        {
+            const auto &state = texture->state();
+
+            auto resolvedRange = TextureSubresource::all().resolve(state.mipCount(), state.layerCount());
+
+            assert(state.isRangeIn(ResourceState::RenderTarget,
+                                   resolvedRange.baseMip,
+                                   resolvedRange.mipCount,
+                                   resolvedRange.baseLayer,
+                                   resolvedRange.layerCount) &&
+                   "barrier to RenderTarget before begining a render pass");
+        }
+
+        if (vulkanRenderPass->depthTexture)
+        {
+
+            const auto &state = vulkanRenderPass->depthTexture->state();
+
+            auto resolvedRange = TextureSubresource::all().resolve(state.mipCount(), state.layerCount());
+
+            assert(state.isRangeIn(vulkanRenderPass->depthState,
+                                   resolvedRange.baseMip,
+                                   resolvedRange.mipCount,
+                                   resolvedRange.baseLayer,
+                                   resolvedRange.layerCount) &&
+                   "barrier to DepthState before begining a render pass");
+        }
 
         vkCmdBeginRendering(cmd, &vulkanRenderPass->renderingInfo);
 
@@ -137,8 +160,6 @@ namespace nitro::rhi::vulkan
             vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, m_device->queryPool, 1);
             return;
         }
-
-        m_activeRenderPass->endTransition(cmd);
 
         m_activeRenderPass = nullptr;
     }
@@ -305,17 +326,11 @@ namespace nitro::rhi::vulkan
     void VulkanCommandBuffer::present()
     {
 
-        m_device->transitionImageLayout(
-            cmd,
-            swapchain->backBuffers[m_imageIdx]->image,
-            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-            0,
-            swapchain->backBuffers[m_imageIdx]->currentLayout,
-            VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-            VK_IMAGE_ASPECT_COLOR_BIT);
-        swapchain->backBuffers[m_imageIdx]->currentLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        TextureBarrier textureBarrier;
+        textureBarrier.texture = swapchain->backBuffers[m_imageIdx];
+        textureBarrier.to = ResourceState::Present;
+
+        barrier({{textureBarrier}});
 
         checkVkResult(vkEndCommandBuffer(cmd), "Command Buffer not ended");
         ;
@@ -445,70 +460,26 @@ namespace nitro::rhi::vulkan
         VulkanTexture *vulkanTexture = reinterpret_cast<VulkanTexture *>(texture);
         int i = 1;
         int totalLayer = vulkanTexture->isCubeMap() ? 6 : 1;
-        if (vulkanTexture->mipmapLevels == 0)
+        if (vulkanTexture->mipmapLevels <= 1)
             return;
 
         uint32_t texWidth = vulkanTexture->width;
         uint32_t texHeight = vulkanTexture->height;
 
-        VkImageLayout imageLayout = vulkanTexture->currentLayout;
-        VkImageMemoryBarrier imageBarrier{};
-        imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        imageBarrier.srcAccessMask = 0;
-        imageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-        imageBarrier.image = vulkanTexture->image;
-        imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        imageBarrier.oldLayout = imageLayout;
-        imageBarrier.subresourceRange.baseArrayLayer = 0;
-        imageBarrier.subresourceRange.baseMipLevel = 0;
-        imageBarrier.subresourceRange.layerCount = totalLayer;
-        imageBarrier.subresourceRange.levelCount = 1;
-        imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        TextureBarrier textureBarrier;
+        textureBarrier.texture = texture;
+        textureBarrier.range.baseMip = 0;
+        textureBarrier.range.mipCount = 1;
+        textureBarrier.to = ResourceState::CopySrc;
+        barrier({{textureBarrier}});
 
-        vkCmdPipelineBarrier(
-            cmd,
-            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            0,
-            0,
-            nullptr,
-            0,
-            nullptr,
-            1,
-            &imageBarrier);
-
-        while (i <= vulkanTexture->mipmapLevels)
+        while (i < vulkanTexture->mipmapLevels)
         {
-            rhi::TextureSubresource finalSubresource;
-            finalSubresource.layerCount = 6;
 
-            VkImageSubresourceRange mipSubresourceRange;
-            mipSubresourceRange.layerCount = totalLayer;
-            mipSubresourceRange.baseMipLevel = i;
-            mipSubresourceRange.baseArrayLayer = 0;
-            mipSubresourceRange.levelCount = 1;
-            mipSubresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-
-            VkImageMemoryBarrier imageBarrier{};
-            imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            imageBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-            imageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-            imageBarrier.image = vulkanTexture->image;
-            imageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-            imageBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            imageBarrier.subresourceRange = mipSubresourceRange;
-
-            vkCmdPipelineBarrier(
-                cmd,
-                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                VK_PIPELINE_STAGE_TRANSFER_BIT,
-                0,
-                0,
-                nullptr,
-                0,
-                nullptr,
-                1,
-                &imageBarrier);
+            textureBarrier.range.baseMip = i;
+            textureBarrier.range.mipCount = 1;
+            textureBarrier.to = ResourceState::CopyDst;
+            barrier({{textureBarrier}});
 
             VkImageBlit imageBlit{};
             imageBlit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -548,219 +519,15 @@ namespace nitro::rhi::vulkan
                     VK_FILTER_LINEAR);
             }
 
-            VkImageMemoryBarrier secondImageBarrier{};
-            secondImageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-            secondImageBarrier.srcAccessMask = 0;
-            secondImageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-            secondImageBarrier.image = vulkanTexture->image;
-            secondImageBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-            secondImageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-            secondImageBarrier.subresourceRange = mipSubresourceRange;
-
-            vkCmdPipelineBarrier(
-                cmd,
-                VK_PIPELINE_STAGE_TRANSFER_BIT,
-                VK_PIPELINE_STAGE_TRANSFER_BIT,
-                0,
-                0,
-                nullptr,
-                0,
-                nullptr,
-                1,
-                &secondImageBarrier);
+            textureBarrier.to = ResourceState::CopySrc;
+            barrier({{textureBarrier}});
 
             i++;
         }
 
-        VkImageSubresourceRange subresourceRange;
-        subresourceRange.layerCount = totalLayer;
-        subresourceRange.baseMipLevel = 0;
-        subresourceRange.baseArrayLayer = 0;
-        subresourceRange.levelCount = 1 + vulkanTexture->mipmapLevels;
-        subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-
-        VkImageMemoryBarrier secondImageBarrier{};
-        secondImageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        secondImageBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-        secondImageBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        secondImageBarrier.image = vulkanTexture->image;
-        secondImageBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-        secondImageBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        secondImageBarrier.subresourceRange = subresourceRange;
-
-        vkCmdPipelineBarrier(
-            cmd,
-            VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-            0,
-            0,
-            nullptr,
-            0,
-            nullptr,
-            1,
-            &secondImageBarrier);
-        vulkanTexture->currentLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    }
-
-    VkAccessFlags convertResourceStateToAccessMask(ResourceState state)
-    {
-        switch (state)
-        {
-        case ResourceState::Undefined:
-            return 0;
-            break;
-        case ResourceState::CopyDst:
-            return VK_ACCESS_TRANSFER_WRITE_BIT;
-            break;
-        case ResourceState::CopySrc:
-            return VK_ACCESS_TRANSFER_READ_BIT;
-            break;
-        case ResourceState::DepthRead:
-            return VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-            break;
-        case ResourceState::DepthWrite:
-            return VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-            break;
-        case ResourceState::Present:
-            return VK_ACCESS_2_NONE;
-            break;
-        case ResourceState::RenderTarget:
-            return VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
-            break;
-        case ResourceState::ShaderRead:
-            return VK_ACCESS_SHADER_READ_BIT;
-            break;
-        case ResourceState::ShaderWrite:
-            return VK_ACCESS_SHADER_WRITE_BIT;
-            break;
-        case ResourceState::IndirectDraw:
-            return VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
-            break;
-
-        default:
-            return 0;
-            break;
-        }
-    }
-
-    VkPipelineStageFlags2 convertResourceStateToStage(ResourceState state)
-    {
-        switch (state)
-        {
-        case ResourceState::Undefined:
-            return VK_PIPELINE_STAGE_2_NONE;
-
-        case ResourceState::CopySrc:
-        case ResourceState::CopyDst:
-            return VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-
-        case ResourceState::ShaderRead:
-            return VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT |
-                   VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-
-        case ResourceState::ShaderWrite:
-            return VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-
-        case ResourceState::RenderTarget:
-            return VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
-
-        case ResourceState::DepthRead:
-        case ResourceState::DepthWrite:
-            return VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
-                   VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
-
-        case ResourceState::Present:
-            return VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
-        default:
-            return VK_PIPELINE_STAGE_2_NONE;
-        }
-    }
-
-    void VulkanCommandBuffer::textureBarrier(const TextureBarrier &barrier)
-    {
-        VulkanTexture *vulkanTexture = reinterpret_cast<VulkanTexture *>(barrier.texture);
-
-        VkImageSubresourceRange subresourceRange;
-        subresourceRange.layerCount = barrier.subresource.layerCount;
-        subresourceRange.baseMipLevel = barrier.subresource.baseMip;
-        subresourceRange.baseArrayLayer = barrier.subresource.baseLayer;
-        subresourceRange.levelCount = barrier.subresource.mipCount;
-        subresourceRange.aspectMask = vulkanTexture->imageAspect;
-
-        VkImageMemoryBarrier2 imageBarrier{};
-        imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
-        imageBarrier.image = vulkanTexture->image;
-        imageBarrier.newLayout = convertResourceStateToImageLayout(barrier.after);
-        imageBarrier.oldLayout = convertResourceStateToImageLayout(barrier.before);
-        imageBarrier.srcAccessMask = convertResourceStateToAccessMask(barrier.before);
-        imageBarrier.dstAccessMask = convertResourceStateToAccessMask(barrier.after);
-        imageBarrier.subresourceRange = subresourceRange;
-        imageBarrier.srcStageMask = convertResourceStateToStage(barrier.before);
-        imageBarrier.dstStageMask = convertResourceStateToStage(barrier.after);
-
-        VkDependencyInfo dependencyInfo{};
-        dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
-        dependencyInfo.imageMemoryBarrierCount = 1;
-        dependencyInfo.pImageMemoryBarriers = &imageBarrier;
-
-        vkCmdPipelineBarrier2(cmd, &dependencyInfo);
-        m_FrameStats.barrierCalls++;
-        m_FrameStats.imageBarriers++;
-        vulkanTexture->currentLayout = convertResourceStateToImageLayout(barrier.after);
-    }
-
-    VkPipelineStageFlags convertResourceStateToBufferStage(ResourceState state)
-    {
-        switch (state)
-        {
-        case ResourceState::Undefined:
-            return VK_PIPELINE_STAGE_NONE;
-
-        case ResourceState::CopySrc:
-        case ResourceState::CopyDst:
-            return VK_PIPELINE_STAGE_TRANSFER_BIT;
-
-        case ResourceState::ShaderRead:
-            return VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
-                   VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-
-        case ResourceState::ShaderWrite:
-            return VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-
-        case ResourceState::IndirectDraw:
-            return VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
-        default:
-            return VK_PIPELINE_STAGE_NONE;
-        }
-    }
-    void VulkanCommandBuffer::bufferBarrier(const BufferBarrier &barrier)
-    {
-        VulkanBuffer *vulkanBuffer = reinterpret_cast<VulkanBuffer *>(barrier.buffer);
-
-        VkBufferMemoryBarrier memoryBarrier{};
-        memoryBarrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-        memoryBarrier.srcAccessMask = convertResourceStateToAccessMask(barrier.before);
-        memoryBarrier.dstAccessMask = convertResourceStateToAccessMask(barrier.after);
-        memoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        memoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        memoryBarrier.offset = 0;
-        memoryBarrier.size = VK_WHOLE_SIZE;
-        memoryBarrier.buffer = vulkanBuffer->buffer;
-
-        vkCmdPipelineBarrier(
-            cmd,
-            convertResourceStateToBufferStage(barrier.before),
-            convertResourceStateToBufferStage(barrier.after),
-            0,
-            0,
-            nullptr,
-            1,
-            &memoryBarrier,
-            0,
-            nullptr);
-
-        m_FrameStats.barrierCalls++;
-        m_FrameStats.bufferBarriers++;
+        textureBarrier.to = ResourceState::ShaderRead;
+        textureBarrier.range = TextureSubresource::all();
+        barrier({{textureBarrier}});
     }
 
     void VulkanCommandBuffer::copyTextureToBuffer(RHITexture *texture, RHIBuffer *buffer)
@@ -782,7 +549,7 @@ namespace nitro::rhi::vulkan
         VkCopyImageToBufferInfo2 bufferInfo{};
         bufferInfo.sType = VK_STRUCTURE_TYPE_COPY_IMAGE_TO_BUFFER_INFO_2;
         bufferInfo.srcImage = vulkanTexture->image;
-        bufferInfo.srcImageLayout = vulkanTexture->currentLayout;
+        bufferInfo.srcImageLayout = convertResourceStateToImageLayout(ResourceState::CopySrc);
         bufferInfo.regionCount = 1;
         bufferInfo.pRegions = &region;
         bufferInfo.dstBuffer = vulkanBuffer->buffer;
@@ -801,6 +568,7 @@ namespace nitro::rhi::vulkan
 
     void VulkanCommandBuffer::copyTextureToTexture(RHITexture *src, RHITexture *dst)
     {
+
         VulkanTexture *vulkanTextureSrc = reinterpret_cast<VulkanTexture *>(src);
         VulkanTexture *vulkanTextureDst = reinterpret_cast<VulkanTexture *>(dst);
 
@@ -817,9 +585,9 @@ namespace nitro::rhi::vulkan
 
         copyInfo.sType = VK_STRUCTURE_TYPE_COPY_IMAGE_INFO_2;
         copyInfo.srcImage = vulkanTextureSrc->image;
-        copyInfo.srcImageLayout = vulkanTextureSrc->currentLayout;
+        copyInfo.srcImageLayout = convertResourceStateToImageLayout(ResourceState::CopySrc);
         copyInfo.dstImage = vulkanTextureDst->image;
-        copyInfo.dstImageLayout = vulkanTextureDst->currentLayout;
+        copyInfo.dstImageLayout = convertResourceStateToImageLayout(ResourceState::CopyDst);
         copyInfo.regionCount = 1;
         copyInfo.pRegions = &region;
 
@@ -858,5 +626,116 @@ namespace nitro::rhi::vulkan
     }
     void VulkanCommandBuffer::emitBarriers(std::span<const ResolvedTextureBarrier> textures, std::span<const ResolvedBufferBarrier> buffers)
     {
+        m_FrameStats.barrierCalls++;
+        m_FrameStats.imageBarriers += textures.size();
+        m_FrameStats.bufferBarriers += buffers.size();
+
+        std::vector<VkImageMemoryBarrier2> textureBarriers;
+
+        textureBarriers.reserve(textures.size());
+
+        for (auto &barrierInfo : textures)
+        {
+            VulkanTexture *vkTexture = static_cast<VulkanTexture *>(barrierInfo.texture);
+            auto srcState = toVkState(barrierInfo.from);
+            auto dstState = toVkState(barrierInfo.to);
+
+            VkImageMemoryBarrier2 barrier{};
+            barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+            barrier.srcStageMask = srcState.stage;
+            barrier.srcAccessMask = srcState.access;
+            barrier.dstStageMask = dstState.stage;
+            barrier.dstAccessMask = dstState.access;
+
+            barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+
+            barrier.image = vkTexture->image;
+            barrier.oldLayout = convertResourceStateToImageLayout(barrierInfo.from);
+            barrier.newLayout = convertResourceStateToImageLayout(barrierInfo.to);
+
+            barrier.subresourceRange.aspectMask = vkTexture->imageAspect;
+            barrier.subresourceRange.baseMipLevel = barrierInfo.range.baseMip;
+            barrier.subresourceRange.levelCount = barrierInfo.range.mipCount;
+            barrier.subresourceRange.baseArrayLayer = barrierInfo.range.baseLayer;
+            barrier.subresourceRange.layerCount = barrierInfo.range.layerCount;
+
+            textureBarriers.push_back(barrier);
+        }
+        std::vector<VkBufferMemoryBarrier2> bufferBarriers;
+        bufferBarriers.reserve(buffers.size());
+
+        for (auto &barrierInfo : buffers)
+        {
+
+            VulkanBuffer *vkBuffer = static_cast<VulkanBuffer *>(barrierInfo.buffer);
+
+            auto srcState = toVkState(barrierInfo.from);
+            auto dstState = toVkState(barrierInfo.to);
+
+            VkBufferMemoryBarrier2 barrier{};
+            barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2;
+            barrier.offset = 0;
+            barrier.size = VK_WHOLE_SIZE;
+            barrier.srcStageMask = srcState.stage;
+            barrier.srcAccessMask = srcState.access;
+            barrier.dstStageMask = dstState.stage;
+            barrier.dstAccessMask = dstState.access;
+            barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            barrier.buffer = vkBuffer->buffer;
+
+            bufferBarriers.push_back(barrier);
+        }
+
+        VkDependencyInfo dependencyInfo{};
+        dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+        dependencyInfo.bufferMemoryBarrierCount = uint32_t(bufferBarriers.size());
+        dependencyInfo.pBufferMemoryBarriers = bufferBarriers.data();
+
+        dependencyInfo.imageMemoryBarrierCount = uint32_t(textureBarriers.size());
+        dependencyInfo.pImageMemoryBarriers = textureBarriers.data();
+
+        vkCmdPipelineBarrier2(cmd, &dependencyInfo);
+    }
+
+    void VulkanCommandBuffer::emitCopyBufferToTexture(RHIBuffer &src, RHITexture &dst, std::span<const BufferTextureCopy> regions)
+    {
+        VulkanTexture &vkTexture = static_cast<VulkanTexture &>(dst);
+        VulkanBuffer &vkBuffer = static_cast<VulkanBuffer &>(src);
+        std::vector<VkBufferImageCopy2> bufferImageCopies;
+
+        bufferImageCopies.reserve(regions.size());
+
+        for (auto &region : regions)
+        {
+            auto resolvedRange = region.range.resolve(vkTexture.mipmapLevels, vkTexture.totalLayers);
+
+            VkBufferImageCopy2 bufferImageCopy{};
+
+            bufferImageCopy.sType = VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2;
+            bufferImageCopy.bufferImageHeight = region.bufferImageHeight;
+            bufferImageCopy.bufferRowLength = region.bufferRowLength;
+            bufferImageCopy.bufferOffset = region.bufferOffset;
+            bufferImageCopy.imageExtent = convertToVkExtent3D(region.imageExtent);
+            bufferImageCopy.imageOffset = convertToVkOffset3D(region.imageOffset);
+            bufferImageCopy.imageSubresource.aspectMask = vkTexture.imageAspect;
+            bufferImageCopy.imageSubresource.mipLevel = resolvedRange.baseMip;
+            bufferImageCopy.imageSubresource.baseArrayLayer = resolvedRange.baseLayer;
+            bufferImageCopy.imageSubresource.layerCount = resolvedRange.layerCount;
+
+            bufferImageCopies.push_back(bufferImageCopy);
+        }
+
+        VkCopyBufferToImageInfo2 copyInfo{};
+
+        copyInfo.sType = VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2;
+        copyInfo.dstImage = vkTexture.image;
+        copyInfo.srcBuffer = vkBuffer.buffer;
+        copyInfo.regionCount = static_cast<uint32_t>(bufferImageCopies.size());
+        copyInfo.pRegions = bufferImageCopies.data();
+        copyInfo.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+
+        vkCmdCopyBufferToImage2(cmd, &copyInfo);
     }
 }

@@ -54,9 +54,9 @@ namespace nitro::renderer
 
         rhi::TextureBarrier textureBarrier;
         textureBarrier.texture = m_brightnessTexture;
-        textureBarrier.before = rhi::ResourceState::Undefined;
-        textureBarrier.after = rhi::ResourceState::ShaderRead;
-        cmd->textureBarrier(textureBarrier);
+
+        textureBarrier.to = rhi::ResourceState::ShaderRead;
+        cmd->barrier({{textureBarrier}});
         m_device->endCommandBuffer(cmd);
     }
 
@@ -96,9 +96,9 @@ namespace nitro::renderer
 
         rhi::TextureBarrier textureBarrier;
         textureBarrier.texture = m_brightnessTexture;
-        textureBarrier.before = rhi::ResourceState::Undefined;
-        textureBarrier.after = rhi::ResourceState::ShaderRead;
-        cmd->textureBarrier(textureBarrier);
+
+        textureBarrier.to = rhi::ResourceState::ShaderRead;
+        cmd->barrier({{textureBarrier}});
         m_device->endCommandBuffer(cmd);
     }
 
@@ -107,9 +107,9 @@ namespace nitro::renderer
 
         rhi::TextureBarrier textureBarrier;
         textureBarrier.texture = m_brightnessTexture;
-        textureBarrier.before = rhi::ResourceState::ShaderRead;
-        textureBarrier.after = rhi::ResourceState::ShaderWrite;
-        cmd->textureBarrier(textureBarrier);
+
+        textureBarrier.to = rhi::ResourceState::ShaderWrite;
+        cmd->barrier({{textureBarrier}});
 
         auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
 
@@ -136,10 +136,9 @@ namespace nitro::renderer
 
         rhi::TextureBarrier barrier;
         barrier.texture = m_brightnessTexture;
-        barrier.after = rhi::ResourceState::ShaderRead;
-        barrier.before = rhi::ResourceState::ShaderWrite;
+        barrier.to = rhi::ResourceState::ShaderRead;
 
-        cmd->textureBarrier(barrier);
+        cmd->barrier({{barrier}});
 
         return m_brightnessTexture;
     }

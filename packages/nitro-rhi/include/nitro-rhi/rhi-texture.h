@@ -5,6 +5,7 @@
 #include <cassert>
 #include "rhi-utils.h"
 #include "nitro-core/types/handle.h"
+#include "nitro-core/types/size.h"
 namespace nitro::rhi
 {
 
@@ -24,6 +25,7 @@ namespace nitro::rhi
             ColorRGBA32,
             ColorR32,
             ColorSRGB8,
+            ColorBGRA8_SRGB,
             Depth32Float,
             Depth32FloatStencil8
         } format;
@@ -110,6 +112,28 @@ namespace nitro::rhi
         }
         const std::vector<ResourceState> &subState() const { return perSub; }
         bool isUniform() const { return uniform; }
+        bool isRangeIn(ResourceState s, uint32_t baseMip, uint32_t mipCount, uint32_t baseLayer, uint32_t layerCount) const
+        {
+            if (uniform)
+                return all == s;
+
+            uint32_t maxMip = baseMip + mipCount;
+            uint32_t maxLayer = baseLayer + layerCount;
+
+            assert(maxMip <= m_mipCount);
+            assert(maxLayer <= m_layers);
+            for (uint32_t mip = baseMip; mip < maxMip; mip++)
+            {
+                for (uint32_t layer = baseLayer; layer < maxLayer; layer++)
+                {
+                    uint32_t sub = subIndex(mip, layer);
+
+                    if (perSub[sub] != s)
+                        return false;
+                }
+            }
+            return true;
+        }
 
     private:
         void checkUniform()
@@ -148,6 +172,13 @@ namespace nitro::rhi
 
         RHITextureHandle getHandle() const { return m_handle; }
         const TextureState &state() const { return m_resourceState; }
+        Extent3D extent() const { return m_extent; }
+        TextureDesc::ImageFormat format() const { return m_format; }
+        uint32_t mipExtent(uint32_t mip, uint32_t size) const { return std::max(1u, size >> mip); }
+
+    protected:
+        Extent3D m_extent;
+        TextureDesc::ImageFormat m_format;
     };
 
     inline TextureDesc::Usage operator|(TextureDesc::Usage a, TextureDesc::Usage b)

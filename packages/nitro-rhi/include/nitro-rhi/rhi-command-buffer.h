@@ -4,6 +4,7 @@
 #include <span>
 #include "rhi-texture.h"
 #include "rhi-buffer.h"
+#include "nitro-core/types/size.h"
 
 namespace nitro::rhi
 {
@@ -56,6 +57,18 @@ namespace nitro::rhi
         uint32_t instanceCount;
         uint32_t firstVertex;
         uint32_t firstInstance;
+    };
+
+    struct BufferTextureCopy
+    {
+
+        uint64_t bufferOffset = 0;
+        uint32_t bufferRowLength = 0;
+        uint32_t bufferImageHeight = 0;
+
+        TextureSubresource range{.baseMip = 0, .mipCount = 1};
+        Offset3D imageOffset = {};
+        Extent3D imageExtent = {};
     };
     struct DrawIndexedIndirectArgs
     {
@@ -126,8 +139,6 @@ namespace nitro::rhi
         virtual void setScissor(const RHIScissor &scissor) = 0;
         virtual void setStencilReference(uint32_t reference) = 0;
         virtual void generateMipmaps(RHITexture *texture) = 0;
-        virtual void bufferBarrier(const BufferBarrier &barrier) = 0;
-        virtual void textureBarrier(const TextureBarrier &barrier) = 0;
         virtual void fillBuffer(RHIBuffer *buffer, size_t offset, size_t size, uint32_t value) = 0;
         virtual void draw(uint32_t vertexCount, uint32_t instanceCount = 1) = 0;
 
@@ -145,7 +156,40 @@ namespace nitro::rhi
         virtual void present() = 0;
         virtual void dispatch(uint32_t x, uint32_t y, uint32_t z) = 0;
         virtual void dispatchIndirect(RHIBuffer *indirectBuffer, size_t offset = 0) = 0;
+        void copyBufferToTexture(RHIBuffer &src, RHITexture &dst, std::span<const BufferTextureCopy> regions)
+        {
+            auto extent = dst.extent();
 
+            for (auto &region : regions)
+            {
+                auto state = dst.state();
+                auto resolvedRange = region.range.resolve(state.mipCount(), state.layerCount());
+                assert(resolvedRange.mipCount == 1 && "Only one mip per region");
+                assert(state.isRangeIn(ResourceState::CopyDst, resolvedRange.baseMip, resolvedRange.mipCount, resolvedRange.baseLayer, resolvedRange.layerCount) && "barrier to CopyDst first");
+                assert(region.bufferRowLength == 0 || region.bufferRowLength >= region.imageExtent.width);
+                assert(region.bufferImageHeight == 0 || region.bufferImageHeight >= region.imageExtent.height);
+                assert(region.imageExtent.width && region.imageExtent.height && region.imageExtent.depth && "Must be greater than 0");
+
+                auto mipWidth = std::max(1u, extent.width >> resolvedRange.baseMip);
+                auto mipHeight = std::max(1u, extent.height >> resolvedRange.baseMip);
+
+                assert(region.imageOffset.x >= 0 && region.imageOffset.y >= 0);
+                assert(region.imageExtent.width + region.imageOffset.x <= mipWidth && "Out of bound copy");
+                assert(region.imageExtent.height + region.imageOffset.y <= mipHeight && "Out of bound copy");
+
+                const uint32_t bpt = getImageFormatSize(dst.format());
+                const uint32_t rowLen = region.bufferRowLength ? region.bufferRowLength : region.imageExtent.width;
+                const uint32_t rows = region.bufferImageHeight ? region.bufferImageHeight : region.imageExtent.height;
+
+                const uint64_t bytesPerRow = uint64_t(rowLen) * bpt;
+                const uint64_t bytesPerImage = bytesPerRow * rows;
+
+                auto resolved = region.range.resolve(state.mipCount(), state.layerCount());
+                uint64_t lastByte = region.bufferOffset + (resolved.layerCount - 1) * bytesPerImage + (region.imageExtent.height - 1) * bytesPerRow + uint64_t(region.imageExtent.width) * bpt;
+                assert(lastByte <= src.getSize() && "copy reads past the end of the staging buffer");
+            }
+            emitCopyBufferToTexture(src, dst, regions);
+        };
         void barrier(std::span<const TextureBarrier> textures, std::span<const BufferBarrier> buffers = {})
         {
 
@@ -173,6 +217,7 @@ namespace nitro::rhi
         static TextureState &mutableState(RHITexture &texture) { return texture.m_resourceState; }
         static ResourceState &mutableState(RHIBuffer &buffer) { return buffer.m_state; }
         virtual void emitBarriers(std::span<const ResolvedTextureBarrier> textures, std::span<const ResolvedBufferBarrier> buffers) = 0;
+        virtual void emitCopyBufferToTexture(RHIBuffer &src, RHITexture &dst, std::span<const BufferTextureCopy> regions) = 0;
 
     private:
         void transition(const TextureBarrier &barrier, std::vector<ResolvedTextureBarrier> &batch)

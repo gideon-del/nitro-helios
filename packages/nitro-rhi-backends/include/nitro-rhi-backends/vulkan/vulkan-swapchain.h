@@ -5,6 +5,13 @@
 #include <vector>
 namespace nitro::rhi::vulkan
 {
+
+    struct SwapchainFormat
+    {
+        TextureDesc::ImageFormat format;
+        VkSurfaceFormatKHR surface;
+    };
+
     class VulkanDevice;
     class VulkanSwapchain : public RHISwapchain
     {
@@ -29,6 +36,7 @@ namespace nitro::rhi::vulkan
         VulkanTexture *depthTexture = nullptr;
         VkSurfaceFormatKHR format;
         VkExtent2D extent;
+        TextureDesc::ImageFormat imageFormat;
 
     private:
         VulkanDevice *m_device;

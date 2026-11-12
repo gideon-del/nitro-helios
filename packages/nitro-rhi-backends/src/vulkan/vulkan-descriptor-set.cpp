@@ -124,6 +124,7 @@ namespace nitro::rhi::vulkan
     void VulkanDescriptorSet::writeTextureMip(const TextureBinding &textureBinding, uint32_t binding, ImageLayout imageLayout, TextureSubresource subresource)
     {
         VulkanTexture *vulkanTexture = reinterpret_cast<VulkanTexture *>(textureBinding.texture);
+        auto resolvedRange = subresource.resolve(vulkanTexture->mipmapLevels, vulkanTexture->totalLayers);
         PendingDescriptorWrite pendingWrite{DescriptorResourceType::Texture};
 
         VkDescriptorImageInfo imageInfo{};
@@ -132,7 +133,7 @@ namespace nitro::rhi::vulkan
         imageInfo.sampler = m_device->get(textureBinding.sampler).sampler;
 
         pendingWrite.imageInfo.imageLayout = toVkImageLayout(imageLayout);
-        pendingWrite.imageInfo.imageView = vulkanTexture->getFace(subresource.baseLayer, subresource.baseMip);
+        pendingWrite.imageInfo.imageView = vulkanTexture->getFace(resolvedRange.baseLayer, resolvedRange.baseMip);
         pendingWrite.imageInfo.sampler = m_device->get(textureBinding.sampler).sampler;
 
         m_imageInfos.push_back(std::move(imageInfo));
@@ -208,7 +209,7 @@ namespace nitro::rhi::vulkan
 
     void VulkanDescriptorSet::writeBindlessTextures(const std::vector<RHITexture *> &textures, uint32_t binding)
     {
-        std::cout << "Bindless Texture Size " << textures.size() << " Frame " << m_device->getCurrentFrameIndex() << std::endl;
+
         if (textures.empty())
             return;
         PendingDescriptorWrite pendingWrite{DescriptorResourceType::Bindless};

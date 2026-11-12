@@ -45,7 +45,6 @@ namespace nitro::rhi::metal
         if (m_computeEncoder)
         {
             m_computeEncoder->endEncoding();
-            m_computeEncoder->release();
             m_computeEncoder = nullptr;
         }
         encoder = commandBuffer->renderCommandEncoder(metalRenderPass->renderPassDescriptor);
@@ -57,13 +56,13 @@ namespace nitro::rhi::metal
         if (m_computeEncoder)
         {
             m_computeEncoder->endEncoding();
-            m_computeEncoder->release();
+
             m_computeEncoder = nullptr;
         }
         if (encoder)
         {
             encoder->endEncoding();
-            encoder->release();
+
             encoder = nullptr;
         }
     }
@@ -317,7 +316,7 @@ namespace nitro::rhi::metal
     {
         m_FrameStats.vertices += count;
     }
-    void MetalCommandBuffer::bufferBarrier(const BufferBarrier &barrier) {}
+
     void MetalCommandBuffer::generateMipmaps(RHITexture *texture)
     {
         auto *metalTexture = static_cast<MetalTexture *>(texture);
@@ -332,7 +331,7 @@ namespace nitro::rhi::metal
         blitCommandEncoder->generateMipmaps(metalTexture->texture);
         blitCommandEncoder->endEncoding();
     }
-    void MetalCommandBuffer::textureBarrier(const TextureBarrier &barrier) {};
+
     void MetalCommandBuffer::endEncoders()
     {
         if (m_computeEncoder)
@@ -424,6 +423,37 @@ namespace nitro::rhi::metal
 
     void MetalCommandBuffer::emitBarriers(std::span<const ResolvedTextureBarrier> textures, std::span<const ResolvedBufferBarrier> buffers)
     {
-        // TODO
+        // TODO(card 5): heap/untracked resources need MTLFence + memoryBarrier
+    }
+
+    void MetalCommandBuffer::emitCopyBufferToTexture(RHIBuffer &src, RHITexture &dst, std::span<const BufferTextureCopy> regions)
+    {
+        endEncoders();
+        MetalBuffer &mtlBuffer = static_cast<MetalBuffer &>(src);
+        MetalTexture &mtlTexture = static_cast<MetalTexture &>(dst);
+        MTL::BlitCommandEncoder *blitEncoder = commandBuffer->blitCommandEncoder();
+
+        for (auto &r : regions)
+        {
+
+            const uint32_t bpt = getImageFormatSize(dst.format());
+            const uint32_t rowLen = r.bufferRowLength ? r.bufferRowLength : r.imageExtent.width;
+            const uint32_t rows = r.bufferImageHeight ? r.bufferImageHeight : r.imageExtent.height;
+
+            const uint64_t bytesPerRow = uint64_t(rowLen) * bpt;
+            const uint64_t bytesPerImage = bytesPerRow * rows;
+
+            auto resolved = r.range.resolve(mtlTexture.mipLevels, mtlTexture.totalLayers);
+
+            for (uint32_t i = 0; i < resolved.layerCount; ++i)
+            {
+                blitEncoder->copyFromBuffer(mtlBuffer.buffer, r.bufferOffset + i * bytesPerImage,
+                                            bytesPerRow, bytesPerImage,
+                                            MTL::Size(r.imageExtent.width, r.imageExtent.height, r.imageExtent.depth), mtlTexture.texture,
+                                            resolved.baseLayer + i, resolved.baseMip,
+                                            MTL::Origin(r.imageOffset.x, r.imageOffset.y, r.imageOffset.z));
+            }
+        }
+        blitEncoder->endEncoding();
     }
 } // namespace nitro::rhi::metal

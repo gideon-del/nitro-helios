@@ -25,8 +25,7 @@ namespace nitro::tests
         void setScissor(const RHIScissor &scissor) override {}
         void setStencilReference(uint32_t reference) override {}
         void generateMipmaps(RHITexture *texture) override {}
-        void bufferBarrier(const BufferBarrier &barrier) override {}
-        void textureBarrier(const TextureBarrier &barrier) override {}
+
         void fillBuffer(RHIBuffer *buffer, size_t offset, size_t size, uint32_t value) override {}
         void draw(uint32_t vertexCount, uint32_t instanceCount = 1) override {}
 
@@ -50,5 +49,6 @@ namespace nitro::tests
 
     protected:
         void emitBarriers(std::span<const ResolvedTextureBarrier> textures, std::span<const ResolvedBufferBarrier> buffers) override {}
+        void emitCopyBufferToTexture(RHIBuffer &src, RHITexture &dst, std::span<const BufferTextureCopy> regions) override {};
     };
 } // namespace nitro::tests

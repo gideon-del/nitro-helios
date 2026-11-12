@@ -85,18 +85,6 @@ namespace nitro::rhi::vulkan
         void endImGuiFrame() override;
         void drawImGui(RHICommandBuffer *cmd) override;
         void copyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
-        void copyBufferToImage(VkBuffer &src, VkImage &image, VkDeviceSize size, VkExtent3D imageExtent);
-
-        void transitionImageLayout(
-            VkCommandBuffer &cmd,
-            VkImage image,
-            VkAccessFlags srcAccessMask,
-            VkAccessFlags dstAccessMask,
-            VkImageLayout oldLayout,
-            VkImageLayout newLayout,
-            VkPipelineStageFlags srcStage,
-            VkPipelineStageFlags dstStage,
-            VkImageAspectFlags aspectMask);
 
         VkCommandBuffer beginOneTimeCommands();
         void endOneTimeCommands(VkCommandBuffer &cmd);

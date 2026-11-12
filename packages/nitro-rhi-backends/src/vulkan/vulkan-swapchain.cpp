@@ -46,7 +46,7 @@ namespace nitro::rhi::vulkan
         return extent;
     }
 
-    VkSurfaceFormatKHR choose_surface_format(VkPhysicalDevice &physicalDevice, VkSurfaceKHR &surface)
+    SwapchainFormat choose_surface_format(VkPhysicalDevice &physicalDevice, VkSurfaceKHR &surface)
     {
         uint32_t formatCount;
 
@@ -56,23 +56,35 @@ namespace nitro::rhi::vulkan
 
         vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, formats.data());
 
-        for (const auto &format : formats)
-        {
+        constexpr TextureDesc::ImageFormat kSwapchainPreference[] = {
+            TextureDesc::ImageFormat::ColorBGRA8_SRGB,
+            TextureDesc::ImageFormat::ColorSRGB8,
+        };
 
-            if (format.format == VK_FORMAT_B8G8R8A8_SRGB && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+        for (auto &f : kSwapchainPreference)
+        {
+            for (const auto &format : formats)
             {
-                return format;
+
+                if (format.format == convertToFormat(f) && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+                {
+                    return {f, format};
+                }
             }
         }
 
-        return formats[0];
+        assert(false && "no supported swapchain format");
+
+        return {kSwapchainPreference[0], formats[0]};
     }
     VulkanSwapchain::VulkanSwapchain(VulkanDevice *device) : m_device(device)
     {
 
         VkSurfaceCapabilitiesKHR capabilities = get_surface_capabilities(m_device->physicalDevice, m_device->surface->surface);
         VkPresentModeKHR presentMode = choose_present_mode(m_device->physicalDevice, m_device->surface->surface);
-        format = choose_surface_format(m_device->physicalDevice, m_device->surface->surface);
+        auto swapchainFormat = choose_surface_format(m_device->physicalDevice, m_device->surface->surface);
+        format = swapchainFormat.surface;
+        imageFormat = swapchainFormat.format;
         extent = choose_swap_extent(capabilities, m_device->surface);
 
         VkSwapchainCreateInfoKHR swapchainInfo{};
@@ -106,7 +118,7 @@ namespace nitro::rhi::vulkan
 
         for (auto image : images)
         {
-            backBuffers.push_back(new VulkanTexture(m_device, image, extent.width, extent.height, format.format));
+            backBuffers.push_back(new VulkanTexture(m_device, image, extent.width, extent.height, imageFormat));
         }
 
         TextureDesc depthDesc;
@@ -208,6 +220,7 @@ namespace nitro::rhi::vulkan
         depthTexture = newSwapchain->depthTexture;
         format = newSwapchain->format;
         extent = newSwapchain->extent;
+        imageFormat = newSwapchain->imageFormat;
 
         notifyResizeCallbacks(width, height);
         newSwapchain->swapchain = VK_NULL_HANDLE;

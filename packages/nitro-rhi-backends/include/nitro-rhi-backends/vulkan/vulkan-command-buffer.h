@@ -4,6 +4,7 @@
 
 namespace nitro::rhi::vulkan
 {
+
     class VulkanDevice;
     class VulkanSwapchain;
     class VulkanPipeline;
@@ -13,7 +14,7 @@ namespace nitro::rhi::vulkan
     {
     public:
         VulkanCommandBuffer(VulkanDevice *device, VulkanSwapchain *swapchain,
-                            VkCommandBuffer cmd, uint32_t frameIdx);
+                            VkCommandBuffer cmd, uint32_t frameIdx, bool isOneTime = false);
         ~VulkanCommandBuffer() override;
 
         void setImageIndex(uint32_t imageIdx) { m_imageIdx = imageIdx; }
@@ -47,18 +48,19 @@ namespace nitro::rhi::vulkan
         void dispatchIndirect(RHIBuffer *indirectBuffer, size_t offset = 0) override;
         void submit() override;
         void generateMipmaps(RHITexture *texture) override;
-        void bufferBarrier(const BufferBarrier &barrier) override;
-        void textureBarrier(const TextureBarrier &barrier) override;
+
         void copyTextureToBuffer(RHITexture *texture, RHIBuffer *buffer) override;
         void copyTextureToTexture(RHITexture *src, RHITexture *dst) override;
+
         void fillBuffer(RHIBuffer *buffer, size_t offset, size_t size, uint32_t value) override;
         VkCommandBuffer cmd;
-        VkFence inFlight;
-        VkSemaphore imageAvailable;
+        VkFence inFlight = VK_NULL_HANDLE;
+        VkSemaphore imageAvailable = VK_NULL_HANDLE;
         VulkanSwapchain *swapchain;
 
     protected:
         void emitBarriers(std::span<const ResolvedTextureBarrier> textures, std::span<const ResolvedBufferBarrier> buffers) override;
+        void emitCopyBufferToTexture(RHIBuffer &src, RHITexture &dst, std::span<const BufferTextureCopy> regions) override;
 
     private:
         VulkanDevice *m_device;

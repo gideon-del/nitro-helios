@@ -101,13 +101,12 @@ namespace nitro::renderer
         }
         rhi::RHICommandBuffer *cmd = device->createCommandBuffer();
         rhi::TextureSubresource initialSubResource;
-        initialSubResource.layerCount = 6;
-        rhi::TextureBarrier textureBarrier{.texture = cubemapTexture,
-                                           .before = rhi::ResourceState::Undefined,
-                                           .after = rhi::ResourceState::ShaderWrite,
-                                           .subresource = initialSubResource};
 
-        cmd->textureBarrier(textureBarrier);
+        rhi::TextureBarrier textureBarrier{.texture = cubemapTexture,
+                                           .to = rhi::ResourceState::ShaderWrite,
+                                           .range = initialSubResource};
+
+        cmd->barrier({{textureBarrier}});
 
         for (int face = 0; face < 6; face++)
         {
@@ -192,13 +191,13 @@ namespace nitro::renderer
         }
         rhi::RHICommandBuffer *cmd = device->createCommandBuffer();
         rhi::TextureSubresource initialSubresource{};
-        initialSubresource.layerCount = 6;
-        rhi::TextureBarrier textureBarrier{.texture = cubemapTexture,
-                                           .before = rhi::ResourceState::Undefined,
-                                           .after = rhi::ResourceState::ShaderWrite,
-                                           .subresource = initialSubresource};
 
-        cmd->textureBarrier(textureBarrier);
+        rhi::TextureBarrier textureBarrier{.texture = cubemapTexture,
+
+                                           .to = rhi::ResourceState::ShaderWrite,
+                                           .range = initialSubresource};
+
+        cmd->barrier({{textureBarrier}});
         for (int face = 0; face < 6; face++)
         {
 
@@ -215,11 +214,11 @@ namespace nitro::renderer
         }
 
         rhi::TextureBarrier finalTextureBarrier{.texture = cubemapTexture,
-                                                .before = rhi::ResourceState::ShaderWrite,
-                                                .after = rhi::ResourceState::ShaderRead,
-                                                .subresource = initialSubresource};
 
-        cmd->textureBarrier(finalTextureBarrier);
+                                                .to = rhi::ResourceState::ShaderRead,
+                                                .range = initialSubresource};
+
+        cmd->barrier({{finalTextureBarrier}});
         device->endCommandBuffer(cmd);
         device->destroyComputePipeline(computePipeline);
 
@@ -239,7 +238,7 @@ namespace nitro::renderer
         cubemapTextureDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA16;
         cubemapTextureDesc.type = rhi::TextureDesc::Type::Cube;
         cubemapTextureDesc.usage = rhi::TextureDesc::Usage::Storage | rhi::TextureDesc::Usage::ShaderRead;
-        cubemapTextureDesc.mipmaps = 4;
+        cubemapTextureDesc.mipmaps = 5;
 
         rhi::RHITexture *cubemapTexture = device->createTexture(cubemapTextureDesc);
 
@@ -269,7 +268,7 @@ namespace nitro::renderer
 
         rhi::RHIComputePipeline *computePipeline = device->createComputePipeline(computePipelineDesc);
         std::vector<rhi::RHIDescriptorSet *> descriptorSets;
-        for (int mip = 0; mip <= 4; mip++)
+        for (int mip = 0; mip < 5; mip++)
         {
             for (int i = 0; i < 6; i++)
             {
@@ -289,16 +288,15 @@ namespace nitro::renderer
         }
         rhi::RHICommandBuffer *cmd = device->createCommandBuffer();
         rhi::TextureSubresource initialSubresource{};
-        initialSubresource.layerCount = 6;
-        initialSubresource.mipCount = 5;
+
         rhi::TextureBarrier textureBarrier{.texture = cubemapTexture,
-                                           .before = rhi::ResourceState::Undefined,
-                                           .after = rhi::ResourceState::ShaderWrite,
-                                           .subresource = initialSubresource};
 
-        cmd->textureBarrier(textureBarrier);
+                                           .to = rhi::ResourceState::ShaderWrite,
+                                           .range = initialSubresource};
 
-        for (int mip = 0; mip <= 4; mip++)
+        cmd->barrier({{textureBarrier}});
+
+        for (int mip = 0; mip < 5; mip++)
         {
             for (int face = 0; face < 6; face++)
             {
@@ -320,11 +318,11 @@ namespace nitro::renderer
         }
 
         rhi::TextureBarrier finalTextureBarrier{.texture = cubemapTexture,
-                                                .before = rhi::ResourceState::ShaderWrite,
-                                                .after = rhi::ResourceState::ShaderRead,
-                                                .subresource = initialSubresource};
 
-        cmd->textureBarrier(finalTextureBarrier);
+                                                .to = rhi::ResourceState::ShaderRead,
+                                                .range = initialSubresource};
+
+        cmd->barrier({{finalTextureBarrier}});
         device->endCommandBuffer(cmd);
         device->destroyComputePipeline(computePipeline);
 
@@ -380,10 +378,10 @@ namespace nitro::renderer
         rhi::TextureSubresource initialSubresource{};
 
         rhi::TextureBarrier textureBarrier{.texture = brdfLutTexture,
-                                           .before = rhi::ResourceState::Undefined,
-                                           .after = rhi::ResourceState::ShaderWrite,
-                                           .subresource = initialSubresource};
-        cmd->textureBarrier(textureBarrier);
+
+                                           .to = rhi::ResourceState::ShaderWrite,
+                                           .range = initialSubresource};
+        cmd->barrier({{textureBarrier}});
         cmd->bindComputePipeline(computePipeline);
         cmd->bindComputeDescriptorSet(descriptorSet, 0);
         BRDFPushConstant pc;
@@ -393,11 +391,11 @@ namespace nitro::renderer
         cmd->dispatch(groups, groups, 1);
 
         rhi::TextureBarrier finalTextureBarrier{.texture = brdfLutTexture,
-                                                .before = rhi::ResourceState::ShaderWrite,
-                                                .after = rhi::ResourceState::ShaderRead,
-                                                .subresource = initialSubresource};
 
-        cmd->textureBarrier(finalTextureBarrier);
+                                                .to = rhi::ResourceState::ShaderRead,
+                                                .range = initialSubresource};
+
+        cmd->barrier({{finalTextureBarrier}});
         device->endCommandBuffer(cmd);
         device->destroyComputePipeline(computePipeline);
         device->destroyDescriptorSet(descriptorSet);

@@ -119,10 +119,9 @@ namespace nitro::renderer
 
         rhi::BufferBarrier bufferBarrier;
         bufferBarrier.buffer = rgResources.hiZDrawCount;
-        bufferBarrier.before = rhi::ResourceState::CopyDst;
-        bufferBarrier.after = rhi::ResourceState::ShaderWrite;
+        bufferBarrier.to = rhi::ResourceState::ShaderWrite;
 
-        cmd->bufferBarrier(bufferBarrier);
+        cmd->barrier({}, {{bufferBarrier}});
 
         auto instanceCount = scene.meshCount();
         uint32_t groupSizeX = (instanceCount + 63) / 64;

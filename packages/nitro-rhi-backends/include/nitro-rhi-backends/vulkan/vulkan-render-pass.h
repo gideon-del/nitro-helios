@@ -33,8 +33,7 @@ namespace nitro::rhi::vulkan
         std::vector<VulkanTexture *> colorTextures;
         uint32_t width;
         uint32_t height;
-        void startTransition(VkCommandBuffer cmd);
-        void endTransition(VkCommandBuffer cmd);
+        ResourceState depthState = ResourceState::DepthWrite;
 
     private:
         VulkanDevice *m_device;

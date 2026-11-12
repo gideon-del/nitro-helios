@@ -31,7 +31,7 @@ namespace nitro::rhi::metal
         void setViewPort(const RHIViewport &viewport) override;
         void setScissor(const RHIScissor &scissor) override;
         void setStencilReference(uint32_t reference) override;
-        void bufferBarrier(const BufferBarrier &barrier) override;
+
         void draw(uint32_t vertexCount, uint32_t instanceCount = 1) override;
         void drawIndirect(RHIBuffer *indirectBuffer, size_t offset = 0) override;
         void drawIndexed(uint32_t indexCount, uint32_t instanceCount = 1) override;
@@ -43,7 +43,7 @@ namespace nitro::rhi::metal
         void resetFrameStats() override;
         void updateVertexCount(uint32_t count) override;
         void generateMipmaps(RHITexture *texture) override;
-        void textureBarrier(const TextureBarrier &barrier) override;
+
         void copyTextureToBuffer(RHITexture *texture, RHIBuffer *buffer) override;
         void copyTextureToTexture(RHITexture *src, RHITexture *dst) override;
         void fillBuffer(RHIBuffer *buffer, size_t offset, size_t size, uint32_t value) override;
@@ -58,6 +58,7 @@ namespace nitro::rhi::metal
 
     protected:
         void emitBarriers(std::span<const ResolvedTextureBarrier> textures, std::span<const ResolvedBufferBarrier> buffers) override;
+        void emitCopyBufferToTexture(RHIBuffer &src, RHITexture &dst, std::span<const BufferTextureCopy> regions) override;
 
     private:
         MetalDevice *m_device;

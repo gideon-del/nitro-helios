@@ -115,9 +115,8 @@ namespace nitro::renderer
 
         rhi::BufferBarrier barrier;
         barrier.buffer = drawCountBuffer;
-        barrier.before = rhi::ResourceState::CopyDst;
-        barrier.after = rhi::ResourceState::ShaderWrite;
-        cmd->bufferBarrier(barrier);
+        barrier.to = rhi::ResourceState::ShaderWrite;
+        cmd->barrier({}, {{barrier}});
 
         auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
         if (isSceneBufferStale(scene, resource, drawCommandBuffer, drawCountBuffer, hizTexture))

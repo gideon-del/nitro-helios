@@ -116,15 +116,17 @@ namespace nitro::renderer
 
         rhi::RHICommandBuffer *cmd = m_device->createCommandBuffer();
 
+        std::vector<TextureBarrier> barriers;
         for (auto &exposureMip : m_autoExposureMips)
         {
             rhi::TextureBarrier textureBarrier;
-            textureBarrier.before = rhi::ResourceState::Undefined;
-            textureBarrier.after = rhi::ResourceState::ShaderRead;
+            textureBarrier.to = rhi::ResourceState::ShaderRead;
             textureBarrier.texture = exposureMip.mip;
 
-            cmd->textureBarrier(textureBarrier);
+            barriers.push_back(textureBarrier);
         }
+
+        cmd->barrier(barriers);
 
         m_device->endCommandBuffer(cmd);
     };
@@ -170,11 +172,10 @@ namespace nitro::renderer
         pc.outputTextureSize = glm::vec2(float(m_autoExposureMips[0].width), float(m_autoExposureMips[0].height));
 
         rhi::TextureBarrier initialBarrier;
-        initialBarrier.before = rhi::ResourceState::ShaderRead;
-        initialBarrier.after = rhi::ResourceState::ShaderWrite;
+        initialBarrier.to = rhi::ResourceState::ShaderWrite;
         initialBarrier.texture = m_autoExposureMips[0].mip;
 
-        cmd->textureBarrier(initialBarrier);
+        cmd->barrier({{initialBarrier}});
 
         if (m_lastInputTexture != inputTexture)
         {
@@ -197,11 +198,11 @@ namespace nitro::renderer
         cmd->setPushConstant(&pc, sizeof(AutoExposurePushConstant), 1, true);
         cmd->dispatch(groupSizeX, groupSizeY, 1);
         rhi::TextureBarrier finalBarrier;
-        finalBarrier.before = rhi::ResourceState::ShaderWrite;
-        finalBarrier.after = rhi::ResourceState::ShaderRead;
+
+        finalBarrier.to = rhi::ResourceState::ShaderRead;
         finalBarrier.texture = m_autoExposureMips[0].mip;
 
-        cmd->textureBarrier(finalBarrier);
+        cmd->barrier({{finalBarrier}});
 
         for (int i = 1; i < m_autoExposureMips.size(); i++)
         {
@@ -210,7 +211,7 @@ namespace nitro::renderer
 
             initialBarrier.texture = m_autoExposureMips[i].mip;
 
-            cmd->textureBarrier(initialBarrier);
+            cmd->barrier({{initialBarrier}});
 
             uint32_t groupSizeX = (m_autoExposureMips[i].width + 15) / 16;
             uint32_t groupSizeY = (m_autoExposureMips[i].height + 15) / 16;
@@ -224,15 +225,14 @@ namespace nitro::renderer
                 break;
             finalBarrier.texture = m_autoExposureMips[i].mip;
 
-            cmd->textureBarrier(finalBarrier);
+            cmd->barrier({{finalBarrier}});
         };
         auto &finalMip = m_autoExposureMips.back();
 
         rhi::TextureBarrier transferBarrier;
         transferBarrier.texture = finalMip.mip;
-        transferBarrier.before = rhi::ResourceState::ShaderWrite;
-        transferBarrier.after = rhi::ResourceState::CopySrc;
-        cmd->textureBarrier(transferBarrier);
+        transferBarrier.to = rhi::ResourceState::CopySrc;
+        cmd->barrier({{transferBarrier}});
 
         cmd->copyTextureToBuffer(finalMip.mip, readbackBuffer.buffer);
         float *bufferData = static_cast<float *>(readbackBuffer.buffer->map());
@@ -248,10 +248,10 @@ namespace nitro::renderer
         float speed = (targetExposure < toneMapSettings.exposure) ? brighteningSpeed : darkeningSpeed;
 
         float t = 1.0f - glm::exp(-speed * deltaTime);
-        finalBarrier.before = rhi::ResourceState::CopySrc;
+
         finalBarrier.texture = finalMip.mip;
 
-        cmd->textureBarrier(finalBarrier);
+        cmd->barrier({{finalBarrier}});
 
         return glm::mix(toneMapSettings.exposure, targetExposure, t);
     }

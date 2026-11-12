@@ -743,9 +743,8 @@ namespace nitro::renderer
 
                 rhi::BufferBarrier barrier;
                 barrier.buffer = resources.getBuffer(aliveCountBuffer);
-                barrier.before = rhi::ResourceState::CopyDst;
-                barrier.after = rhi::ResourceState::ShaderWrite;
-                cmd->bufferBarrier(barrier);
+                barrier.to = rhi::ResourceState::ShaderWrite;
+                cmd->barrier({}, {{barrier}});
 
                 ParticleCompactPushConstant pc;
                 pc.particleCount = ParticleUpdatePass::s_MAX_PARTICLE_COUNT;

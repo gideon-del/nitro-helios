@@ -17,7 +17,7 @@ namespace nitro::rhi::vulkan
 
     public:
         VulkanTexture(VulkanDevice *device, const TextureDesc &desc);
-        VulkanTexture(VulkanDevice *device, VkImage image, uint32_t width, uint32_t height, VkFormat format);
+        VulkanTexture(VulkanDevice *device, VkImage image, uint32_t width, uint32_t height, TextureDesc::ImageFormat format);
         VulkanTexture(VulkanDevice *device, VkImage image, const TextureDesc &desc);
 
         ~VulkanTexture() override;
@@ -30,7 +30,6 @@ namespace nitro::rhi::vulkan
         VkImageView imageView = VK_NULL_HANDLE;
         VmaAllocation allocation = VK_NULL_HANDLE;
         VkSampler sampler = VK_NULL_HANDLE;
-        VkImageLayout currentLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         VkImageAspectFlags imageAspect;
         VkFormat format;
         uint32_t width;

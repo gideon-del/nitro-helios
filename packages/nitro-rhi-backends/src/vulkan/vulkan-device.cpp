@@ -660,87 +660,6 @@ namespace nitro::rhi::vulkan
         destroy(handle);
     }
 
-    void VulkanDevice::transitionImageLayout(
-        VkCommandBuffer &cmd,
-        VkImage image,
-        VkAccessFlags srcAccessMask,
-        VkAccessFlags dstAccessMask,
-        VkImageLayout oldLayout,
-        VkImageLayout newLayout,
-        VkPipelineStageFlags srcStage,
-        VkPipelineStageFlags dstStage,
-        VkImageAspectFlags aspectMask)
-    {
-        VkImageMemoryBarrier imageBarrier{};
-        imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-        imageBarrier.dstAccessMask = dstAccessMask;
-        imageBarrier.image = image;
-        imageBarrier.newLayout = newLayout;
-        imageBarrier.oldLayout = oldLayout;
-        imageBarrier.srcAccessMask = srcAccessMask;
-        imageBarrier.subresourceRange.aspectMask = aspectMask;
-        imageBarrier.subresourceRange.baseArrayLayer = 0;
-        imageBarrier.subresourceRange.baseMipLevel = 0;
-        imageBarrier.subresourceRange.layerCount = 1;
-        imageBarrier.subresourceRange.levelCount = 1;
-
-        vkCmdPipelineBarrier(
-            cmd,
-            srcStage,
-            dstStage,
-            0,
-            0,
-            nullptr,
-            0,
-            nullptr,
-            1,
-            &imageBarrier);
-    }
-    void VulkanDevice::copyBufferToImage(VkBuffer &src,
-                                         VkImage &image,
-                                         VkDeviceSize size,
-                                         VkExtent3D imageExtent)
-    {
-
-        VkCommandBuffer commandBuffer = beginOneTimeCommands();
-
-        transitionImageLayout(commandBuffer,
-                              image,
-                              0,
-                              VK_ACCESS_TRANSFER_WRITE_BIT,
-                              VK_IMAGE_LAYOUT_UNDEFINED,
-                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                              VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-                              VK_PIPELINE_STAGE_TRANSFER_BIT,
-                              VK_IMAGE_ASPECT_COLOR_BIT);
-        VkBufferImageCopy bufferImageCopy{};
-        bufferImageCopy.bufferImageHeight = 0;
-        bufferImageCopy.bufferRowLength = 0;
-        bufferImageCopy.imageExtent = imageExtent;
-        bufferImageCopy.bufferOffset = 0;
-        bufferImageCopy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        bufferImageCopy.imageSubresource.baseArrayLayer = 0;
-        bufferImageCopy.imageSubresource.layerCount = 1;
-        bufferImageCopy.imageSubresource.mipLevel = 0;
-        vkCmdCopyBufferToImage(
-            commandBuffer,
-            src,
-            image,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            1,
-            &bufferImageCopy);
-
-        transitionImageLayout(commandBuffer,
-                              image,
-                              VK_ACCESS_TRANSFER_WRITE_BIT,
-                              VK_ACCESS_SHADER_READ_BIT,
-                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                              VK_PIPELINE_STAGE_TRANSFER_BIT,
-                              VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                              VK_IMAGE_ASPECT_COLOR_BIT);
-        endOneTimeCommands(commandBuffer);
-    }
     RHIDescriptorLayout *VulkanDevice::createDescriptorLayout(const std::vector<RHIDescriptorBinding> bindings)
     {
         return new VulkanDescriptorLayout(this, bindings);
@@ -842,7 +761,7 @@ namespace nitro::rhi::vulkan
 
         vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
-        VulkanCommandBuffer *vulkanCommandBuffer = new VulkanCommandBuffer(this, m_swapchain, commandBuffer, 0);
+        VulkanCommandBuffer *vulkanCommandBuffer = new VulkanCommandBuffer(this, m_swapchain, commandBuffer, 0, true);
 
         return vulkanCommandBuffer;
     }
@@ -900,7 +819,7 @@ namespace nitro::rhi::vulkan
 
         vkEndCommandBuffer(vulkanCmd->cmd);
 
-        VkFenceCreateInfo fi{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO}; // NOT signalled
+        VkFenceCreateInfo fi{VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
         VkFence fence;
         checkVkResult(vkCreateFence(device, &fi, nullptr, &fence), "one-time fence");
 
@@ -914,7 +833,8 @@ namespace nitro::rhi::vulkan
             std::cerr << "one-time command buffer wait: " << r << "\n";
 
         vkDestroyFence(device, fence, nullptr);
-        vkFreeCommandBuffers(device, commandPool, 1, &vulkanCmd->cmd);
+
+        delete cmd;
     }
     RHISamplerHandle VulkanDevice::create(const RHISamplerDesc &desc)
     {

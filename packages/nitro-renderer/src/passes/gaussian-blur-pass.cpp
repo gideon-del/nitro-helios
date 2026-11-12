@@ -83,22 +83,23 @@ namespace nitro::renderer
         }
         rhi::RHICommandBuffer *cmd = m_device->createCommandBuffer();
 
+        std::vector<rhi::TextureBarrier> textureBarriers;
         for (uint32_t i = 0; i < GaussianBlurPass::GAUSSIAN_MIP_COUNT; i++)
         {
             rhi::TextureBarrier textureBarrier;
             textureBarrier.texture = m_downSampleBlurMips[i].horizontalScratch;
-            textureBarrier.before = rhi::ResourceState::Undefined;
-            textureBarrier.after = rhi::ResourceState::ShaderRead;
-            cmd->textureBarrier(textureBarrier);
+            textureBarrier.to = rhi::ResourceState::ShaderRead;
+            textureBarriers.push_back(textureBarrier);
 
             textureBarrier.texture = m_downSampleBlurMips[i].texture;
-            cmd->textureBarrier(textureBarrier);
+            textureBarriers.push_back(textureBarrier);
             textureBarrier.texture = m_upSampleBlurMips[i].horizontalScratch;
-            cmd->textureBarrier(textureBarrier);
+            textureBarriers.push_back(textureBarrier);
             textureBarrier.texture = m_upSampleBlurMips[i].texture;
-            cmd->textureBarrier(textureBarrier);
+            textureBarriers.push_back(textureBarrier);
         }
 
+        cmd->barrier(textureBarriers);
         m_device->endCommandBuffer(cmd);
 
         for (int i = 0; i < GAUSSIAN_MIP_COUNT; i++)
@@ -187,21 +188,24 @@ namespace nitro::renderer
         }
         rhi::RHICommandBuffer *cmd = m_device->createCommandBuffer();
 
+        std::vector<rhi::TextureBarrier> textureBarriers;
+
         for (uint32_t i = 0; i < GaussianBlurPass::GAUSSIAN_MIP_COUNT; i++)
         {
             rhi::TextureBarrier textureBarrier;
             textureBarrier.texture = m_downSampleBlurMips[i].horizontalScratch;
-            textureBarrier.before = rhi::ResourceState::Undefined;
-            textureBarrier.after = rhi::ResourceState::ShaderRead;
-            cmd->textureBarrier(textureBarrier);
+
+            textureBarrier.to = rhi::ResourceState::ShaderRead;
+            textureBarriers.push_back(textureBarrier);
 
             textureBarrier.texture = m_downSampleBlurMips[i].texture;
-            cmd->textureBarrier(textureBarrier);
+            textureBarriers.push_back(textureBarrier);
             textureBarrier.texture = m_upSampleBlurMips[i].horizontalScratch;
-            cmd->textureBarrier(textureBarrier);
+            textureBarriers.push_back(textureBarrier);
             textureBarrier.texture = m_upSampleBlurMips[i].texture;
-            cmd->textureBarrier(textureBarrier);
+            textureBarriers.push_back(textureBarrier);
         }
+        cmd->barrier(textureBarriers);
         m_device->endCommandBuffer(cmd);
 
         for (int i = 0; i < GAUSSIAN_MIP_COUNT; i++)
@@ -257,10 +261,10 @@ namespace nitro::renderer
 
             rhi::TextureBarrier initialBarrier;
             initialBarrier.texture = m_downSampleBlurMips[i].horizontalScratch;
-            initialBarrier.before = rhi::ResourceState::ShaderRead;
-            initialBarrier.after = rhi::ResourceState::ShaderWrite;
 
-            cmd->textureBarrier(initialBarrier);
+            initialBarrier.to = rhi::ResourceState::ShaderWrite;
+
+            cmd->barrier({{initialBarrier}});
 
             pc.horizontal = 1;
             cmd->bindComputePipeline(m_downSampleComputePipeline);
@@ -274,13 +278,13 @@ namespace nitro::renderer
 
             rhi::TextureBarrier textureBarrier{};
             textureBarrier.texture = m_downSampleBlurMips[i].horizontalScratch;
-            textureBarrier.before = rhi::ResourceState::ShaderWrite;
-            textureBarrier.after = rhi::ResourceState::ShaderRead;
 
-            cmd->textureBarrier(textureBarrier);
+            textureBarrier.to = rhi::ResourceState::ShaderRead;
+
+            cmd->barrier({{textureBarrier}});
 
             initialBarrier.texture = m_downSampleBlurMips[i].texture;
-            cmd->textureBarrier(initialBarrier);
+            cmd->barrier({{initialBarrier}});
 
             pc.horizontal = 0;
             cmd->bindComputePipeline(m_downSampleComputePipeline);
@@ -288,7 +292,7 @@ namespace nitro::renderer
             cmd->setPushConstant(&pc, sizeof(GaussianBlurPushConstant), 1, true);
             cmd->dispatch(groupX, groupY, 1);
             textureBarrier.texture = m_downSampleBlurMips[i].texture;
-            cmd->textureBarrier(textureBarrier);
+            cmd->barrier({{textureBarrier}});
         }
 
         for (int i = GAUSSIAN_MIP_COUNT - 2; i >= 0; i--)
@@ -298,10 +302,10 @@ namespace nitro::renderer
 
             rhi::TextureBarrier initialBarrier;
             initialBarrier.texture = m_upSampleBlurMips[i].texture;
-            initialBarrier.before = rhi::ResourceState::ShaderRead;
-            initialBarrier.after = rhi::ResourceState::ShaderWrite;
 
-            cmd->textureBarrier(initialBarrier);
+            initialBarrier.to = rhi::ResourceState::ShaderWrite;
+
+            cmd->barrier({{initialBarrier}});
 
             cmd->bindComputePipeline(m_upSampleComputePipeline);
             cmd->bindComputeDescriptorSet(m_upSampleBlurMips[i].verticalDescriptorSet, 0);
@@ -314,10 +318,10 @@ namespace nitro::renderer
 
             rhi::TextureBarrier textureBarrier{};
             textureBarrier.texture = m_upSampleBlurMips[i].texture;
-            textureBarrier.before = rhi::ResourceState::ShaderWrite;
-            textureBarrier.after = rhi::ResourceState::ShaderRead;
 
-            cmd->textureBarrier(textureBarrier);
+            textureBarrier.to = rhi::ResourceState::ShaderRead;
+
+            cmd->barrier({{textureBarrier}});
         }
 
         return m_upSampleBlurMips[0].texture;
