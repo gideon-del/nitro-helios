@@ -477,6 +477,8 @@ namespace nitro::rhi::vulkan
     VulkanDevice::~VulkanDevice()
     {
 
+        std::cout << "VulkanDevice destrucutor called" << std::endl;
+
         vkQueueWaitIdle(graphicsQueue);
 
         for (auto &[h, ds] : m_imguiTextureCache)

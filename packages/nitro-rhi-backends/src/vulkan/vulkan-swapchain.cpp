@@ -195,6 +195,7 @@ namespace nitro::rhi::vulkan
     }
     VulkanSwapchain::~VulkanSwapchain()
     {
+
         cleanup();
     }
 

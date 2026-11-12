@@ -143,7 +143,8 @@ namespace nitro::rhi::vulkan
     }
 
     VulkanTexture::VulkanTexture(VulkanDevice *device, const TextureDesc &desc) : m_device(device),
-                                                                                  m_isAliased(desc.isAliased)
+                                                                                  m_isAliased(desc.isAliased),
+                                                                                  m_ownerShip(ImageOwnership::Vma)
     {
 
         VkImageCreateInfo imageInfo = makeVkImageInfo(desc);
@@ -161,7 +162,7 @@ namespace nitro::rhi::vulkan
                       "Unable to create Image");
         createImageViews(desc);
     }
-    VulkanTexture::VulkanTexture(VulkanDevice *device, VkImage existingImage, uint32_t width, uint32_t height, TextureDesc::ImageFormat surfaceFormat) : m_device(device), width(width), height(height), image(existingImage), format(convertToFormat(surfaceFormat))
+    VulkanTexture::VulkanTexture(VulkanDevice *device, VkImage existingImage, uint32_t width, uint32_t height, TextureDesc::ImageFormat surfaceFormat) : m_device(device), width(width), height(height), image(existingImage), format(convertToFormat(surfaceFormat)), m_ownerShip(ImageOwnership::External)
     {
         VkImageViewCreateInfo imageViewInfo{};
         imageViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -187,13 +188,18 @@ namespace nitro::rhi::vulkan
             .depth = 1};
 
         m_format = surfaceFormat;
+        imageAspect = VK_IMAGE_ASPECT_COLOR_BIT;
+        mipmapLevels = 1;
+        totalLayers = 1;
+        m_resourceState = TextureState(1, 1);
     }
 
     VulkanTexture::VulkanTexture(VulkanDevice *device,
                                  VkImage image,
                                  const TextureDesc &desc)
         : m_device(device),
-          image(image)
+          image(image),
+          m_ownerShip(ImageOwnership::Owned)
     {
         createImageViews(desc);
     }
@@ -330,13 +336,22 @@ namespace nitro::rhi::vulkan
         {
             vkDestroySampler(m_device->device, sampler, nullptr);
         }
-        if (m_isAliased && image != VK_NULL_HANDLE)
+
+        switch (m_ownerShip)
         {
-            vkDestroyImage(m_device->device, image, nullptr);
-        }
-        else if (image != VK_NULL_HANDLE && allocation != VK_NULL_HANDLE)
-        {
-            vmaDestroyImage(m_device->allocator, image, allocation);
+        case ImageOwnership::Vma:
+            if (image != VK_NULL_HANDLE && allocation != VK_NULL_HANDLE)
+            {
+                vmaDestroyImage(m_device->allocator, image, allocation);
+            }
+            break;
+        case ImageOwnership::Owned:
+            if (image != VK_NULL_HANDLE)
+            {
+                vkDestroyImage(m_device->device, image, nullptr);
+            }
+        default:
+            break;
         }
     }
 } // namespace nitro::rhi::vulkan

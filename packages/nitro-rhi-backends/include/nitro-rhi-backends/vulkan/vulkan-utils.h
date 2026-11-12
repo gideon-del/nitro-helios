@@ -5,6 +5,7 @@
 #include <string>
 #include <cassert>
 #include "nitro-rhi/rhi-utils.h"
+#include "nitro-rhi/rhi-texture.h"
 #include "nitro-core/types/size.h"
 
 namespace nitro::rhi::vulkan
@@ -194,5 +195,30 @@ namespace nitro::rhi::vulkan
         vkOffset.z = offset.z;
 
         return vkOffset;
+    }
+
+    VkImageAspectFlags inline aspectFromFormat(TextureDesc::ImageFormat f)
+    {
+        switch (f)
+        {
+        case TextureDesc::ImageFormat::Depth32Float:
+            return VK_IMAGE_ASPECT_DEPTH_BIT;
+        case TextureDesc::ImageFormat::Depth32FloatStencil8:
+            return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+        default:
+            return VK_IMAGE_ASPECT_COLOR_BIT;
+        }
+    }
+
+    inline void setDebugName(VkDevice d, VkObjectType type, uint64_t handle, const char *name)
+    {
+#ifndef NDEBUG
+        VkDebugUtilsObjectNameInfoEXT info{};
+        info.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+        info.objectType = type;
+        info.objectHandle = handle;
+        info.pObjectName = name;
+        vkSetDebugUtilsObjectNameEXT(d, &info);
+#endif
     }
 } // namespace nitro::rhi::vulkan

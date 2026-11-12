@@ -6,6 +6,12 @@
 
 namespace nitro::rhi::vulkan
 {
+    enum class ImageOwnership
+    {
+        Vma,
+        Owned,
+        External
+    };
     class VulkanDevice;
     VkFormat convertToFormat(TextureDesc::ImageFormat format);
     VkImageType convertVkImageType(rhi::TextureDesc::Type type);
@@ -40,6 +46,7 @@ namespace nitro::rhi::vulkan
     private:
         VulkanDevice *m_device;
         std::vector<VkImageView> m_faceMipViews;
+        ImageOwnership m_ownerShip = ImageOwnership::Vma;
         bool m_isCubeMap;
         bool m_isAliased = false;
         void createImageViews(const TextureDesc &desc);
