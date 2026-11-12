@@ -570,9 +570,20 @@ namespace nitro::renderer
         if (!m_buffers.count(id))
             return false;
 
-        return m_buffers[id].usage == rhi::BufferDesc::Usage::TransferDst || m_buffers[id].usage == rhi::BufferDesc::Usage::Uniform || m_buffers[id].usage == rhi::BufferDesc::Usage::Storage
+        rhi::BufferDesc::Usage kSharedBufferrUsage[] = {
+            rhi::BufferDesc::Usage::TransferDst,
+            rhi::BufferDesc::Usage::Uniform,
+            rhi::BufferDesc::Usage::Storage,
+            rhi::BufferDesc::Usage::Indirect};
+        for (auto &usage : kSharedBufferrUsage)
+        {
+            if (hasBufferUsageFlag(m_buffers[id].usage, usage))
+            {
+                return true;
+            }
+        }
 
-               || m_buffers[id].usage == rhi::BufferDesc::Usage::Indirect;
+        return false;
     }
     const RGResources RenderGraph::buildResources()
     {
