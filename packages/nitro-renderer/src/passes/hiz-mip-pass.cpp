@@ -97,7 +97,7 @@ namespace nitro::renderer
     {
         auto &resource = m_resources.current(m_device->getCurrentFrameIndex());
 
-        for (int i = 0; i < HIZ_MIP_COUNT; i++)
+        for (int i = 0; i < HIZ_MIP_COUNT - 1; i++)
         {
 
             uint32_t mipWidth = std::max(1u, width >> (i));
