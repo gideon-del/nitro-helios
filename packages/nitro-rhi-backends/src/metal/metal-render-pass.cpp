@@ -28,9 +28,11 @@ namespace nitro::rhi::metal
             return MTL::StoreActionDontCare;
         case RenderPassDesc::StoreOp::Store:
             return MTL::StoreActionStore;
-        default:
-            return MTL::StoreActionDontCare;
+        case RenderPassDesc::StoreOp::None:
+            return MTL::StoreActionStore;
         }
+
+        return MTL::StoreActionDontCare;
     }
     MetalRenderPass::MetalRenderPass(MetalDevice *device, const RenderPassDesc &desc) : m_device(device), width(desc.width), height(desc.height),
                                                                                         depthBiasClamp(desc.depthBiasClamp),

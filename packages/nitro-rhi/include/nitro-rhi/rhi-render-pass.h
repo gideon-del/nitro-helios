@@ -16,6 +16,7 @@ namespace nitro::rhi
         {
             DontCare,
             Store,
+            None
         };
         struct Attachment
         {

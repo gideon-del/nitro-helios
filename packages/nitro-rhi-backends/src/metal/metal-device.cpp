@@ -129,7 +129,7 @@ namespace nitro::rhi::metal
     {
         return resolve(create(desc));
     }
-    RHIDescriptorLayout *MetalDevice::createDescriptorLayout(const std::vector<RHIDescriptorBinding> bindings)
+    RHIDescriptorLayout *MetalDevice::createDescriptorLayout(const std::vector<RHIDescriptorBinding> bindings, std::source_location loc)
     {
         return new MetalDescriptorLayout(this, bindings);
     }
@@ -137,7 +137,7 @@ namespace nitro::rhi::metal
     {
         delete layout;
     };
-    RHIDescriptorSet *MetalDevice::createDescriptorSet(RHIDescriptorLayout *layout)
+    RHIDescriptorSet *MetalDevice::createDescriptorSet(RHIDescriptorLayout *layout, std::source_location loc)
     {
         MetalDescriptorLayout *metalLayout = reinterpret_cast<MetalDescriptorLayout *>(layout);
         return new MetalDescriptorSet(this, metalLayout);
@@ -172,7 +172,12 @@ namespace nitro::rhi::metal
     {
         return new MetalTimer(this);
     }
-
+    void MetalDevice::destroyTimer(RHITimer *timer)
+    {
+        if (!timer)
+            return;
+        delete timer;
+    }
     void MetalDevice::destroy(const RHIBufferHandle &handle)
     {
         auto buffer = m_bufferPool.get(handle);

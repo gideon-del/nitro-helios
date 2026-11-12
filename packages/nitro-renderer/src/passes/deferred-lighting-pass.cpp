@@ -134,8 +134,6 @@ namespace nitro::renderer
             resource.gBufferDescriptorSet->writeTexture(textureBinding, 10, ImageLayout::ShaderReadOnly);
             resource.gBufferDescriptorSet->commit();
 
-            resource.shadowDescriptorSet = m_device->createDescriptorSet(m_shadowDescriptorLayout);
-
             for (uint32_t i = 0; i < textures.cascades.size(); i++)
             {
                 rhi::TextureBinding shadowTextureBinding;
@@ -167,8 +165,14 @@ namespace nitro::renderer
         for (auto &resource : m_resources)
         {
             m_device->destroyBuffer(resource.uniformBuffer);
+            m_device->destroyDescriptorSet(resource.gBufferDescriptorSet);
+            m_device->destroyDescriptorSet(resource.mainDescriptorSet);
+            m_device->destroyDescriptorSet(resource.shadowDescriptorSet);
         }
 
+        m_device->destroyDescriptorLayout(m_gBufferDescriptorLayout);
+        m_device->destroyDescriptorLayout(m_uniformBufferDescriptorLayout);
+        m_device->destroyDescriptorLayout(m_shadowDescriptorLayout);
         m_device->destroyPipeline(m_pipeline);
     }
 

@@ -20,12 +20,13 @@ namespace nitro::rhi::metal
         ~MetalDevice() override;
         RHISwapchain *createSwapchain(RHISurface *surface) override;
 
-        RHIDescriptorLayout *createDescriptorLayout(const std::vector<RHIDescriptorBinding> bindings) override;
+        RHIDescriptorLayout *createDescriptorLayout(const std::vector<RHIDescriptorBinding> bindings, std::source_location loc = std::source_location::current()) override;
         void destroyDescriptorLayout(RHIDescriptorLayout *layout) override;
 
-        RHIDescriptorSet *createDescriptorSet(RHIDescriptorLayout *layout) override;
+        RHIDescriptorSet *createDescriptorSet(RHIDescriptorLayout *layout, std::source_location loc = std::source_location::current()) override;
         void destroyDescriptorSet(RHIDescriptorSet *set) override;
         RHITimer *createTimer() override;
+        void destroyTimer(RHITimer *timer) override;
 
         RHIRenderPass *createRenderPass(const RenderPassDesc &desc) override;
         void destroyRenderPass(RHIRenderPass *renderPass) override;

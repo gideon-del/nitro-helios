@@ -15,6 +15,7 @@
 #include "rhi-heap.h"
 
 #include <imgui.h>
+#include <source_location>
 namespace nitro::rhi
 {
 
@@ -40,12 +41,13 @@ namespace nitro::rhi
 
         virtual RHISwapchain *createSwapchain(RHISurface *surface) = 0;
 
-        virtual RHIDescriptorLayout *createDescriptorLayout(const std::vector<RHIDescriptorBinding> bindings) = 0;
+        virtual RHIDescriptorLayout *createDescriptorLayout(const std::vector<RHIDescriptorBinding> bindings, std::source_location loc = std::source_location::current()) = 0;
         virtual void destroyDescriptorLayout(RHIDescriptorLayout *layout) = 0;
-        virtual RHIDescriptorSet *createDescriptorSet(RHIDescriptorLayout *layout) = 0;
+        virtual RHIDescriptorSet *createDescriptorSet(RHIDescriptorLayout *layout, std::source_location loc = std::source_location::current()) = 0;
         virtual void destroyDescriptorSet(RHIDescriptorSet *set) = 0;
 
         virtual RHITimer *createTimer() = 0;
+        virtual void destroyTimer(RHITimer *timer) = 0;
 
         virtual RHIRenderPass *createRenderPass(const RenderPassDesc &desc) = 0;
         virtual void destroyRenderPass(RHIRenderPass *renderPass) = 0;

@@ -1,15 +1,23 @@
 // vulkan-timer.h
 #pragma once
 #include <nitro-rhi/rhi-timer.h>
+#include <nitro-rhi/rhi-constants.h>
 #include <vulkan/vulkan.h>
 #include <unordered_map>
 #include <string>
 #include <vector>
-
+#include <array>
 namespace nitro::rhi::vulkan
 {
     class VulkanDevice;
 
+    struct QueryPoolSlot
+    {
+        VkQueryPool pool = VK_NULL_HANDLE;
+        bool used = false;
+        uint32_t count = 0;
+        std::unordered_map<std::string, uint32_t> nameToIndex;
+    };
     class VulkanTimer : public RHITimer
     {
     public:
@@ -25,13 +33,11 @@ namespace nitro::rhi::vulkan
 
     private:
         VulkanDevice *m_device;
-        std::vector<VkQueryPool> m_queryPools;
+        std::array<QueryPoolSlot, kMaxFramesInFlight> m_slots;
+        QueryPoolSlot *m_current = nullptr;
         float m_timestampPeriod;
         uint32_t m_maxTimers;
         uint32_t m_queryCount;
-
-        std::unordered_map<std::string, uint32_t> m_nameToIndex;
-        uint32_t m_nextIndex = 0;
 
         std::vector<uint64_t> m_timestamps;
         TimerResult m_results;

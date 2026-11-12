@@ -70,7 +70,9 @@ namespace nitro::renderer
         for (auto &resource : m_resources)
         {
             m_device->destroyBuffer(resource.uniformBuffer);
+            m_device->destroyDescriptorSet(resource.descriptorSet);
         }
+        m_device->destroyDescriptorLayout(m_descriptorLayout);
 
         m_device->destroyPipeline(m_pipeline);
     }

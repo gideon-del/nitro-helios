@@ -342,6 +342,7 @@ int main()
     }
 
     device->waitIdle();
+    device->destroyTimer(timer);
     glfwDestroyWindow(window);
     glfwTerminate();
     return 0;

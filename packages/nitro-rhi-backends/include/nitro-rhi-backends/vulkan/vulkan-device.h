@@ -11,6 +11,7 @@
 #include <vector>
 #include "vulkan-sampler.h"
 #include "vulkan-sampler-cache.h"
+#include <source_location>
 
 struct VmaAllocator_T;
 typedef VmaAllocator_T *VmaAllocator;
@@ -43,13 +44,14 @@ namespace nitro::rhi::vulkan
 
         RHISwapchain *createSwapchain(RHISurface *surface) override;
 
-        RHIDescriptorLayout *createDescriptorLayout(const std::vector<RHIDescriptorBinding> bindings) override;
+        RHIDescriptorLayout *createDescriptorLayout(const std::vector<RHIDescriptorBinding> bindings, std::source_location loc = std::source_location::current()) override;
         void destroyDescriptorLayout(RHIDescriptorLayout *layout) override;
 
-        RHIDescriptorSet *createDescriptorSet(RHIDescriptorLayout *layout) override;
+        RHIDescriptorSet *createDescriptorSet(RHIDescriptorLayout *layout, std::source_location loc = std::source_location::current()) override;
         void destroyDescriptorSet(RHIDescriptorSet *set) override;
 
         RHITimer *createTimer() override;
+        void destroyTimer(RHITimer *timer) override;
         RHIRenderPass *createRenderPass(const RenderPassDesc &desc) override;
         void destroyRenderPass(RHIRenderPass *renderPass) override;
 
@@ -140,6 +142,9 @@ namespace nitro::rhi::vulkan
         DeferredDeletionQueue<std::unique_ptr<VulkanTexture>> m_textureGraveyard;
         DeferredDeletionQueue<std::unique_ptr<VulkanBuffer>> m_bufferGraveyard;
         DeferredDeletionQueue<std::unique_ptr<VulkanHeap>> m_heapGraveyard;
+
+        std::unordered_map<RHIDescriptorSet *, std::source_location> m_liveSets;
+        std::unordered_map<RHIDescriptorLayout *, std::source_location> m_liveDescriptorLayouts;
 
     private:
         void checkMutableComparisonSampler();

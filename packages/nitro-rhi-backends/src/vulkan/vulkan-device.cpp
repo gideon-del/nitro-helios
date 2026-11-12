@@ -48,8 +48,20 @@ namespace nitro::rhi::vulkan
         createInfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
         createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
         createInfo.ppEnabledExtensionNames = extensions.data();
+
+#ifndef NDEBUG
         createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
         createInfo.ppEnabledLayerNames = validationLayers.data();
+        VkValidationFeatureEnableEXT enables[] = {
+            VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT};
+
+        VkValidationFeaturesEXT validationFeatures{};
+        validationFeatures.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+        validationFeatures.enabledValidationFeatureCount = 1;
+        validationFeatures.pEnabledValidationFeatures = enables;
+
+        createInfo.pNext = &validationFeatures;
+#endif
         VkInstance instance;
 
         VkResult result = vkCreateInstance(&createInfo, nullptr, &instance);
@@ -416,7 +428,7 @@ namespace nitro::rhi::vulkan
         commandPool = create_command_pool(device, m_queueFamilyIndices);
         m_surfaceFormat = query_device_format(physicalDevice, surface->surface);
         defaultRenderPass = create_render_pass(device, m_surfaceFormat);
-        queryPool = create_query_pool(device);
+
         timestampPeriod = get_gpu_timestamp(physicalDevice);
 
         m_defaultSamplers.anisotropicRepeat = create(RHISamplerDesc::AnisotropicRepeat());
@@ -477,8 +489,6 @@ namespace nitro::rhi::vulkan
     VulkanDevice::~VulkanDevice()
     {
 
-        std::cout << "VulkanDevice destrucutor called" << std::endl;
-
         vkQueueWaitIdle(graphicsQueue);
 
         for (auto &[h, ds] : m_imguiTextureCache)
@@ -494,8 +504,21 @@ namespace nitro::rhi::vulkan
         m_heapGraveyard.collectAll();
 
         m_frames.clear();
+
+        destroy(m_defaultSamplers.anisotropicRepeat);
+        destroy(m_defaultSamplers.linearClamp);
+        destroy(m_defaultSamplers.linearRepeat);
+        destroy(m_defaultSamplers.nearestClamp);
+        destroy(m_defaultSamplers.nearestRepeat);
+        destroy(m_defaultSamplers.shadow);
+
+        for (auto &[set, loc] : m_liveSets)
+            std::printf("leaked set from %s:%u\n", loc.file_name(), loc.line());
+        for (auto &[layout, loc] : m_liveDescriptorLayouts)
+            std::printf("leaked layout from %s:%u\n", loc.file_name(), loc.line());
         vkQueueWaitIdle(presentQueue);
         vkDestroyCommandPool(device, commandPool, nullptr);
+
         ImNodes::DestroyContext();
         ImGui_ImplVulkan_Shutdown();
         ImGui_ImplGlfw_Shutdown();
@@ -662,12 +685,15 @@ namespace nitro::rhi::vulkan
         destroy(handle);
     }
 
-    RHIDescriptorLayout *VulkanDevice::createDescriptorLayout(const std::vector<RHIDescriptorBinding> bindings)
+    RHIDescriptorLayout *VulkanDevice::createDescriptorLayout(const std::vector<RHIDescriptorBinding> bindings, std::source_location loc)
     {
-        return new VulkanDescriptorLayout(this, bindings);
+        auto rhiLayout = new VulkanDescriptorLayout(this, bindings);
+        m_liveDescriptorLayouts[rhiLayout] = loc;
+        return rhiLayout;
     }
     void VulkanDevice::destroyDescriptorLayout(RHIDescriptorLayout *layout)
     {
+        m_liveDescriptorLayouts.erase(layout);
         delete layout;
     }
 
@@ -675,21 +701,30 @@ namespace nitro::rhi::vulkan
     {
         return new VulkanPipeline(this, desc);
     }
-    RHIDescriptorSet *VulkanDevice::createDescriptorSet(RHIDescriptorLayout *layout)
+    RHIDescriptorSet *VulkanDevice::createDescriptorSet(RHIDescriptorLayout *layout, std::source_location loc)
     {
         VulkanDescriptorLayout *vulkanDescriptorLayout = reinterpret_cast<VulkanDescriptorLayout *>(layout);
         VkDescriptorSet descriptorSet = vulkanDescriptorLayout->allocateDescriptorSet();
 
-        return new VulkanDescriptorSet(this, vulkanDescriptorLayout, descriptorSet);
+        auto rhiSet = new VulkanDescriptorSet(this, vulkanDescriptorLayout, descriptorSet);
+        m_liveSets[rhiSet] = loc;
+        return rhiSet;
     }
     void VulkanDevice::destroyDescriptorSet(RHIDescriptorSet *set)
     {
+        m_liveSets.erase(set);
         delete set;
     }
 
     RHITimer *VulkanDevice::createTimer()
     {
         return new VulkanTimer(this, 64);
+    }
+    void VulkanDevice::destroyTimer(RHITimer *timer)
+    {
+        if (!timer)
+            return;
+        delete timer;
     }
     void VulkanDevice::destroyPipeline(RHIPipeline *pipeline)
     {

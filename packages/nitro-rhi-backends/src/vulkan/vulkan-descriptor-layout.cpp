@@ -5,6 +5,8 @@
 
 namespace nitro::rhi::vulkan
 {
+
+    static int kDescriptorLayoutCount = 0;
     VkDescriptorType convertToDescriptorType(RHIDescriptorBinding::Type type)
     {
         switch (type)
@@ -67,6 +69,7 @@ namespace nitro::rhi::vulkan
         : m_device(device),
           m_bindings(bindings)
     {
+        ++kDescriptorLayoutCount;
         std::vector<VkDescriptorSetLayoutBinding> descriptorBindings(bindings.size());
         std::vector<VkDescriptorPoolSize> poolSizes(bindings.size());
         std::vector<VkDescriptorBindingFlags> bindingFlags(bindings.size());
@@ -117,6 +120,8 @@ namespace nitro::rhi::vulkan
 
     VulkanDescriptorLayout::~VulkanDescriptorLayout()
     {
+        --kDescriptorLayoutCount;
+        std::cout << "Vulkan Descriptor Layout destroyed. Total Left: " << kDescriptorLayoutCount << std::endl;
         if (descriptorPool != VK_NULL_HANDLE)
             vkDestroyDescriptorPool(m_device->device, descriptorPool, nullptr);
         if (descriptorSetLayout != VK_NULL_HANDLE)

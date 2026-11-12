@@ -16,7 +16,7 @@ namespace nitro::renderer
             {RHIDescriptorBinding::Type::UniformBuffer, RHIDescriptorBinding::ShaderStage::Vertex, 2},
             {RHIDescriptorBinding::Type::StorageBuffer, RHIDescriptorBinding::ShaderStage::Both, 3},
             {RHIDescriptorBinding::Type::StorageBuffer, RHIDescriptorBinding::ShaderStage::Fragment, 4},
-            {RHIDescriptorBinding::Type::Texture, RHIDescriptorBinding::ShaderStage::Fragment, 5, true, 4096},
+            {RHIDescriptorBinding::Type::Texture, RHIDescriptorBinding::ShaderStage::Fragment, 5, true, 1024},
             {RHIDescriptorBinding::Type::SingleSampler, RHIDescriptorBinding::ShaderStage::Fragment, 6},
         };
         m_descriptorLayout = m_device->createDescriptorLayout(bindings);
@@ -146,7 +146,7 @@ namespace nitro::renderer
 
         rhi::RenderPassDesc::Attachment depthAttachment;
         depthAttachment.load = rhi::RenderPassDesc::LoadOp::Load;
-        depthAttachment.store = rhi::RenderPassDesc::StoreOp::DontCare;
+        depthAttachment.store = rhi::RenderPassDesc::StoreOp::None;
         depthAttachment.texture = resources.getTexture(gBuffer.depth);
         depthAttachment.depthWrite = false;
         depthAttachment.stencilWrite = false;

@@ -110,8 +110,7 @@ namespace nitro::rhi::vulkan
 
         renderingInfo.pDepthAttachment =
             &depthAttachment;
-        vkCmdResetQueryPool(cmd, m_device->queryPool, 0, 2);
-        vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, m_device->queryPool, 0);
+
         vkCmdBeginRendering(cmd, &renderingInfo);
     };
     void VulkanCommandBuffer::beginRenderPass(RHIRenderPass *renderPass)
@@ -154,12 +153,6 @@ namespace nitro::rhi::vulkan
     void VulkanCommandBuffer::endRenderPass()
     {
         vkCmdEndRendering(cmd);
-
-        if (m_activeRenderPass == nullptr)
-        {
-            vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, m_device->queryPool, 1);
-            return;
-        }
 
         m_activeRenderPass = nullptr;
     }

@@ -8,6 +8,7 @@
 
 namespace nitro::rhi::vulkan
 {
+    static int kDescriptorSetCount = 0;
     VulkanDescriptorSet::VulkanDescriptorSet(
         VulkanDevice *device,
         VulkanDescriptorLayout *layout,
@@ -15,6 +16,7 @@ namespace nitro::rhi::vulkan
                                          m_layout(layout),
                                          descriptorSet(descriptorSet)
     {
+        ++kDescriptorSetCount;
     }
     void VulkanDescriptorSet::writeBuffer(RHIBuffer *buffer, uint32_t binding)
     {
@@ -285,6 +287,9 @@ namespace nitro::rhi::vulkan
     }
     VulkanDescriptorSet::~VulkanDescriptorSet()
     {
+        --kDescriptorSetCount;
+
+        std::cout << "Vulkan Descriptor Set destroyed: Total left: " << kDescriptorSetCount << std::endl;
 
         if (descriptorSet != VK_NULL_HANDLE)
         {

@@ -739,7 +739,11 @@ namespace nitro::renderer
             },
             [aliveCountBuffer, this](rhi::RHICommandBuffer *cmd, const RGResources &resources, const RenderContext &ctx, RendererSettings &settings)
             {
-                cmd->fillBuffer(resources.getBuffer(aliveCountBuffer), 0, sizeof(uint32_t), 0);
+                auto aliveCount = resources.getBuffer(aliveCountBuffer);
+
+                cmd->barrier({}, {{{aliveCount, ResourceState::CopyDst}}});
+                cmd->fillBuffer(aliveCount, 0, sizeof(uint32_t), 0);
+                cmd->barrier({}, {{{aliveCount, ResourceState::ShaderWrite}}});
 
                 rhi::BufferBarrier barrier;
                 barrier.buffer = resources.getBuffer(aliveCountBuffer);

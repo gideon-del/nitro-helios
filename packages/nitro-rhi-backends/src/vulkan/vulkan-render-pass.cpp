@@ -16,9 +16,8 @@ namespace nitro::rhi::vulkan
             return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         case RenderPassDesc::LoadOp::Load:
             return VK_ATTACHMENT_LOAD_OP_LOAD;
-        default:
-            return VK_ATTACHMENT_LOAD_OP_CLEAR;
         }
+        return VK_ATTACHMENT_LOAD_OP_CLEAR;
     }
     VkAttachmentStoreOp convertToStoreOp(RenderPassDesc::StoreOp storeOp)
     {
@@ -28,6 +27,8 @@ namespace nitro::rhi::vulkan
             return VK_ATTACHMENT_STORE_OP_STORE;
         case RenderPassDesc::StoreOp::DontCare:
             return VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        case RenderPassDesc::StoreOp::None:
+            return VK_ATTACHMENT_STORE_OP_NONE;
         default:
             return VK_ATTACHMENT_STORE_OP_DONT_CARE;
         }
