@@ -204,4 +204,27 @@ namespace nitro::frame
         DeleteAliasTextureCommand,
         DeleteHeapCommand>;
 
+      struct TextureAccess
+    {
+        PhysicalTextureHandle handle;
+        rhi::ResourceState to;
+        rhi::TextureSubresource range{};
+        bool history = false;
+    };
+    struct BufferAccess
+    {
+        PhysicalBufferHandle handle;
+        rhi::ResourceState to;
+        bool history = false;
+    };
+    struct CompiledRenderGraph
+    {
+        struct Step
+        {
+            std::vector<TextureAccess> textureBarriers;
+            std::vector<BufferAccess> bufferBarriers;
+            int passIdx;
+        };
+        std::vector<Step> steps;
+    };
 } // namespace nitro::frame

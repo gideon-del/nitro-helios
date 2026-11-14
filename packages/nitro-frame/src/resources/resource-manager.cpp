@@ -72,26 +72,26 @@ namespace nitro::frame
         const ResourceSize &size,
         const GPUResourceOptions &options)
     {
-        assert(texture.scope == options.scope);
-        assert(texture.lifetime == options.lifetime);
-        assert(texture.instanceType == options.instanceType);
+        assert(texture.info.options.scope == options.scope);
+        assert(texture.info.options.lifetime == options.lifetime);
+        assert(texture.info.options.instanceType == options.instanceType);
 
         bool changed =
-            texture.descriptor != desc ||
-            texture.size != size ||
-            texture.historyCount != options.historyCount;
+            texture.info.descriptor != desc ||
+            texture.info.size != size ||
+            texture.info.options.historyCount != options.historyCount;
 
         if (!changed)
             return;
 
-        texture.descriptor = desc;
-        texture.size = size;
-        texture.historyCount = options.historyCount;
+        texture.info.descriptor = desc;
+        texture.info.size = size;
+        texture.info.options.historyCount = options.historyCount;
         texture.dirty = true;
 
-        if (texture.lifetime == ResourceLifetimeType::Persistent)
+        if (texture.info.options.lifetime == ResourceLifetimeType::Persistent)
         {
-            if (texture.scope == ResourceScope::Global)
+            if (texture.info.options.scope == ResourceScope::Global)
             {
                 m_pendingTextures.insert(handle);
             }
@@ -108,25 +108,25 @@ namespace nitro::frame
         const ResourceSize &size,
         const GPUResourceOptions &options)
     {
-        assert(buffer.scope == options.scope);
-        assert(buffer.lifetime == options.lifetime);
-        assert(buffer.instanceType == options.instanceType);
+        assert(buffer.info.options.scope == options.scope);
+        assert(buffer.info.options.lifetime == options.lifetime);
+        assert(buffer.info.options.instanceType == options.instanceType);
 
         bool changed =
-            buffer.descriptor != desc ||
-            buffer.size != size ||
-            buffer.historyCount != options.historyCount;
+            buffer.info.descriptor != desc ||
+            buffer.info.size != size ||
+            buffer.info.options.historyCount != options.historyCount;
 
         if (!changed)
             return;
 
-        buffer.descriptor = desc;
-        buffer.size = size;
-        buffer.historyCount = options.historyCount;
+        buffer.info.descriptor = desc;
+        buffer.info.size = size;
+        buffer.info.options.historyCount = options.historyCount;
         buffer.dirty = true;
-        if (buffer.lifetime == ResourceLifetimeType::Persistent)
+        if (buffer.info.options.lifetime == ResourceLifetimeType::Persistent)
         {
-            if (buffer.scope == ResourceScope::Global)
+            if (buffer.info.options.scope == ResourceScope::Global)
             {
                 m_pendingBuffers.insert(handle);
             }
@@ -162,14 +162,13 @@ namespace nitro::frame
         }
 
         auto physicalTexture = PhysicalTexture{
-            .key = key,
-            .instanceType = options.instanceType,
-            .lifetime = options.lifetime,
-            .scope = options.scope,
-            .descriptor = desc,
-            .size = size};
+            .info = {
+                .key = key,
+                .descriptor = desc,
+                .size = size,
+                .options = options}
 
-        physicalTexture.historyCount = options.historyCount;
+        };
 
         auto handle = m_textures.emplace(physicalTexture);
 
@@ -209,14 +208,11 @@ namespace nitro::frame
         }
 
         auto physicalBuffer = PhysicalBuffer{
-            .key = key,
-            .instanceType = options.instanceType,
-            .lifetime = options.lifetime,
-            .scope = options.scope,
-            .descriptor = desc,
-            .size = size};
-
-        physicalBuffer.historyCount = options.historyCount;
+            .info = {
+                .key = key,
+                .descriptor = desc,
+                .size = size,
+                .options = options}};
 
         auto handle = m_buffers.emplace(physicalBuffer);
 
@@ -284,19 +280,19 @@ namespace nitro::frame
         auto texture = m_textures.get(handle);
         if (!texture)
             return false;
-        if (texture->lifetime == ResourceLifetimeType::Transient)
+        if (texture->info.options.lifetime == ResourceLifetimeType::Transient)
             return false;
         if (!needsRebuild(*texture, size))
             return false;
         clearResource(*texture);
 
-        auto count = getResourceCount(texture->instanceType, texture->historyCount);
+        auto count = getResourceCount(texture->info.options.instanceType, texture->info.options.historyCount);
 
         texture->resources.create(count, [&](uint32_t index)
                                   {
-                                      auto desc = texture->descriptor;
-                                      desc.size.width = texture->size.calculateTextureWidth(size.width);
-                                      desc.size.height = texture->size.calculateTextureHeight(size.height);
+                                      auto desc = texture->info.descriptor;
+                                      desc.size.width = texture->info.size.calculateTextureWidth(size.width);
+                                      desc.size.height = texture->info.size.calculateTextureHeight(size.height);
                                     
 
                                       return m_device.create(desc); });
@@ -316,12 +312,12 @@ namespace nitro::frame
         // Delete old resource
         clearResource(*buffer);
 
-        auto count = getResourceCount(buffer->instanceType, buffer->historyCount);
+        auto count = getResourceCount(buffer->info.options.instanceType, buffer->info.options.historyCount);
 
         buffer->resources.create(count, [&](uint32_t index)
                                  {
-                                      auto desc = buffer->descriptor;
-                                      desc.size = buffer->size.calculateBufferSize(size.width,size.height);
+                                      auto desc = buffer->info.descriptor;
+                                      desc.size = buffer->info.size.calculateBufferSize(size.width,size.height);
 
                                       return m_device.create(desc); });
 
@@ -352,7 +348,7 @@ namespace nitro::frame
             if (!texture)
                 continue;
             if (buildPersistentResource(handle, extent))
-                historyLost |= texture->instanceType == ResourceInstanceType::Temporal;
+                historyLost |= texture->info.options.instanceType == ResourceInstanceType::Temporal;
         }
 
         return historyLost;
@@ -372,7 +368,7 @@ namespace nitro::frame
             if (!buffer)
                 continue;
             if (buildPersistentResource(handle, extent))
-                historyLost |= buffer->instanceType == ResourceInstanceType::Temporal;
+                historyLost |= buffer->info.options.instanceType == ResourceInstanceType::Temporal;
         }
 
         return historyLost;
@@ -384,16 +380,16 @@ namespace nitro::frame
         if (!texture)
             return;
 
-        if (texture->scope == ResourceScope::External)
+        if (texture->info.options.scope == ResourceScope::External)
             texture->resources.clear();
         else
             clearResource(*texture);
 
-        if (auto it = m_viewRelativeTexture.find(texture->key.viewHandle); it != m_viewRelativeTexture.end())
+        if (auto it = m_viewRelativeTexture.find(texture->info.key.viewHandle); it != m_viewRelativeTexture.end())
             it->second.erase(handle);
 
         m_pendingTextures.erase(handle);
-        m_resourceKeyToTexture.erase(texture->key);
+        m_resourceKeyToTexture.erase(texture->info.key);
         m_textures.free(handle);
     }
 
@@ -403,16 +399,16 @@ namespace nitro::frame
         if (!buffer)
             return;
 
-        if (buffer->scope == ResourceScope::External)
+        if (buffer->info.options.scope == ResourceScope::External)
             buffer->resources.clear();
         else
             clearResource(*buffer);
 
-        if (auto it = m_viewRelativeBuffer.find(buffer->key.viewHandle); it != m_viewRelativeBuffer.end())
+        if (auto it = m_viewRelativeBuffer.find(buffer->info.key.viewHandle); it != m_viewRelativeBuffer.end())
             it->second.erase(handle);
 
         m_pendingBuffers.erase(handle);
-        m_resourceKeyToBuffer.erase(buffer->key);
+        m_resourceKeyToBuffer.erase(buffer->info.key);
         m_buffers.free(handle);
     }
 
@@ -461,13 +457,13 @@ namespace nitro::frame
     rhi::RHITexture *ResourceManager::previous(const PhysicalTextureHandle &handle, const ResourceFrameInfo &info)
     {
         auto *t = m_textures.get(handle);
-        assert(t && !t->resources.empty() && t->instanceType == ResourceInstanceType::Temporal && "previous() on a non-temporal resource");
+        assert(t && !t->resources.empty() && t->info.options.instanceType == ResourceInstanceType::Temporal && "previous() on a non-temporal resource");
         return m_device.resolve(*t->resources.get(instanceIndex(*t, info, true)));
     }
     rhi::RHIBuffer *ResourceManager::previous(const PhysicalBufferHandle &handle, const ResourceFrameInfo &info)
     {
         auto *b = m_buffers.get(handle);
-        assert(b && !b->resources.empty() && b->instanceType == ResourceInstanceType::Temporal && "previous() on a non-temporal resource");
+        assert(b && !b->resources.empty() && b->info.options.instanceType == ResourceInstanceType::Temporal && "previous() on a non-temporal resource");
         return m_device.resolve(*b->resources.get(instanceIndex(*b, info, true)));
     }
 
@@ -507,10 +503,12 @@ namespace nitro::frame
         }
 
         auto texture = PhysicalTexture{
-            .key = key,
-            .instanceType = ResourceInstanceType::Single,
-            .lifetime = ResourceLifetimeType::Persistent,
-            .scope = ResourceScope::External};
+            .info = {
+                .key = key}};
+
+        texture.info.options.instanceType = ResourceInstanceType::Single,
+        texture.info.options.lifetime = ResourceLifetimeType::Persistent,
+        texture.info.options.scope = ResourceScope::External;
         texture.resources.create(1, [&](uint32_t)
                                  { return rhiHandle; });
         texture.dirty = false;
@@ -530,10 +528,12 @@ namespace nitro::frame
         }
 
         auto buffer = PhysicalBuffer{
-            .key = key,
-            .instanceType = ResourceInstanceType::Single,
-            .lifetime = ResourceLifetimeType::Persistent,
-            .scope = ResourceScope::External};
+            .info = {
+                .key = key}};
+
+        buffer.info.options.instanceType = ResourceInstanceType::Single,
+        buffer.info.options.lifetime = ResourceLifetimeType::Persistent,
+        buffer.info.options.scope = ResourceScope::External;
         buffer.resources.create(1, [&](uint32_t)
                                 { return rhiHandle; });
         buffer.dirty = false;
@@ -546,7 +546,7 @@ namespace nitro::frame
     void ResourceManager::updateExternalTexture(const PhysicalTextureHandle &handle, const rhi::RHITextureHandle &rhiHandle)
     {
         auto *t = m_textures.get(handle);
-        assert(t && t->scope == ResourceScope::External && "only imports can be re-bound");
+        assert(t && t->info.options.scope == ResourceScope::External && "only imports can be re-bound");
         t->resources.clear();
         t->resources.create(1, [&](uint32_t)
                             { return rhiHandle; });
@@ -555,7 +555,7 @@ namespace nitro::frame
     void ResourceManager::updateExternalBuffer(const PhysicalBufferHandle &handle, const rhi::RHIBufferHandle &rhiHandle)
     {
         auto *b = m_buffers.get(handle);
-        assert(b && b->scope == ResourceScope::External && "only imports can be re-bound");
+        assert(b && b->info.options.scope == ResourceScope::External && "only imports can be re-bound");
         b->resources.clear();
         b->resources.create(1, [&](uint32_t)
                             { return rhiHandle; });
@@ -575,13 +575,13 @@ namespace nitro::frame
         for (auto &[handle, lifetime] : info.lifetimes)
         {
             auto texture = m_textures.get(handle);
-            if (!texture || texture->lifetime != ResourceLifetimeType::Transient)
+            if (!texture || texture->info.options.lifetime != ResourceLifetimeType::Transient)
                 continue;
 
-            auto desc = texture->descriptor;
+            auto desc = texture->info.descriptor;
 
-            desc.size.width = texture->size.calculateTextureWidth(info.extent.width);
-            desc.size.height = texture->size.calculateTextureHeight(info.extent.height);
+            desc.size.width = texture->info.size.calculateTextureWidth(info.extent.width);
+            desc.size.height = texture->info.size.calculateTextureHeight(info.extent.height);
 
             auto requirement = m_device.textureMemoryRequirements(desc);
 
@@ -668,7 +668,7 @@ namespace nitro::frame
             {
                 auto *texture = m_textures.get(entry.handle);
 
-                if (!texture || texture->lifetime != ResourceLifetimeType::Transient)
+                if (!texture || texture->info.options.lifetime != ResourceLifetimeType::Transient)
                     continue;
 
                 targetedTextures.insert(entry.handle);
@@ -750,9 +750,9 @@ namespace nitro::frame
 
         if (!texture)
             return;
-        auto desc = texture->descriptor;
-        desc.size.width = texture->size.calculateTextureWidth(extent.width);
-        desc.size.height = texture->size.calculateTextureHeight(extent.height);
+        auto desc = texture->info.descriptor;
+        desc.size.width = texture->info.size.calculateTextureWidth(extent.width);
+        desc.size.height = texture->info.size.calculateTextureHeight(extent.height);
 
         clearResource(*texture);
 
@@ -784,6 +784,19 @@ namespace nitro::frame
         m_device.destroy(heap.handle);
 
         viewHeaps.erase(it);
+    }
+
+    const PhysicalTextureInfo &ResourceManager::info(PhysicalTextureHandle h) const
+    {
+        auto *record = m_textures.get(h);
+        assert(record && "info(): stale or invalid PhysicalTextureHandle");
+        return record->info;
+    }
+    const PhysicalBufferInfo &ResourceManager::info(PhysicalBufferHandle h) const
+    {
+        auto *record = m_buffers.get(h);
+        assert(record && "info(): stale or invalid PhysicalBufferHandle");
+        return record->info;
     }
 
 } // namespace nitro::frame

@@ -13,25 +13,34 @@ namespace nitro::frame
         size_t structureHash;
         const PhysicalTextureLifetime &lifetimes;
     };
+
+    template <typename Desc>
+    struct PhysicalResourceInfo
+    {
+        ResourceKey key;
+        Desc descriptor;
+        ResourceSize size;
+        GPUResourceOptions options;
+
+        bool operator==(const PhysicalResourceInfo &) const = default;
+    };
+    template <typename T, typename Desc>
+    struct PhysicalResource
+    {
+
+        PhysicalResourceInfo<Desc> info;
+        MultiBuffer<T> resources;
+        Extent2D builtExtent{};
+        bool dirty = true;
+    };
+
+    using PhysicalTexture = PhysicalResource<rhi::RHITextureHandle, rhi::TextureDesc>;
+    using PhysicalBuffer = PhysicalResource<rhi::RHIBufferHandle, rhi::BufferDesc>;
+    using PhysicalTextureInfo = PhysicalResourceInfo<rhi::TextureDesc>;
+    using PhysicalBufferInfo = PhysicalResourceInfo<rhi::BufferDesc>;
+
     class ResourceManager
     {
-        template <typename T, typename Desc>
-        struct PhysicalResource
-        {
-            ResourceKey key;
-            ResourceInstanceType instanceType;
-            ResourceLifetimeType lifetime;
-            ResourceScope scope;
-            Desc descriptor;
-            ResourceSize size;
-            uint32_t historyCount = 2;
-            MultiBuffer<T> resources;
-            Extent2D builtExtent{};
-            bool dirty = true;
-        };
-
-        using PhysicalTexture = PhysicalResource<rhi::RHITextureHandle, rhi::TextureDesc>;
-        using PhysicalBuffer = PhysicalResource<rhi::RHIBufferHandle, rhi::BufferDesc>;
 
         ResourcePool<PhysicalTexture, PhysicalTextureTag> m_textures;
         ResourcePool<PhysicalBuffer, PhysicalBufferTag> m_buffers;
@@ -91,6 +100,8 @@ namespace nitro::frame
         rhi::RHITexture *getTexture(const ResourceKey &key, const ResourceFrameInfo &frameInfo);
         rhi::RHIBuffer *getBuffer(const ResourceKey &key, const ResourceFrameInfo &frameInfo);
 
+        const PhysicalTextureInfo &info(PhysicalTextureHandle h) const;
+        const PhysicalBufferInfo &info(PhysicalBufferHandle) const;
         void build();
         bool buildViewResources(const ViewBuildInfo &info);
         void destroyViewResources(const RenderViewHandle viewHandle);
