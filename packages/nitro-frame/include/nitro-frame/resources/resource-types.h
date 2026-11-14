@@ -112,15 +112,24 @@ namespace nitro::frame
 
         std::string name;
         T physicalHandle;
-        std::vector<ResourceVersion> versions;
         bool history = false;
+        std::vector<ResourceVersion> versions;
     };
 
     using LogicalTexture = LogicalResource<PhysicalTextureHandle>;
     using LogicalBuffer = LogicalResource<PhysicalBufferHandle>;
 
-    using LogicalTextureHandle = Handle<LogicalTexture>;
-    using LogicalBufferHandle = Handle<LogicalBuffer>;
+    struct LogicalTextureTag
+    {
+    };
+    using LogicalTextureHandle = Handle<LogicalTextureTag>;
+    using LogicalTextureHandleHash = HandleHash<LogicalTextureTag>;
+
+    struct LogicalBufferTag
+    {
+    };
+    using LogicalBufferHandle = Handle<LogicalBufferTag>;
+    using LogicalBufferHandleHash = HandleHash<LogicalBufferTag>;
 
     template <typename T>
     struct TemporalLogicalResource
@@ -132,9 +141,8 @@ namespace nitro::frame
     using TemporalLogicalTexture = TemporalLogicalResource<LogicalTextureHandle>;
     using TemporalLogicalBuffer = TemporalLogicalResource<LogicalBufferHandle>;
 
-    struct ResourceLifetimeV2
+    struct ResourceLifetime
     {
-        std::string name;
         int lastUse = -1;
         int createdAt = -1;
     };
@@ -144,7 +152,7 @@ namespace nitro::frame
         int first, last;
         rhi::MemoryRequirements requirements;
     };
-    using PhysicalTextureLifetime = std::unordered_map<PhysicalTextureHandle, ResourceLifetimeV2, PhysicalTextureHandleHash>;
+    using PhysicalTextureLifetime = std::unordered_map<PhysicalTextureHandle, ResourceLifetime, PhysicalTextureHandleHash>;
     struct HeapId
     {
         uint64_t key;
@@ -204,7 +212,7 @@ namespace nitro::frame
         DeleteAliasTextureCommand,
         DeleteHeapCommand>;
 
-      struct TextureAccess
+    struct TextureAccess
     {
         PhysicalTextureHandle handle;
         rhi::ResourceState to;

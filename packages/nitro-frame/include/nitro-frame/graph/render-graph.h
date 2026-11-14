@@ -3,10 +3,13 @@
 #include "nitro-frame/resources/resource-manager.h"
 #include "nitro-rhi/rhi-utils.h"
 #include "nitro-core/graph.h"
+#include "nitro-core/types/pool.h"
+#include "nitro-core/utils.h"
 #include <deque>
 
 namespace nitro::frame
 {
+    constexpr int kExternalProducer = -1;
     class RenderGraphBuilder;
 
     struct PassContext
@@ -19,6 +22,22 @@ namespace nitro::frame
     // TODO: Create a PassResource to block passes from accessing resources they did not declare
     using RenderPassExecute = std::function<void(PassContext &)>;
 
+    struct LogicalKey
+    {
+        ResourceKey key;
+        bool history = false;
+        bool operator==(const LogicalKey &) const = default;
+    };
+
+    struct LogicalKeyHash
+    {
+        size_t operator()(const LogicalKey &k) const
+        {
+            size_t seed = ResourceKeyHash{}(k.key);
+            hashCombine(seed, k.history);
+            return seed;
+        }
+    };
     class RenderPass
     {
     public:
@@ -71,7 +90,7 @@ namespace nitro::frame
     {
 
     public:
-        RenderGraphBuilder(ResourceManager &resourceManager);
+        explicit RenderGraphBuilder(ResourceManager &resourceManager) : m_resourceManager(resourceManager) {};
         LogicalTextureHandle createTexture(const std::string name, const rhi::TextureDesc &desc, const ResourceSize &size, const GPUResourceOptions &options);
         LogicalTextureHandle createTexture(const PhysicalTextureHandle handle);
 
@@ -85,17 +104,14 @@ namespace nitro::frame
         TemporalLogicalBuffer createTemporalBuffer(const PhysicalBufferHandle handle);
 
         LogicalTextureHandle importTexture(const std::string &name, rhi::RHITextureHandle rhiHandle);
-        LogicalBufferHandle importBuffer(const std::string &name, rhi::RHIBufferHandle handle);
+        LogicalBufferHandle importBuffer(const std::string &name, rhi::RHIBufferHandle rhiHandle);
 
-        LogicalTexture *getTexture(const LogicalTextureHandle &handle);
-        LogicalBuffer *getBuffer(const LogicalBufferHandle &handle);
+        LogicalTexture *get(const LogicalTextureHandle &handle);
+        LogicalBuffer *get(const LogicalBufferHandle &handle);
 
         RenderPass &addRenderPass(std::string name);
-
+        size_t structureHash();
         const CompiledRenderGraph compile();
-        void printResourceFlow();
-        void printPassOrder();
-        void printResourceLifetime();
 
         const PhysicalTextureLifetime &lifetimes() const
         {
@@ -105,19 +121,24 @@ namespace nitro::frame
         uint32_t orderOf(const std::string &passName) const;
 
     private:
-        LogicalTextureHandle createTexture(const std::string &name, bool history);
-        LogicalBufferHandle createBuffer(const std::string &name, bool history);
+        LogicalTextureHandle addLogical(const PhysicalTextureHandle handle, bool history);
+        LogicalBufferHandle addLogical(const PhysicalBufferHandle handle, bool history);
+
         const PhysicalTextureLifetime calculateLifetimes() const;
         const CompiledRenderGraph::Step buildRenderPassStep(int passIdx);
 
     private:
         Graph m_graph;
         ResourceManager &m_resourceManager;
-        std::vector<LogicalTexture> m_logicalTextures;
-        std::vector<LogicalBuffer> m_logicalBuffers;
+        ResourcePool<LogicalTexture, LogicalTextureTag> m_logicalTextures;
+        ResourcePool<LogicalBuffer, LogicalBufferTag> m_logicalBuffers;
 
         std::deque<RenderPass> m_renderPasses;
-        std::unordered_map<std::string, uint32_t> m_nameToPassIndex;
+
+        std::unordered_map<std::string, uint32_t> m_passNameToPassIdx;
+
+        std::unordered_map<LogicalKey, LogicalTextureHandle, LogicalKeyHash> m_logicalTextureLookup;
+        std::unordered_map<LogicalKey, LogicalBufferHandle, LogicalKeyHash> m_logicalBufferLookup;
 
         std::vector<uint32_t> m_executionOrder;
         PhysicalTextureLifetime m_lifetime;

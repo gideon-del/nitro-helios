@@ -11,18 +11,18 @@ namespace nitro::frame
 
         if (r.dirty || r.resources.empty())
             return true;
-        return r.size.type != ResourceSize::Type::Absolute && r.builtExtent != extent;
+        return r.info.size.type != ResourceSize::Type::Absolute && r.builtExtent != extent;
     }
 
     template <typename R>
     static uint32_t instanceIndex(const R &r, const ResourceFrameInfo &info, bool previous = false)
     {
-        switch (r.instanceType)
+        switch (r.info.options.instanceType)
         {
         case ResourceInstanceType::PerFrame:
             return info.rhiFrame;
         case ResourceInstanceType::Temporal:
-            return previous ? info.viewFrame + r.historyCount - 1
+            return previous ? info.viewFrame + r.info.options.historyCount - 1
                             : info.viewFrame;
         default:
             return 0;
@@ -100,6 +100,9 @@ namespace nitro::frame
                 m_viewRelativeTexture[options.viewHandle].insert(handle);
             }
         };
+
+        if (texture.info.options.lifetime == ResourceLifetimeType::Transient)
+            m_aliasPlans[texture.info.key.viewHandle].valid = false;
     }
     void ResourceManager::updateBufferDeclaration(
         PhysicalBufferHandle handle,

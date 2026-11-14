@@ -238,6 +238,7 @@ namespace nitro::rhi
             assert(r.baseLayer + r.layerCount <= texLayers);
             return r;
         }
+        bool operator==(const TextureSubresource &o) const = default;
     };
 
     struct TextureBarrier
