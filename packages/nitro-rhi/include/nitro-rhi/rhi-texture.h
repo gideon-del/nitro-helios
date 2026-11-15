@@ -6,6 +6,7 @@
 #include "rhi-utils.h"
 #include "nitro-core/types/handle.h"
 #include "nitro-core/types/size.h"
+#include "nitro-core/utils.h"
 namespace nitro::rhi
 {
 
@@ -239,6 +240,22 @@ namespace nitro::rhi
             return r;
         }
         bool operator==(const TextureSubresource &o) const = default;
+    };
+
+    struct TextureSubresourceHash
+    {
+        size_t operator()(const TextureSubresource &range) const
+        {
+
+            size_t seed = 0;
+
+            hashCombine(seed, std::hash<uint32_t>{}(range.baseMip));
+            hashCombine(seed, std::hash<uint32_t>{}(range.mipCount));
+            hashCombine(seed, std::hash<uint32_t>{}(range.baseLayer));
+            hashCombine(seed, std::hash<uint32_t>{}(range.layerCount));
+
+            return seed;
+        }
     };
 
     struct TextureBarrier

@@ -1,5 +1,8 @@
-#include "nitro-frame/graph/render-graph.h"
 #include <sstream>
+#include <climits>
+#include "nitro-frame/graph/render-graph.h"
+#include "nitro-core/utils.h"
+#include "nitro-rhi/rhi-texture.h"
 namespace nitro::frame
 {
 
@@ -540,7 +543,81 @@ namespace nitro::frame
 
     size_t RenderGraphBuilder::structureHash() const
     {
-        return 0;
+
+        size_t seed = 0;
+
+        hashCombine(seed, m_logicalTextures.size());
+        m_logicalTextures.forEach(
+            [&](const LogicalTextureHandle &handle, const LogicalTexture &logical)
+            {
+                hashCombine(seed, PhysicalTextureHandleHash{}(logical.physicalHandle));
+                hashCombine(seed, std::hash<bool>{}(logical.history));
+
+                hashCombine(seed, logical.versions.size());
+                for (auto &version : logical.versions)
+                {
+
+                    hashCombine(seed, std::hash<int>{}(version.producer.value_or(INT_MIN)));
+                    hashCombine(seed, version.consumers.size());
+                    for (auto &consumer : version.consumers)
+                    {
+                        hashCombine(seed, std::hash<int>{}(consumer));
+                    }
+                }
+            });
+
+        hashCombine(seed, m_logicalBuffers.size());
+        m_logicalBuffers.forEach(
+            [&](const LogicalBufferHandle &handle, const LogicalBuffer &logical)
+            {
+                hashCombine(seed, PhysicalBufferHandleHash{}(logical.physicalHandle));
+                hashCombine(seed, std::hash<bool>{}(logical.history));
+
+                hashCombine(seed, logical.versions.size());
+                for (auto &version : logical.versions)
+                {
+
+                    hashCombine(seed, std::hash<int>{}(version.producer.value_or(INT_MIN)));
+                    hashCombine(seed, version.consumers.size());
+                    for (auto &consumer : version.consumers)
+                    {
+                        hashCombine(seed, std::hash<int>{}(consumer));
+                    }
+                }
+            });
+
+        hashCombine(seed, m_renderPasses.size());
+        for (auto &pass : m_renderPasses)
+        {
+
+            hashCombine(seed, std::hash<std::string>{}(pass.name()));
+            hashCombine(seed, std::hash<uint32_t>{}(pass.index()));
+
+            const auto &textureAccess = pass.getTextureAccess();
+
+            hashCombine(seed, textureAccess.size());
+            for (auto &access : textureAccess)
+            {
+
+                hashCombine(seed, PhysicalTextureHandleHash{}(access.handle));
+                hashCombine(seed, std::hash<int>{}(static_cast<int>(access.to)));
+                hashCombine(seed, std::hash<bool>{}(access.history));
+                hashCombine(seed, rhi::TextureSubresourceHash{}(access.range));
+            }
+
+            const auto &bufferAccess = pass.getBufferAccess();
+
+            hashCombine(seed, bufferAccess.size());
+            for (auto &access : bufferAccess)
+            {
+
+                hashCombine(seed, PhysicalBufferHandleHash{}(access.handle));
+                hashCombine(seed, std::hash<int>{}(static_cast<int>(access.to)));
+                hashCombine(seed, std::hash<bool>{}(access.history));
+            }
+        }
+
+        return seed;
     }
 
 } // namespace nitro::frame

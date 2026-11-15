@@ -289,3 +289,108 @@ TEST_CASE("Temporal previous doesn’t create an edge")
 
     CHECK(compiledGraph.steps.size() == 2);
 }
+
+TEST_CASE("Structure Hash")
+{
+    tests::CountingDevice device;
+
+    frame::ResourceManager resourceManager{device};
+    frame::RenderGraphBuilder firstRenderGraph{resourceManager};
+    frame::RenderGraphBuilder secondRenderGraph{resourceManager};
+
+    frame::RenderViewHandle viewHandle{1, 1};
+
+    rhi::TextureDesc desc;
+    desc.mipmaps = 2;
+
+    frame::GPUResourceOptions options;
+    options.lifetime = frame::ResourceLifetimeType::Transient;
+    options.viewHandle = viewHandle;
+    options.scope = frame::ResourceScope::View;
+
+    auto firstX = firstRenderGraph.createTexture("X", desc, frame::ResourceSize::textureViewRelative(), options);
+    auto firstY = firstRenderGraph.createTexture("Y", desc, frame::ResourceSize::textureViewRelative(), options);
+    firstRenderGraph.addRenderPass("A")
+        .write(firstX, rhi::ResourceState::ShaderWrite);
+    firstRenderGraph.addRenderPass("B")
+        .read(firstX, rhi::ResourceState::ShaderRead);
+    firstRenderGraph.addRenderPass("C")
+        .write(firstY, rhi::ResourceState::ShaderWrite);
+
+    auto secondX = secondRenderGraph.createTexture("X", desc, frame::ResourceSize::textureViewRelative(), options);
+    auto secondY = secondRenderGraph.createTexture("Y", desc, frame::ResourceSize::textureViewRelative(), options);
+    secondRenderGraph.addRenderPass("A")
+        .write(secondX, rhi::ResourceState::ShaderWrite);
+    secondRenderGraph.addRenderPass("B")
+        .read(secondX, rhi::ResourceState::ShaderRead);
+    secondRenderGraph.addRenderPass("C")
+        .write(secondY, rhi::ResourceState::ShaderWrite);
+
+    CHECK(firstRenderGraph.structureHash() == secondRenderGraph.structureHash());
+}
+
+TEST_CASE("RAW vs WAW")
+{
+    tests::CountingDevice device;
+
+    frame::ResourceManager resourceManager{device};
+    frame::RenderGraphBuilder firstRenderGraph{resourceManager};
+    frame::RenderGraphBuilder secondRenderGraph{resourceManager};
+
+    frame::RenderViewHandle viewHandle{1, 1};
+
+    rhi::TextureDesc desc;
+    desc.mipmaps = 2;
+
+    frame::GPUResourceOptions options;
+    options.lifetime = frame::ResourceLifetimeType::Transient;
+    options.viewHandle = viewHandle;
+    options.scope = frame::ResourceScope::View;
+
+    auto firstX = firstRenderGraph.createTexture("X", desc, frame::ResourceSize::textureViewRelative(), options);
+    firstRenderGraph.addRenderPass("A")
+        .write(firstX, rhi::ResourceState::ShaderWrite);
+    firstRenderGraph.addRenderPass("B")
+        .read(firstX, rhi::ResourceState::ShaderWrite);
+
+    auto secondX = secondRenderGraph.createTexture("X", desc, frame::ResourceSize::textureViewRelative(), options);
+
+    secondRenderGraph.addRenderPass("A")
+        .write(secondX, rhi::ResourceState::ShaderWrite);
+    secondRenderGraph.addRenderPass("B")
+        .write(secondX, rhi::ResourceState::ShaderWrite);
+
+    CHECK(firstRenderGraph.structureHash() != secondRenderGraph.structureHash());
+}
+TEST_CASE("Texture resource range")
+{
+    tests::CountingDevice device;
+
+    frame::ResourceManager resourceManager{device};
+    frame::RenderGraphBuilder firstRenderGraph{resourceManager};
+    frame::RenderGraphBuilder secondRenderGraph{resourceManager};
+
+    frame::RenderViewHandle viewHandle{1, 1};
+
+    rhi::TextureDesc desc;
+    desc.mipmaps = 3;
+
+    frame::GPUResourceOptions options;
+    options.lifetime = frame::ResourceLifetimeType::Transient;
+    options.viewHandle = viewHandle;
+    options.scope = frame::ResourceScope::View;
+
+    auto firstX = firstRenderGraph.createTexture("X", desc, frame::ResourceSize::textureViewRelative(), options);
+
+    firstRenderGraph.addRenderPass("A")
+        .write(firstX, rhi::ResourceState::ShaderWrite, rhi::TextureSubresource{.baseMip = 0, .mipCount = 1})
+        .write(firstX, rhi::ResourceState::ShaderWrite, rhi::TextureSubresource{.baseMip = 1, .mipCount = 1});
+
+    auto secondX = secondRenderGraph.createTexture("X", desc, frame::ResourceSize::textureViewRelative(), options);
+
+    secondRenderGraph.addRenderPass("A")
+        .write(secondX, rhi::ResourceState::ShaderWrite, rhi::TextureSubresource{.baseMip = 1, .mipCount = 1})
+        .write(secondX, rhi::ResourceState::ShaderWrite, rhi::TextureSubresource{.baseMip = 2, .mipCount = 1});
+
+    CHECK(firstRenderGraph.structureHash() != secondRenderGraph.structureHash());
+}

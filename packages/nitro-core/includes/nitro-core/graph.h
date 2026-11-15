@@ -8,6 +8,7 @@
 #include <queue>
 #include <stack>
 #include <iostream>
+#include <functional>
 
 namespace nitro
 {
@@ -200,7 +201,11 @@ namespace nitro
         std::vector<NodeID> topoSort()
         {
             std::unordered_map<NodeID, int> inDegree;
-            std::queue<NodeID> processedNode;
+            std::priority_queue<
+                NodeID,
+                std::vector<NodeID>,
+                std::greater<>>
+                processedNode;
             std::vector<NodeID> order;
             for (auto &[id, _] : m_adjacentList)
             {
@@ -225,7 +230,7 @@ namespace nitro
 
             while (!processedNode.empty())
             {
-                NodeID currentNode = processedNode.front();
+                NodeID currentNode = processedNode.top();
 
                 processedNode.pop();
                 order.push_back(currentNode);
