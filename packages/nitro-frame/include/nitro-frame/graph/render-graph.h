@@ -41,40 +41,23 @@ namespace nitro::frame
     class RenderPass
     {
     public:
-        RenderPass(uint32_t index, std::string name, RenderGraphBuilder &renderGraph);
+        RenderPass(uint32_t index, std::string name, RenderGraphBuilder &renderGraph) : m_index(index), m_name(name), m_renderGraph(renderGraph) {};
 
-        RenderPass &read(const LogicalTextureHandle &handle, const rhi::ResourceState &state, rhi::TextureSubresource range = rhi::TextureSubresource{})
-        {
-            return read(handle, state, false, range);
-        };
-        RenderPass &read(const TemporalLogicalTexture &temporal, const rhi::ResourceState &state, rhi::TextureSubresource range = rhi::TextureSubresource{});
+        RenderPass &read(const LogicalTextureHandle &handle, const rhi::ResourceState &state, rhi::TextureSubresource range = rhi::TextureSubresource{});
 
-        RenderPass &read(const TemporalLogicalBuffer &temporal, const rhi::ResourceState &state);
-        RenderPass &read(const LogicalBufferHandle &handle, const rhi::ResourceState &state)
-        {
-            return read(handle, state, false);
-        };
+        RenderPass &read(const LogicalBufferHandle &handle, const rhi::ResourceState &state);
 
         RenderPass &write(const LogicalTextureHandle &handle, const rhi::ResourceState &state, rhi::TextureSubresource range = rhi::TextureSubresource{});
-        RenderPass &write(const TemporalLogicalTexture &temporal, const rhi::ResourceState &state, rhi::TextureSubresource range = rhi::TextureSubresource{});
 
-        RenderPass &write(const TemporalLogicalBuffer &temporal, const rhi::ResourceState &state);
         RenderPass &write(const LogicalBufferHandle &handle, const rhi::ResourceState &state);
-
-        RenderPass &readHistory(const TemporalLogicalBuffer &temporal, const rhi::ResourceState &state);
-        RenderPass &readHistory(const TemporalLogicalTexture &temporal, const rhi::ResourceState &state, rhi::TextureSubresource range = rhi::TextureSubresource{});
 
         RenderPass &setExecuteFn(RenderPassExecute execute);
 
         const std::vector<TextureAccess> &getTextureAccess() const { return m_textures; }
         const std::vector<BufferAccess> &getBufferAccess() const { return m_buffers; }
-        const RenderPassExecute &getExecute() { return m_execute; }
+        const RenderPassExecute &getExecute() const { return m_execute; }
         const std::string &name() const { return m_name; }
-        const uint32_t index() const { return m_index; }
-
-    private:
-        RenderPass &read(const LogicalTextureHandle &handle, const rhi::ResourceState &state, bool history, rhi::TextureSubresource range);
-        RenderPass &read(const LogicalBufferHandle &handle, const rhi::ResourceState &state, bool history);
+        uint32_t index() const { return m_index; }
 
     private:
         uint32_t m_index;
@@ -110,7 +93,7 @@ namespace nitro::frame
         LogicalBuffer *get(const LogicalBufferHandle &handle);
 
         RenderPass &addRenderPass(std::string name);
-        size_t structureHash();
+        size_t structureHash() const;
         const CompiledRenderGraph compile();
 
         const PhysicalTextureLifetime &lifetimes() const

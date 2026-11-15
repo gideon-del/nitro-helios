@@ -1,5 +1,5 @@
 #include "nitro-frame/graph/render-graph.h"
-
+#include <sstream>
 namespace nitro::frame
 {
 
@@ -269,7 +269,7 @@ namespace nitro::frame
                                           if (previousVersionIdx)
                                           {
                                               auto &previousVersion = logicalTexture.versions[*previousVersionIdx];
-                                             if(previousVersion.producer &&*previousVersion.producer != kExternalProducer){
+                                             if(previousVersion.producer &&*previousVersion.producer != kExternalProducer  && previousVersion.producer != producerIdx){
                                                  m_graph.addEdge(*previousVersion.producer, producerIdx);
                                              }
 
@@ -327,7 +327,7 @@ namespace nitro::frame
                                              auto &previousVersion = logicalBuffer.versions[*previousVersionIdx];
  
                                              
-                                             if(previousVersion.producer && *previousVersion.producer != kExternalProducer){
+                                             if(previousVersion.producer && *previousVersion.producer != kExternalProducer && previousVersion.producer != producerIdx){
                                                 m_graph.addEdge(*previousVersion.producer, producerIdx);
                                              }
                                              
@@ -345,6 +345,26 @@ namespace nitro::frame
                                      } };
         m_logicalBuffers.forEach(logicalBufferLoop);
         m_executionOrder = m_graph.topoSort();
+        auto cycles = m_graph.findCycles();
+
+        if (!cycles.empty())
+        {
+            std::ostringstream ss;
+            ss << "Cycle Found in render graph\n";
+            for (auto &cycle : cycles)
+            {
+                for (size_t i = 0; i < cycle.size(); i++)
+                {
+                    ss << m_renderPasses[cycle[i]].name() << " ";
+
+                    ss << (i == cycle.size() - 1 ? "." : "-> ");
+                }
+
+                ss << "\n";
+            }
+
+            throw std::runtime_error(ss.str());
+        }
         m_lifetime = calculateLifetimes();
         CompiledRenderGraph compiledGraph;
 
@@ -436,4 +456,91 @@ namespace nitro::frame
 
         return invalidPassIdx;
     }
+
+    RenderPass &RenderPass::read(const LogicalTextureHandle &handle, const rhi::ResourceState &state, rhi::TextureSubresource range)
+    {
+        auto *logical = m_renderGraph.get(handle);
+        assert(logical && "invalid or stale handle");
+
+        logical->versions.back().consumers.push_back(m_index);
+        m_textures.push_back({.handle = logical->physicalHandle,
+                              .to = state,
+                              .range = range,
+                              .history = logical->history});
+
+        return *this;
+    }
+    RenderPass &RenderPass::read(const LogicalBufferHandle &handle, const rhi::ResourceState &state)
+    {
+        auto *logical = m_renderGraph.get(handle);
+        assert(logical && "invalid or stale handle");
+
+        logical->versions.back().consumers.push_back(m_index);
+        m_buffers.push_back({.handle = logical->physicalHandle,
+                             .to = state,
+                             .history = logical->history});
+
+        return *this;
+    }
+
+    RenderPass &RenderPass::write(const LogicalTextureHandle &handle, const rhi::ResourceState &state, rhi::TextureSubresource range)
+    {
+        auto *logical = m_renderGraph.get(handle);
+        assert(logical && "invalid or stale handle");
+        assert(!logical->history && "can not write last frame resource");
+
+        m_textures.push_back({.handle = logical->physicalHandle,
+                              .to = state,
+                              .range = range,
+                              .history = false});
+        if (logical->versions.back().producer == (int)m_index)
+        {
+            return *this;
+        }
+        auto &currentVersion = logical->versions.back();
+
+        if (currentVersion.producer || !currentVersion.consumers.empty())
+        {
+            logical->versions.push_back({});
+        }
+
+        logical->versions.back().producer = m_index;
+
+        return *this;
+    }
+    RenderPass &RenderPass::write(const LogicalBufferHandle &handle, const rhi::ResourceState &state)
+    {
+        auto *logical = m_renderGraph.get(handle);
+        assert(logical && "invalid or stale handle");
+        assert(!logical->history && "can not write last frame resource");
+
+        m_buffers.push_back({.handle = logical->physicalHandle,
+                             .to = state,
+                             .history = false});
+        auto &currentVersion = logical->versions.back();
+
+        if (logical->versions.back().producer == (int)m_index)
+        {
+            return *this;
+        }
+        if (currentVersion.producer || !currentVersion.consumers.empty())
+        {
+            logical->versions.push_back({});
+        }
+
+        logical->versions.back().producer = m_index;
+        return *this;
+    }
+
+    RenderPass &RenderPass::setExecuteFn(RenderPassExecute execute)
+    {
+        m_execute = execute;
+        return *this;
+    }
+
+    size_t RenderGraphBuilder::structureHash() const
+    {
+        return 0;
+    }
+
 } // namespace nitro::frame

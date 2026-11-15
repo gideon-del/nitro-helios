@@ -18,9 +18,9 @@ namespace nitro::tests
         CountingDevice() {}
         ~CountingDevice() override {}
         RHISwapchain *createSwapchain(RHISurface *surface) override { return nullptr; }
-        RHIDescriptorLayout *createDescriptorLayout(const std::vector<RHIDescriptorBinding> bindings) override { return nullptr; }
+        RHIDescriptorLayout *createDescriptorLayout(const std::vector<RHIDescriptorBinding> bindings, std::source_location loc = std::source_location::current()) override { return nullptr; }
         void destroyDescriptorLayout(RHIDescriptorLayout *layout) override {}
-        RHIDescriptorSet *createDescriptorSet(RHIDescriptorLayout *layout) override { return nullptr; }
+        RHIDescriptorSet *createDescriptorSet(RHIDescriptorLayout *layout, std::source_location loc = std::source_location::current()) override { return nullptr; }
         void destroyDescriptorSet(RHIDescriptorSet *set) override {};
 
         RHITimer *createTimer() override { return nullptr; }
@@ -91,6 +91,7 @@ namespace nitro::tests
         void destroy(RHISamplerHandle &handle) override {};
         const DefaultSamplers &defaultSamplers() const override { return m_samplers; }
 
+        void destroyTimer(RHITimer *timer) override {}
         void waitIdle() override {};
 
         uint32_t getCurrentFrameIndex() const override { return 0; }

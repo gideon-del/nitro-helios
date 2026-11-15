@@ -184,8 +184,8 @@ TEST_CASE("alias resource")
     auto b = resources.createTexture("B", desc, frame::ResourceSize::textureViewRelative(), opts);
 
     frame::PhysicalTextureLifetime lifetimes;
-    lifetimes[a] = {.name = "A", .lastUse = 1, .createdAt = 0};
-    lifetimes[b] = {.name = "B", .lastUse = 3, .createdAt = 2};
+    lifetimes[a] = {.lastUse = 1, .createdAt = 0};
+    lifetimes[b] = {.lastUse = 3, .createdAt = 2};
 
     frame::ViewBuildInfo buildInfo{
         .handle = viewHandle,
