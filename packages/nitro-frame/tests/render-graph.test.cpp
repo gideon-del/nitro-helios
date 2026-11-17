@@ -604,7 +604,7 @@ TEST_CASE("Discard over two frames")
 TEST_CASE("Previous resolves to the other instance")
 {
 
-       tests::CountingDevice device;
+    tests::CountingDevice device;
     frame::ResourceManager resourceManager{device};
     frame::RenderGraphBuilder renderGraph(resourceManager);
 

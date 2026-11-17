@@ -8,8 +8,8 @@
 #include <queue>
 #include <stack>
 #include <iostream>
-#include <functional>
-
+#include <string>
+#include <algorithm>
 namespace nitro
 {
     using NodeID = uint32_t;
@@ -420,4 +420,4 @@ namespace nitro
             inStack.erase(node);
         }
     };
-} // namespace nitro::renderer
+} // namespace nitro

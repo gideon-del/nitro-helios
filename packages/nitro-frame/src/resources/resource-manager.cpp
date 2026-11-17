@@ -24,9 +24,12 @@ namespace nitro::frame
         case ResourceInstanceType::Temporal:
             return previous ? info.viewFrame + r.info.options.historyCount - 1
                             : info.viewFrame;
-        default:
+        case ResourceInstanceType::Single:
             return 0;
         }
+
+        assert(false && "unhandled instance type");
+        return 0;
     }
 
     static size_t aliasInputHash(size_t structureHash, Extent2D extent)
@@ -273,9 +276,10 @@ namespace nitro::frame
             return rhi::kMaxFramesInFlight;
         case ResourceInstanceType::Temporal:
             return historyCount;
-        default:
-            return 1;
         }
+
+        assert(false && "unhandled instance type");
+        return 1;
     }
 
     bool ResourceManager::buildPersistentResource(const PhysicalTextureHandle &handle, const Extent2D size)

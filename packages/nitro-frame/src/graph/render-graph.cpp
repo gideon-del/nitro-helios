@@ -51,7 +51,7 @@ namespace nitro::frame
                 continue;
             }
 
-            if (covers(it->to, a.to))
+                        if (covers(it->to, a.to))
             {
             }
             else if (covers(a.to, it->to))
