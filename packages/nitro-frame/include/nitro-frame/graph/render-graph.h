@@ -41,7 +41,7 @@ namespace nitro::frame
     class RenderPass
     {
     public:
-        RenderPass(uint32_t index, std::string name, RenderGraphBuilder &renderGraph) : m_index(index), m_name(name), m_renderGraph(renderGraph) {};
+        RenderPass(uint32_t index, std::string name, RenderGraphBuilder &renderGraph, RenderPassExecute execute) : m_index(index), m_name(name), m_execute(std::move(execute)), m_renderGraph(renderGraph) {};
 
         RenderPass &read(const LogicalTextureHandle &handle, const rhi::ResourceState &state, rhi::TextureSubresource range = rhi::TextureSubresource{});
 
@@ -50,8 +50,6 @@ namespace nitro::frame
         RenderPass &write(const LogicalTextureHandle &handle, const rhi::ResourceState &state, rhi::TextureSubresource range = rhi::TextureSubresource{});
 
         RenderPass &write(const LogicalBufferHandle &handle, const rhi::ResourceState &state);
-
-        RenderPass &setExecuteFn(RenderPassExecute execute);
 
         const std::vector<TextureAccess> &getTextureAccess() const { return m_textures; }
         const std::vector<BufferAccess> &getBufferAccess() const { return m_buffers; }
@@ -69,6 +67,13 @@ namespace nitro::frame
         RenderGraphBuilder &m_renderGraph;
     };
 
+    struct GraphExecuteInfo
+    {
+        rhi::RHICommandBuffer &cmd;
+        const RenderView &view;
+        ResourceFrameInfo frameInfo;
+        rhi::RHITimer *timer = nullptr;
+    };
     class RenderGraphBuilder
     {
 
@@ -92,7 +97,7 @@ namespace nitro::frame
         LogicalTexture *get(const LogicalTextureHandle &handle);
         LogicalBuffer *get(const LogicalBufferHandle &handle);
 
-        RenderPass &addRenderPass(std::string name);
+        RenderPass &addRenderPass(std::string name, RenderPassExecute execute);
         size_t structureHash() const;
         const CompiledRenderGraph compile();
 
@@ -103,12 +108,14 @@ namespace nitro::frame
         const std::vector<uint32_t> &executionOrder() const { return m_executionOrder; }
         uint32_t orderOf(const std::string &passName) const;
 
+        void execute(const CompiledRenderGraph &compiledGraph, const GraphExecuteInfo &info);
+
     private:
         LogicalTextureHandle addLogical(const PhysicalTextureHandle handle, bool history);
         LogicalBufferHandle addLogical(const PhysicalBufferHandle handle, bool history);
 
         const PhysicalTextureLifetime calculateLifetimes() const;
-        const CompiledRenderGraph::Step buildRenderPassStep(int passIdx);
+        const CompiledRenderGraph::Step buildRenderPassStep(int passIdx, int order);
 
     private:
         Graph m_graph;

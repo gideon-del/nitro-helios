@@ -35,6 +35,14 @@ namespace nitro::frame
             auto idx = frameIdx % m_count;
             return &m_slots[idx];
         }
+        const T *get(uint32_t frameIdx = 0) const
+        {
+            if (m_slots.empty() || m_count == 0)
+                return nullptr;
+
+            auto idx = frameIdx % m_count;
+            return &m_slots[idx];
+        }
 
         template <class F>
         void forEach(F &&fn)

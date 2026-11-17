@@ -20,9 +20,14 @@ if(NITRO_BUILD_TESTS)
 file(GLOB_RECURSE NITRO_RHI_TESTS CONFIGURE_DEPENDS
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/*.test.cpp)
 
+        add_library(nitro-rhi-test-support INTERFACE)
+target_include_directories(nitro-rhi-test-support INTERFACE
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/supports)      
+target_link_libraries(nitro-rhi-test-support INTERFACE nitro-rhi)
+
 add_executable(nitro-rhi-tests ${NITRO_RHI_TESTS})
-target_link_libraries(nitro-rhi-tests PRIVATE nitro-rhi Catch2::Catch2WithMain) 
-target_include_directories(nitro-rhi-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests)
+target_link_libraries(nitro-rhi-tests PRIVATE nitro-rhi Catch2::Catch2WithMain nitro-rhi-test-support) 
+
 include(Catch)
 catch_discover_tests(nitro-rhi-tests)       
 

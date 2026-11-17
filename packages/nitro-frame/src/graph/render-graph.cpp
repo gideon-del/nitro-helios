@@ -1,5 +1,6 @@
 #include <sstream>
 #include <climits>
+#include <ranges>
 #include "nitro-frame/graph/render-graph.h"
 #include "nitro-core/utils.h"
 #include "nitro-rhi/rhi-texture.h"
@@ -208,17 +209,17 @@ namespace nitro::frame
         return m_logicalBuffers.get(handle);
     }
 
-    RenderPass &RenderGraphBuilder::addRenderPass(std::string name)
+    RenderPass &RenderGraphBuilder::addRenderPass(std::string name, RenderPassExecute execute)
     {
+
+        assert(execute && "pass has no execute function");
         auto it = m_passNameToPassIdx.find(name);
 
-        if (it != m_passNameToPassIdx.end())
-        {
-            return m_renderPasses[it->second];
-        }
+        assert(it == m_passNameToPassIdx.end() && "Duplicate Pass name not allowed");
+
         auto index = static_cast<uint32_t>(m_renderPasses.size());
 
-        m_renderPasses.push_back(RenderPass{index, name, *this});
+        m_renderPasses.push_back(RenderPass{index, name, *this, execute});
 
         m_passNameToPassIdx[name] = index;
         return m_renderPasses[index];
@@ -371,15 +372,16 @@ namespace nitro::frame
         m_lifetime = calculateLifetimes();
         CompiledRenderGraph compiledGraph;
 
-        for (auto &passIdx : m_executionOrder)
+        for (int i = 0; i < (int)m_executionOrder.size(); i++)
         {
-            compiledGraph.steps.push_back(buildRenderPassStep(passIdx));
+            auto &passIdx = m_executionOrder[i];
+            compiledGraph.steps.push_back(buildRenderPassStep(passIdx, i));
         }
 
         return compiledGraph;
     }
 
-    const CompiledRenderGraph::Step RenderGraphBuilder::buildRenderPassStep(int passIdx)
+    const CompiledRenderGraph::Step RenderGraphBuilder::buildRenderPassStep(int passIdx, int order)
     {
 
         if (passIdx >= (int)m_renderPasses.size())
@@ -390,6 +392,25 @@ namespace nitro::frame
 
         renderPassStep.passIdx = passIdx;
         renderPassStep.textureBarriers = mergeAccesses(renderPass.getTextureAccess());
+
+        for (auto &access : renderPassStep.textureBarriers)
+        {
+
+            auto &info = m_resourceManager.info(access.handle);
+            if (info.options.lifetime != ResourceLifetimeType::Transient)
+                continue;
+            auto &lifetime = m_lifetime.at(access.handle);
+
+            if (lifetime.createdAt != order)
+                continue;
+            auto it = std::ranges::find(renderPassStep.discardedTexture, access.handle);
+
+            if (it == renderPassStep.discardedTexture.end())
+            {
+
+                renderPassStep.discardedTexture.push_back(access.handle);
+            }
+        };
         renderPassStep.bufferBarriers = mergeAccesses(renderPass.getBufferAccess());
 
         return renderPassStep;
@@ -535,12 +556,6 @@ namespace nitro::frame
         return *this;
     }
 
-    RenderPass &RenderPass::setExecuteFn(RenderPassExecute execute)
-    {
-        m_execute = execute;
-        return *this;
-    }
-
     size_t RenderGraphBuilder::structureHash() const
     {
 
@@ -619,5 +634,76 @@ namespace nitro::frame
 
         return seed;
     }
+
+    void RenderGraphBuilder::execute(const CompiledRenderGraph &compiledGraph, const GraphExecuteInfo &info)
+    {
+        std::vector<rhi::TextureBarrier> textureBarriers;
+        std::vector<rhi::BufferBarrier> bufferBarriers;
+
+        PassContext context{
+            .cmd = info.cmd,
+            .resources = m_resourceManager,
+            .view = info.view,
+            .frame = info.frameInfo};
+        for (auto &step : compiledGraph.steps)
+        {
+
+            textureBarriers.clear();
+            bufferBarriers.clear();
+
+            textureBarriers.reserve(step.textureBarriers.size());
+            bufferBarriers.reserve(step.bufferBarriers.size());
+
+            for (auto &handle : step.discardedTexture)
+            {
+                auto &resourceInfo = m_resourceManager.info(handle);
+                if (resourceInfo.options.lifetime != ResourceLifetimeType::Transient)
+                    continue;
+
+                auto *texture = m_resourceManager.get(handle, info.frameInfo);
+
+                assert(texture && "Stale or unbuilt handle");
+                info.cmd.discard(*texture);
+            }
+
+            for (auto &access : step.textureBarriers)
+            {
+                rhi::TextureBarrier textureBarrier;
+                textureBarrier.texture = access.history ? m_resourceManager.previous(access.handle, info.frameInfo) : m_resourceManager.get(access.handle, info.frameInfo);
+                textureBarrier.range = access.range;
+                textureBarrier.to = access.to;
+
+                textureBarriers.push_back(textureBarrier);
+            }
+
+            for (auto &access : step.bufferBarriers)
+            {
+                rhi::BufferBarrier bufferBarrier;
+                bufferBarrier.buffer = access.history ? m_resourceManager.previous(access.handle, info.frameInfo) : m_resourceManager.get(access.handle, info.frameInfo);
+                bufferBarrier.to = access.to;
+
+                bufferBarriers.push_back(bufferBarrier);
+            }
+
+            info.cmd.barrier(textureBarriers, bufferBarriers);
+
+            assert(step.passIdx < (int)m_renderPasses.size() && "Out of range index");
+            auto &pass = m_renderPasses[step.passIdx];
+
+            auto &execute = pass.getExecute();
+
+            if (info.timer)
+            {
+                auto passName = std::format("{}-{}", pass.name(), std::to_string((int)info.frameInfo.viewHandle.index));
+                info.timer->begin(&info.cmd, passName);
+                execute(context);
+                info.timer->end(&info.cmd, passName);
+            }
+            else
+            {
+                execute(context);
+            }
+        }
+    };
 
 } // namespace nitro::frame

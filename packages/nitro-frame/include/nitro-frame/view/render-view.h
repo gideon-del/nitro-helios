@@ -4,7 +4,6 @@
 
 namespace nitro::frame
 {
-#pragma once
 
     struct RenderViewTag
     {

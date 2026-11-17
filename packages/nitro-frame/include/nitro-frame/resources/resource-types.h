@@ -229,6 +229,7 @@ namespace nitro::frame
     {
         struct Step
         {
+            std::vector<PhysicalTextureHandle> discardedTexture;
             std::vector<TextureAccess> textureBarriers;
             std::vector<BufferAccess> bufferBarriers;
             int passIdx;

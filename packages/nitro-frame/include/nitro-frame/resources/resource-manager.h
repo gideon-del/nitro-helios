@@ -91,11 +91,11 @@ namespace nitro::frame
         PhysicalBufferHandle importBuffer(const std::string &name, rhi::RHIBufferHandle handle);
         void updateExternalBuffer(const PhysicalBufferHandle &handle, const rhi::RHIBufferHandle &rhiHandle);
 
-        rhi::RHITexture *get(const PhysicalTextureHandle &handle, const ResourceFrameInfo &frameInfo);
-        rhi::RHIBuffer *get(const PhysicalBufferHandle &handle, const ResourceFrameInfo &frameInfo);
+        rhi::RHITexture *get(const PhysicalTextureHandle &handle, const ResourceFrameInfo &frameInfo) const;
+        rhi::RHIBuffer *get(const PhysicalBufferHandle &handle, const ResourceFrameInfo &frameInfo) const;
 
-        rhi::RHITexture *previous(const PhysicalTextureHandle &handle, const ResourceFrameInfo &frameInfo);
-        rhi::RHIBuffer *previous(const PhysicalBufferHandle &handle, const ResourceFrameInfo &frameInfo);
+        rhi::RHITexture *previous(const PhysicalTextureHandle &handle, const ResourceFrameInfo &frameInfo) const;
+        rhi::RHIBuffer *previous(const PhysicalBufferHandle &handle, const ResourceFrameInfo &frameInfo) const;
 
         rhi::RHITexture *getTexture(const ResourceKey &key, const ResourceFrameInfo &frameInfo);
         rhi::RHIBuffer *getBuffer(const ResourceKey &key, const ResourceFrameInfo &frameInfo);

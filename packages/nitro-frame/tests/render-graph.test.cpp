@@ -1,10 +1,13 @@
 #include <catch2/catch_test_macros.hpp>
+#include "fake-texture.h"
+#include "recording-command-buffer.h"
 #include "nitro-frame/graph/render-graph.h"
 #include "supports/counting-device.h"
 #include <ranges>
 
 using namespace nitro;
 
+frame::RenderPassExecute noop = [](const frame::PassContext &ctx) {};
 TEST_CASE("RAW chain")
 {
     tests::CountingDevice device;
@@ -23,10 +26,10 @@ TEST_CASE("RAW chain")
 
     auto X = renderGraph.createTexture("X", desc, frame::ResourceSize::textureViewRelative(), options);
 
-    auto &a = renderGraph.addRenderPass("A")
+    auto &a = renderGraph.addRenderPass("A", noop)
                   .write(X, rhi::ResourceState::ShaderWrite);
 
-    auto &b = renderGraph.addRenderPass("B")
+    auto &b = renderGraph.addRenderPass("B", noop)
                   .read(X, rhi::ResourceState::ShaderRead);
 
     REQUIRE_NOTHROW(renderGraph.compile());
@@ -59,9 +62,9 @@ TEST_CASE("WAR chain")
 
     auto X = renderGraph.createTexture("X", desc, frame::ResourceSize::textureViewRelative(), options);
 
-    auto &b = renderGraph.addRenderPass("B")
+    auto &b = renderGraph.addRenderPass("B", noop)
                   .read(X, rhi::ResourceState::ShaderRead);
-    auto &a = renderGraph.addRenderPass("A")
+    auto &a = renderGraph.addRenderPass("A", noop)
                   .write(X, rhi::ResourceState::ShaderWrite);
 
     REQUIRE_NOTHROW(renderGraph.compile());
@@ -97,9 +100,9 @@ TEST_CASE("WAW chain")
 
     auto X = renderGraph.createTexture("X", desc, frame::ResourceSize::textureViewRelative(), options);
 
-    auto &a = renderGraph.addRenderPass("A")
+    auto &a = renderGraph.addRenderPass("A", noop)
                   .write(X, rhi::ResourceState::ShaderWrite);
-    auto &b = renderGraph.addRenderPass("B")
+    auto &b = renderGraph.addRenderPass("B", noop)
                   .write(X, rhi::ResourceState::ShaderWrite);
 
     auto compiledGraph = renderGraph.compile();
@@ -136,7 +139,7 @@ TEST_CASE("Same pass writes twice (different mips)")
 
     auto X = renderGraph.createTexture("X", desc, frame::ResourceSize::textureViewRelative(), options);
 
-    renderGraph.addRenderPass("A")
+    renderGraph.addRenderPass("A", noop)
         .write(X, rhi::ResourceState::ShaderWrite, rhi::TextureSubresource{.baseMip = 0, .mipCount = 1})
         .write(X, rhi::ResourceState::ShaderWrite, rhi::TextureSubresource{.baseMip = 1, .mipCount = 1});
 
@@ -168,7 +171,7 @@ TEST_CASE("Read then write in one pass")
 
     auto X = renderGraph.createTexture("X", desc, frame::ResourceSize::textureViewRelative(), options);
 
-    auto &a = renderGraph.addRenderPass("A")
+    auto &a = renderGraph.addRenderPass("A", noop)
                   .read(X, rhi::ResourceState::ShaderRead)
                   .write(X, rhi::ResourceState::ShaderWrite);
 
@@ -201,10 +204,10 @@ TEST_CASE("Cycle")
     auto X = renderGraph.createTexture("X", desc, frame::ResourceSize::textureViewRelative(), options);
     auto Y = renderGraph.createTexture("Y", desc, frame::ResourceSize::textureViewRelative(), options);
 
-    auto &a = renderGraph.addRenderPass("A")
+    auto &a = renderGraph.addRenderPass("A", noop)
                   .write(X, rhi::ResourceState::ShaderWrite);
 
-    renderGraph.addRenderPass("B")
+    renderGraph.addRenderPass("B", noop)
         .read(X, rhi::ResourceState::ShaderRead)
         .write(Y, rhi::ResourceState::ShaderWrite);
     a.read(Y, rhi::ResourceState::ShaderRead);
@@ -230,11 +233,11 @@ TEST_CASE("Transient lifetime")
 
     auto X = renderGraph.createTexture("X", desc, frame::ResourceSize::textureViewRelative(), options);
     auto Y = renderGraph.createTexture("Y", desc, frame::ResourceSize::textureViewRelative(), options);
-    renderGraph.addRenderPass("A")
+    renderGraph.addRenderPass("A", noop)
         .write(X, rhi::ResourceState::ShaderWrite);
-    renderGraph.addRenderPass("B")
+    renderGraph.addRenderPass("B", noop)
         .read(X, rhi::ResourceState::ShaderRead);
-    renderGraph.addRenderPass("C")
+    renderGraph.addRenderPass("C", noop)
         .write(Y, rhi::ResourceState::ShaderWrite);
 
     REQUIRE_NOTHROW(renderGraph.compile());
@@ -269,10 +272,10 @@ TEST_CASE("Temporal previous doesn’t create an edge")
 
     auto hiz = renderGraph.createTemporalTexture("Hi-Z", desc, frame::ResourceSize::textureViewRelative(), options);
 
-    auto &a = renderGraph.addRenderPass("A")
+    auto &a = renderGraph.addRenderPass("A", noop)
                   .write(hiz.current, rhi::ResourceState::ShaderWrite);
 
-    auto &b = renderGraph.addRenderPass("B")
+    auto &b = renderGraph.addRenderPass("B", noop)
                   .read(hiz.previous, rhi::ResourceState::ShaderRead);
 
     frame::CompiledRenderGraph compiledGraph;
@@ -310,20 +313,20 @@ TEST_CASE("Structure Hash")
 
     auto firstX = firstRenderGraph.createTexture("X", desc, frame::ResourceSize::textureViewRelative(), options);
     auto firstY = firstRenderGraph.createTexture("Y", desc, frame::ResourceSize::textureViewRelative(), options);
-    firstRenderGraph.addRenderPass("A")
+    firstRenderGraph.addRenderPass("A", noop)
         .write(firstX, rhi::ResourceState::ShaderWrite);
-    firstRenderGraph.addRenderPass("B")
+    firstRenderGraph.addRenderPass("B", noop)
         .read(firstX, rhi::ResourceState::ShaderRead);
-    firstRenderGraph.addRenderPass("C")
+    firstRenderGraph.addRenderPass("C", noop)
         .write(firstY, rhi::ResourceState::ShaderWrite);
 
     auto secondX = secondRenderGraph.createTexture("X", desc, frame::ResourceSize::textureViewRelative(), options);
     auto secondY = secondRenderGraph.createTexture("Y", desc, frame::ResourceSize::textureViewRelative(), options);
-    secondRenderGraph.addRenderPass("A")
+    secondRenderGraph.addRenderPass("A", noop)
         .write(secondX, rhi::ResourceState::ShaderWrite);
-    secondRenderGraph.addRenderPass("B")
+    secondRenderGraph.addRenderPass("B", noop)
         .read(secondX, rhi::ResourceState::ShaderRead);
-    secondRenderGraph.addRenderPass("C")
+    secondRenderGraph.addRenderPass("C", noop)
         .write(secondY, rhi::ResourceState::ShaderWrite);
 
     CHECK(firstRenderGraph.structureHash() == secondRenderGraph.structureHash());
@@ -348,16 +351,16 @@ TEST_CASE("RAW vs WAW")
     options.scope = frame::ResourceScope::View;
 
     auto firstX = firstRenderGraph.createTexture("X", desc, frame::ResourceSize::textureViewRelative(), options);
-    firstRenderGraph.addRenderPass("A")
+    firstRenderGraph.addRenderPass("A", noop)
         .write(firstX, rhi::ResourceState::ShaderWrite);
-    firstRenderGraph.addRenderPass("B")
+    firstRenderGraph.addRenderPass("B", noop)
         .read(firstX, rhi::ResourceState::ShaderWrite);
 
     auto secondX = secondRenderGraph.createTexture("X", desc, frame::ResourceSize::textureViewRelative(), options);
 
-    secondRenderGraph.addRenderPass("A")
+    secondRenderGraph.addRenderPass("A", noop)
         .write(secondX, rhi::ResourceState::ShaderWrite);
-    secondRenderGraph.addRenderPass("B")
+    secondRenderGraph.addRenderPass("B", noop)
         .write(secondX, rhi::ResourceState::ShaderWrite);
 
     CHECK(firstRenderGraph.structureHash() != secondRenderGraph.structureHash());
@@ -382,15 +385,19 @@ TEST_CASE("Texture resource range")
 
     auto firstX = firstRenderGraph.createTexture("X", desc, frame::ResourceSize::textureViewRelative(), options);
 
-    firstRenderGraph.addRenderPass("A")
+    firstRenderGraph.addRenderPass("A", noop)
         .write(firstX, rhi::ResourceState::ShaderWrite, rhi::TextureSubresource{.baseMip = 0, .mipCount = 1})
         .write(firstX, rhi::ResourceState::ShaderWrite, rhi::TextureSubresource{.baseMip = 1, .mipCount = 1});
 
     auto secondX = secondRenderGraph.createTexture("X", desc, frame::ResourceSize::textureViewRelative(), options);
 
-    secondRenderGraph.addRenderPass("A")
+    secondRenderGraph.addRenderPass("A", noop)
         .write(secondX, rhi::ResourceState::ShaderWrite, rhi::TextureSubresource{.baseMip = 1, .mipCount = 1})
         .write(secondX, rhi::ResourceState::ShaderWrite, rhi::TextureSubresource{.baseMip = 2, .mipCount = 1});
 
     CHECK(firstRenderGraph.structureHash() != secondRenderGraph.structureHash());
+}
+
+TEST_CASE("Pass run in order")
+{
 }

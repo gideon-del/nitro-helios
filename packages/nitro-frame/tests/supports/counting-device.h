@@ -1,5 +1,8 @@
 #pragma once
 #include "nitro-rhi/rhi-device.h"
+#include "fake-texture.h"
+#include "fake-buffer.h"
+#include "nitro-core/types/pool.h"
 
 namespace nitro::tests
 {
@@ -7,6 +10,8 @@ namespace nitro::tests
     class CountingDevice : public RHIDevice
     {
 
+        ResourcePool<std::unique_ptr<FakeTexture>, RHITextureTag> m_textures;
+        ResourcePool<std::unique_ptr<FakeBuffer>, RHIBufferTag> m_buffers;
         uint32_t m_creates = 0;
         uint32_t m_live = 0;
         uint32_t m_destroys = 0;
@@ -29,41 +34,78 @@ namespace nitro::tests
 
         void destroyRenderPass(RHIRenderPass *renderPass) override {}
 
-        RHITexture *resolve(const RHITextureHandle &handle) override { return nullptr; }
+        RHITexture *resolve(const RHITextureHandle &handle) override
+        {
+            auto texture = m_textures.get(handle);
+            if (!texture)
+            {
+                return nullptr;
+            }
+
+            return texture->get();
+        }
         RHITextureHandle create(const TextureDesc &desc) override
         {
             m_creates++;
             m_live++;
-            return {m_next++, 1};
+
+            auto handle = m_textures.emplace(std::make_unique<FakeTexture>(desc.mipmaps, desc.type == TextureDesc::Type::Cube ? 6 : 1));
+
+            auto texture = m_textures.get(handle)->get();
+            assignHandle(*texture, handle);
+            return handle;
         }
         void destroy(const RHITextureHandle &handle) override
         {
             m_live--;
             m_destroys++;
+            m_textures.free(handle);
         }
 
-        RHIBuffer *resolve(const RHIBufferHandle &handle) override { return nullptr; }
+        RHIBuffer *resolve(const RHIBufferHandle &handle) override
+        {
+            auto buffer = m_buffers.get(handle);
+
+            if (!buffer)
+            {
+                return nullptr;
+            }
+
+            return buffer->get();
+        }
         void destroy(const RHIBufferHandle &handle) override
         {
             m_live--;
             m_destroys++;
+
+            m_buffers.free(handle);
         }
         RHIBuffer *createBuffer(const BufferDesc &desc) override
         {
-            return nullptr;
+            return resolve(create(desc));
         };
-        void destroyBuffer(RHIBuffer *buffer) override {};
+        void destroyBuffer(RHIBuffer *buffer) override
+        {
+            if (!buffer)
+                return;
+            destroy(buffer->getHandle());
+        };
 
         RHITexture *createTexture(const TextureDesc &desc) override
         {
-            m_creates++;
-            m_live++;
-            return nullptr;
+
+            return resolve(create(desc));
         }
         void destroyTexture(RHITexture *texture) override
         {
-            m_live--;
-            m_destroys++;
+            if (!texture)
+            {
+                return;
+            }
+
+            auto handle = texture->getHandle();
+
+            destroy(handle);
         }
 
         RHIBufferHandle create(const BufferDesc &desc) override
@@ -71,7 +113,11 @@ namespace nitro::tests
             m_creates++;
             m_live++;
 
-            return {m_next++, 1};
+            auto handle = m_buffers.emplace(std::make_unique<FakeBuffer>());
+
+            auto buffer = m_buffers.get(handle)->get();
+            assignHandle(*buffer, handle);
+            return handle;
         }
 
         RHIPipeline *createPipeline(const PipelineDesc &desc) override { return nullptr; }
@@ -132,13 +178,12 @@ namespace nitro::tests
             m_heapLive--;
         }
 
-        RHITexture *createTextureFromHeap(RHIHeap *heap, const TextureDesc &desc, size_t offset) override { return nullptr; }
+        RHITexture *createTextureFromHeap(RHIHeap *heap, const TextureDesc &desc, size_t offset) override { return resolve(create(desc)); }
 
         RHITextureHandle createTextureFromHeap(const RHIHeapHandle &heapHandle, const TextureDesc &desc, size_t offset) override
         {
-            ++m_creates;
-            ++m_live;
-            return {m_next++, 1};
+
+            return create(desc);
         }
 
         uint32_t getCreateCount() const { return m_creates; }

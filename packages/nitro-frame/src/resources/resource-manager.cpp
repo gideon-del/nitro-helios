@@ -443,27 +443,27 @@ namespace nitro::frame
         m_aliasPlans.erase(viewHandle);
     }
 
-    rhi::RHITexture *ResourceManager::get(const PhysicalTextureHandle &handle, const ResourceFrameInfo &info)
+    rhi::RHITexture *ResourceManager::get(const PhysicalTextureHandle &handle, const ResourceFrameInfo &info) const
     {
         auto *t = m_textures.get(handle);
         assert(t && !t->resources.empty() && "get() on a freed or unbuilt resource");
         return m_device.resolve(*t->resources.get(instanceIndex(*t, info)));
     }
 
-    rhi::RHIBuffer *ResourceManager::get(const PhysicalBufferHandle &handle, const ResourceFrameInfo &info)
+    rhi::RHIBuffer *ResourceManager::get(const PhysicalBufferHandle &handle, const ResourceFrameInfo &info) const
     {
         auto *b = m_buffers.get(handle);
         assert(b && !b->resources.empty() && "get() on a freed or unbuilt resource");
         return m_device.resolve(*b->resources.get(instanceIndex(*b, info)));
     }
 
-    rhi::RHITexture *ResourceManager::previous(const PhysicalTextureHandle &handle, const ResourceFrameInfo &info)
+    rhi::RHITexture *ResourceManager::previous(const PhysicalTextureHandle &handle, const ResourceFrameInfo &info) const
     {
         auto *t = m_textures.get(handle);
         assert(t && !t->resources.empty() && t->info.options.instanceType == ResourceInstanceType::Temporal && "previous() on a non-temporal resource");
         return m_device.resolve(*t->resources.get(instanceIndex(*t, info, true)));
     }
-    rhi::RHIBuffer *ResourceManager::previous(const PhysicalBufferHandle &handle, const ResourceFrameInfo &info)
+    rhi::RHIBuffer *ResourceManager::previous(const PhysicalBufferHandle &handle, const ResourceFrameInfo &info) const
     {
         auto *b = m_buffers.get(handle);
         assert(b && !b->resources.empty() && b->info.options.instanceType == ResourceInstanceType::Temporal && "previous() on a non-temporal resource");

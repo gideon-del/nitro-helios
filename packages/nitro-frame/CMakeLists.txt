@@ -21,7 +21,7 @@ file(GLOB_RECURSE NITRO_FRAME_TESTS CONFIGURE_DEPENDS
 
   add_executable(nitro-frame-tests ${NITRO_FRAME_TESTS})
   
-  target_link_libraries(nitro-frame-tests PRIVATE nitro-frame Catch2::Catch2WithMain)
+  target_link_libraries(nitro-frame-tests PRIVATE nitro-frame Catch2::Catch2WithMain nitro-rhi-test-support)
   target_include_directories(nitro-frame-tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests)
   include(Catch)
   catch_discover_tests(nitro-frame-tests)
