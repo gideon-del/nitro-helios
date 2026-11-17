@@ -25,8 +25,8 @@ namespace nitro::tests
                           std::span<const ResolvedBufferBarrier> b) override
         {
             ++emitCalls;
-            textures.assign(t.begin(), t.end());
-            buffers.assign(b.begin(), b.end());
+            textures.insert(textures.end(), t.begin(), t.end());
+            buffers.insert(buffers.end(), b.begin(), b.end());
         }
     };
 }

@@ -392,7 +392,6 @@ namespace nitro::frame
 
         renderPassStep.passIdx = passIdx;
         renderPassStep.textureBarriers = mergeAccesses(renderPass.getTextureAccess());
-
         for (auto &access : renderPassStep.textureBarriers)
         {
 
@@ -647,7 +646,8 @@ namespace nitro::frame
             .frame = info.frameInfo};
         for (auto &step : compiledGraph.steps)
         {
-
+            assert(step.passIdx < (int)m_renderPasses.size() && "Out of range index");
+            auto &pass = m_renderPasses[step.passIdx];
             textureBarriers.clear();
             bufferBarriers.clear();
 
@@ -686,9 +686,6 @@ namespace nitro::frame
             }
 
             info.cmd.barrier(textureBarriers, bufferBarriers);
-
-            assert(step.passIdx < (int)m_renderPasses.size() && "Out of range index");
-            auto &pass = m_renderPasses[step.passIdx];
 
             auto &execute = pass.getExecute();
 

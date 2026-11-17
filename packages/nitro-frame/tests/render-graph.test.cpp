@@ -398,6 +398,313 @@ TEST_CASE("Texture resource range")
     CHECK(firstRenderGraph.structureHash() != secondRenderGraph.structureHash());
 }
 
-TEST_CASE("Pass run in order")
+void runFrame(frame::RenderGraphBuilder &builder, frame::ResourceManager &rm, rhi::RHICommandBuffer &cmd, frame::RenderView &view, frame::ResourceFrameInfo &frameInfo)
 {
+
+    auto compiledGraph = builder.compile();
+    auto &lifetimes = builder.lifetimes();
+
+    frame::ViewBuildInfo buildInfo{
+        .handle = frameInfo.viewHandle,
+        .extent = view.size,
+        .structureHash = builder.structureHash(),
+        .lifetimes = lifetimes};
+
+    rm.build();
+    rm.buildViewResources(buildInfo);
+    builder.execute(compiledGraph, {cmd, view, frameInfo});
+}
+TEST_CASE("Pass execute run in order")
+{
+
+    tests::CountingDevice device;
+
+    frame::ResourceManager resourceManager{device};
+    frame::RenderGraphBuilder renderGraph(resourceManager);
+
+    frame::RenderViewHandle viewHandle{1, 1};
+
+    frame::RenderView view;
+    view.historyValid = true;
+    view.frameIdx = 0;
+    view.size = {100, 100};
+
+    rhi::TextureDesc desc;
+    desc.mipmaps = 3;
+
+    frame::GPUResourceOptions options;
+    options.lifetime = frame::ResourceLifetimeType::Transient;
+    options.viewHandle = viewHandle;
+    options.scope = frame::ResourceScope::View;
+
+    auto X = renderGraph.createTexture("X", desc, frame::ResourceSize::textureViewRelative(), options);
+
+    std::vector<std::string> passNames;
+    renderGraph.addRenderPass("A", [&](const frame::PassContext &ctx)
+                              { passNames.push_back("A"); })
+        .write(X, rhi::ResourceState::ShaderWrite);
+    renderGraph.addRenderPass("B", [&](const frame::PassContext &ctx)
+                              { passNames.push_back("B"); })
+        .read(X, rhi::ResourceState::ShaderRead);
+    renderGraph.addRenderPass("C", [&](const frame::PassContext &ctx)
+                              { passNames.push_back("C"); })
+        .write(X, rhi::ResourceState::ShaderWrite);
+
+    tests::RecordingCommandBuffer cmd;
+
+    frame::ResourceFrameInfo frameinfo;
+    frameinfo.viewHandle = viewHandle;
+    frameinfo.viewFrame = view.frameIdx;
+    frameinfo.rhiFrame = 0;
+
+    runFrame(
+        renderGraph,
+        resourceManager,
+        cmd,
+        view,
+        frameinfo);
+
+    REQUIRE(passNames.size() == 3);
+
+    CHECK(cmd.barrierEmitCalls() == 3);
+
+    for (int i = 0; i < (int)passNames.size(); i++)
+    {
+        CHECK((int)renderGraph.orderOf(passNames[i]) == i);
+    }
+}
+TEST_CASE("Pass with no resource emit no call")
+{
+
+    tests::CountingDevice device;
+
+    frame::ResourceManager resourceManager{device};
+    frame::RenderGraphBuilder renderGraph(resourceManager);
+
+    frame::RenderViewHandle viewHandle{1, 1};
+
+    frame::RenderView view;
+    view.historyValid = true;
+    view.frameIdx = 0;
+    view.size = {100, 100};
+
+    std::vector<std::string> passNames;
+    renderGraph.addRenderPass("A", [&](const frame::PassContext &ctx)
+                              { passNames.push_back("A"); });
+
+    tests::RecordingCommandBuffer cmd;
+
+    frame::ResourceFrameInfo frameinfo;
+    frameinfo.viewHandle = viewHandle;
+    frameinfo.viewFrame = view.frameIdx;
+    frameinfo.rhiFrame = 0;
+
+    runFrame(
+        renderGraph,
+        resourceManager,
+        cmd,
+        view,
+        frameinfo);
+
+    REQUIRE(passNames.size() == 1);
+
+    CHECK(cmd.barrierEmitCalls() == 0);
+}
+TEST_CASE("Discard over two frames")
+{
+
+    tests::CountingDevice device;
+
+    frame::ResourceManager resourceManager{device};
+    frame::RenderGraphBuilder firstGraph(resourceManager);
+
+    frame::RenderViewHandle viewHandle{1, 1};
+
+    frame::RenderView view;
+    view.historyValid = true;
+    view.frameIdx = 0;
+    view.size = {100, 100};
+
+    rhi::TextureDesc desc;
+    desc.mipmaps = 3;
+
+    frame::GPUResourceOptions options;
+    options.lifetime = frame::ResourceLifetimeType::Transient;
+    options.viewHandle = viewHandle;
+    options.scope = frame::ResourceScope::View;
+
+    auto firstX = firstGraph.createTexture("X", desc, frame::ResourceSize::textureViewRelative(), options);
+
+    frame::GPUResourceOptions persistentOption;
+    persistentOption.viewHandle = viewHandle;
+    persistentOption.scope = frame::ResourceScope::View;
+
+    auto firstP = firstGraph.createTexture("P", desc, frame::ResourceSize::textureViewRelative(), persistentOption);
+
+    std::vector<std::string> passNames;
+    firstGraph.addRenderPass("A", [&](const frame::PassContext &ctx)
+                             { passNames.push_back("A"); })
+        .write(firstX, rhi::ResourceState::ShaderWrite)
+        .write(firstP, rhi::ResourceState::ShaderWrite);
+
+    tests::RecordingCommandBuffer cmd;
+
+    frame::ResourceFrameInfo frameinfo;
+    frameinfo.viewHandle = viewHandle;
+    frameinfo.viewFrame = view.frameIdx;
+    frameinfo.rhiFrame = 0;
+
+    runFrame(
+        firstGraph,
+        resourceManager,
+        cmd,
+        view,
+        frameinfo);
+
+    cmd.clearRecording();
+    passNames.clear();
+
+    view.frameIdx = 1;
+    frameinfo.viewFrame = view.frameIdx;
+    frameinfo.rhiFrame = 1;
+    frame::RenderGraphBuilder secondGraph(resourceManager);
+
+    auto secondX = secondGraph.createTexture("X", desc, frame::ResourceSize::textureViewRelative(), options);
+    auto secondP = secondGraph.createTexture("P", desc, frame::ResourceSize::textureViewRelative(), persistentOption);
+
+    secondGraph.addRenderPass("A", [&](const frame::PassContext &ctx)
+                              { passNames.push_back("A"); })
+        .write(secondX, rhi::ResourceState::ShaderWrite)
+        .write(secondP, rhi::ResourceState::ShaderWrite);
+
+    runFrame(
+        secondGraph,
+        resourceManager,
+        cmd,
+        view,
+        frameinfo);
+    REQUIRE(passNames.size() == 1);
+
+    CHECK(device.getCreateCount() == 2);
+
+    auto &textureBarriers = cmd.resolvedTextureBarriers();
+
+    REQUIRE(textureBarriers.size() == 2);
+
+    auto *logicalX = secondGraph.get(secondX);
+    auto *logicalP = secondGraph.get(secondP);
+
+    CHECK(textureBarriers[0].from == rhi::ResourceState::Undefined);
+    CHECK(textureBarriers[0].texture == resourceManager.get(logicalX->physicalHandle, frameinfo));
+
+    CHECK(textureBarriers[1].from == rhi::ResourceState::ShaderWrite);
+    CHECK(textureBarriers[1].texture == resourceManager.get(logicalP->physicalHandle, frameinfo));
+}
+
+TEST_CASE("Previous resolves to the other instance")
+{
+
+       tests::CountingDevice device;
+    frame::ResourceManager resourceManager{device};
+    frame::RenderGraphBuilder renderGraph(resourceManager);
+
+    frame::RenderViewHandle viewHandle{1, 1};
+
+    frame::RenderView view;
+    view.historyValid = true;
+    view.frameIdx = 0;
+    view.size = {100, 100};
+
+    rhi::TextureDesc desc;
+
+    frame::GPUResourceOptions options;
+    options.lifetime = frame::ResourceLifetimeType::Persistent;
+    options.viewHandle = viewHandle;
+    options.scope = frame::ResourceScope::View;
+    options.instanceType = frame::ResourceInstanceType::Temporal;
+    options.historyCount = 2;
+
+    auto H = renderGraph.createTemporalTexture("H", desc, frame::ResourceSize::textureViewRelative(), options);
+
+    renderGraph.addRenderPass("A", noop)
+        .write(H.current, rhi::ResourceState::ShaderWrite);
+    renderGraph.addRenderPass("B", noop)
+        .read(H.previous, rhi::ResourceState::ShaderRead);
+
+    tests::RecordingCommandBuffer cmd;
+
+    frame::ResourceFrameInfo frameInfo;
+    frameInfo.viewHandle = viewHandle;
+    frameInfo.viewFrame = view.frameIdx;
+    frameInfo.rhiFrame = 0;
+
+    runFrame(renderGraph, resourceManager, cmd, view, frameInfo);
+
+    auto physical = renderGraph.get(H.previous)->physicalHandle;
+    auto *currentTex = resourceManager.get(physical, frameInfo);
+    auto *previousTex = resourceManager.previous(physical, frameInfo);
+
+    REQUIRE(currentTex != previousTex);
+
+    auto &barriers = cmd.resolvedTextureBarriers();
+
+    REQUIRE(barriers.size() == 2);
+    auto readBarrier = std::ranges::find_if(barriers, [&](const auto &b)
+                                            { return b.to == rhi::ResourceState::ShaderRead; });
+    REQUIRE(readBarrier != barriers.end());
+    CHECK(readBarrier->texture == previousTex);
+    CHECK(readBarrier->texture != currentTex);
+
+    auto writeBarrier = std::ranges::find_if(barriers, [&](const auto &b)
+                                             { return b.to == rhi::ResourceState::ShaderWrite; });
+    REQUIRE(writeBarrier != barriers.end());
+    CHECK(writeBarrier->texture == currentTex);
+}
+
+TEST_CASE("Temporal rotation: current at N is previous at N+1")
+{
+    tests::CountingDevice device;
+    frame::ResourceManager resourceManager{device};
+    frame::RenderGraphBuilder renderGraph(resourceManager);
+
+    frame::RenderViewHandle viewHandle{1, 1};
+
+    frame::RenderView view;
+    view.historyValid = true;
+    view.frameIdx = 0;
+    view.size = {100, 100};
+
+    rhi::TextureDesc desc;
+
+    frame::GPUResourceOptions options;
+    options.lifetime = frame::ResourceLifetimeType::Persistent;
+    options.viewHandle = viewHandle;
+    options.scope = frame::ResourceScope::View;
+    options.instanceType = frame::ResourceInstanceType::Temporal;
+    options.historyCount = 2;
+
+    auto H = renderGraph.createTemporalTexture("H", desc, frame::ResourceSize::textureViewRelative(), options);
+    renderGraph.addRenderPass("A", noop)
+        .write(H.current, rhi::ResourceState::ShaderWrite);
+
+    tests::RecordingCommandBuffer cmd;
+
+    frame::ResourceFrameInfo frameInfo;
+    frameInfo.viewHandle = viewHandle;
+    frameInfo.viewFrame = 0;
+    frameInfo.rhiFrame = 0;
+
+    runFrame(renderGraph, resourceManager, cmd, view, frameInfo);
+
+    auto physical = renderGraph.get(H.current)->physicalHandle;
+
+    frame::ResourceFrameInfo frameN = frameInfo;
+    frameN.viewFrame = 1;
+
+    frame::ResourceFrameInfo frameNext = frameInfo;
+    frameNext.viewFrame = 2;
+
+    CHECK(resourceManager.get(physical, frameN) != resourceManager.get(physical, frameNext));
+
+    CHECK(resourceManager.get(physical, frameN) == resourceManager.previous(physical, frameNext));
 }
