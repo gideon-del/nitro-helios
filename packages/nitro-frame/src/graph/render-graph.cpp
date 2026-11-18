@@ -417,7 +417,7 @@ namespace nitro::frame
         return renderPassStep;
     };
 
-    const PhysicalTextureLifetime RenderGraphBuilder::calculateLifetimes() const
+    PhysicalTextureLifetime RenderGraphBuilder::calculateLifetimes() const
     {
 
         PhysicalTextureLifetime lifetimes;

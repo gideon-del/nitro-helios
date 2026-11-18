@@ -5,4 +5,4 @@
 #include "context.h"
 #include "scene/scene.h"
 #include "legacy/legacy.h"
-#include "passes/render-passes.h"
+#include "legacy/passes/render-passes.h"

@@ -1,0 +1,65 @@
+#pragma once
+#include "nitro-rhi/rhi-device.h"
+#include "nitro-renderer/scene/light-manager.h"
+#include "nitro-renderer/scene/mesh-manager.h"
+#include "nitro-renderer/scene/material-manager.h"
+#include "nitro-renderer/scene/entity-store.h"
+#include "nitro-renderer/scene/scene.h"
+#include "nitro-assets/manager.h"
+#include "nitro-geometry/camera.h"
+#include "nitro-core/types/size.h"
+#include "nitro-renderer/cache/gpu-resource-cache.h"
+#include <GLFW/glfw3.h>
+
+namespace nitro::studio
+{
+    struct GlfwContext
+    {
+        GlfwContext()
+        {
+            if (!glfwInit())
+                throw std::runtime_error("GLFW init failed");
+        }
+        ~GlfwContext() { glfwTerminate(); }
+    };
+    struct WindowDeleter
+    {
+        void operator()(GLFWwindow *w) const { glfwDestroyWindow(w); }
+    };
+
+        class Application
+    {
+
+    public:
+        Application();
+        ~Application();
+
+        void run();
+
+        Application(const Application &) = delete;
+        Application &operator=(const Application &) = delete;
+
+    private:
+        void handleInput();
+        void handleResize(const Extent2D &viewSize);
+        void renderFrame();
+
+    private:
+        GlfwContext m_glfw;
+        std::unique_ptr<GLFWwindow, WindowDeleter> m_window;
+        std::shared_ptr<rhi::RHIDevice> m_device;
+        std::shared_ptr<rhi::RHISwapchain> m_swapchain;
+
+        std::shared_ptr<assets::AssetManager> m_assetManager;
+        std::shared_ptr<renderer::EntityStore> m_entityStore;
+
+        std::shared_ptr<renderer::GPUResourceCache> m_gpuResourceCache;
+        std::shared_ptr<renderer::MeshManager> m_meshManager;
+        std::shared_ptr<renderer::MaterialManager> m_materialManager;
+        std::shared_ptr<renderer::LightManager> m_lightManager;
+
+        renderer::Scene m_scene;
+
+        geometry::OrbitalCamera m_editorCamera;
+    };
+} // namespace nitro::studio

@@ -117,7 +117,7 @@ namespace nitro::frame
         LogicalTextureHandle addLogical(const PhysicalTextureHandle handle, bool history);
         LogicalBufferHandle addLogical(const PhysicalBufferHandle handle, bool history);
 
-        const PhysicalTextureLifetime calculateLifetimes() const;
+        PhysicalTextureLifetime calculateLifetimes() const;
         CompiledRenderGraph::Step buildRenderPassStep(int passIdx, int order);
 
     private:

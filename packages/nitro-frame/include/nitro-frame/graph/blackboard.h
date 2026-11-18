@@ -18,6 +18,7 @@ namespace nitro::frame
         return counter.fetch_add(1, std::memory_order_relaxed);
     }
 
+    // This will be moved out soon for the type registry later on
     template <typename T>
     TypeId typeIdImpl()
     {

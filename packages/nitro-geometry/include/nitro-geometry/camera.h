@@ -7,7 +7,15 @@ namespace nitro::geometry
     struct OrbitalCamera
     {
 
-        glm::vec3 getEye()
+        OrbitalCamera()
+        {
+            calculateView();
+            calculateProj();
+            calculateViewProj();
+            calculateInvViewProj();
+        }
+
+        glm::vec3 getEye() const
         {
             glm::vec3 eye;
 
@@ -16,11 +24,6 @@ namespace nitro::geometry
             eye.z = m_target.z + m_radius * std::sin(m_theta) * std::sin(m_phi);
 
             return eye;
-        }
-
-        glm::mat4 getView()
-        {
-            return glm::lookAt(getEye(), m_target, glm::vec3(0.0f, 1.0f, 0.0f));
         }
 
         void onMouseMove(float dx, float dy)
@@ -34,9 +37,9 @@ namespace nitro::geometry
             calculateViewProj();
         }
 
-        void onScroll(float delta)
+        void onScroll(float delta, float sensitivity = 0.01)
         {
-            float sensitivity = 0.01;
+
             m_radius -= delta * sensitivity;
             m_radius = glm::max(m_radius, 0.1f);
             calculateView();
@@ -153,35 +156,35 @@ namespace nitro::geometry
             calculateViewProj();
             calculateInvViewProj();
         };
-        const float near() const
+        float near() const
         {
             return m_near;
         }
-        const float far() const
+        float far() const
         {
             return m_far;
         }
-        const float fov() const
+        float fov() const
         {
             return m_fov;
         }
-        const float theta() const
+        float theta() const
         {
             return m_theta;
         }
-        const float phi() const
+        float phi() const
         {
             return m_phi;
         }
-        const float radius() const
+        float radius() const
         {
             return m_radius;
         }
-        const float width() const
+        float width() const
         {
             return m_width;
         }
-        const float height() const
+        float height() const
         {
             return m_height;
         }

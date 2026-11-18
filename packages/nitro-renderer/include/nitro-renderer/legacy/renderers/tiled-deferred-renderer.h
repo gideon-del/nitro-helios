@@ -1,6 +1,6 @@
 #pragma once
 #include <nitro-rhi/rhi.h>
-#include <nitro-renderer/passes/render-passes.h>
+#include <nitro-renderer/legacy/passes/render-passes.h>
 #include <nitro-renderer/legacy/interface/renderer.h>
 #include <nitro-renderer/post-process/post-process.h>
 #include <nitro-renderer/panels.h>

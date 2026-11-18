@@ -1,5 +1,5 @@
 #pragma once
-#include <nitro-renderer/passes/render-passes.h>
+#include <nitro-renderer/legacy/passes/render-passes.h>
 #include <nitro-rhi/rhi.h>
 
 namespace nitro::renderer
