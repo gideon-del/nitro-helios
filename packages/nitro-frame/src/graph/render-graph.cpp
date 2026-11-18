@@ -51,7 +51,7 @@ namespace nitro::frame
                 continue;
             }
 
-                        if (covers(it->to, a.to))
+            if (covers(it->to, a.to))
             {
             }
             else if (covers(a.to, it->to))
@@ -225,7 +225,7 @@ namespace nitro::frame
         return m_renderPasses[index];
     }
 
-    const CompiledRenderGraph RenderGraphBuilder::compile()
+    CompiledRenderGraph RenderGraphBuilder::compile()
     {
         m_graph = Graph();
 
@@ -378,10 +378,12 @@ namespace nitro::frame
             compiledGraph.steps.push_back(buildRenderPassStep(passIdx, i));
         }
 
+        compiledGraph.lifetimes = m_lifetime;
+
         return compiledGraph;
     }
 
-    const CompiledRenderGraph::Step RenderGraphBuilder::buildRenderPassStep(int passIdx, int order)
+    CompiledRenderGraph::Step RenderGraphBuilder::buildRenderPassStep(int passIdx, int order)
     {
 
         if (passIdx >= (int)m_renderPasses.size())

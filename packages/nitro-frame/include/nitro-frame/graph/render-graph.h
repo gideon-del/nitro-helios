@@ -6,6 +6,7 @@
 #include "nitro-core/types/pool.h"
 #include "nitro-core/utils.h"
 #include <deque>
+#include "nitro-frame/graph/blackboard.h"
 
 namespace nitro::frame
 {
@@ -99,7 +100,7 @@ namespace nitro::frame
 
         RenderPass &addRenderPass(std::string name, RenderPassExecute execute);
         size_t structureHash() const;
-        const CompiledRenderGraph compile();
+        CompiledRenderGraph compile();
 
         const PhysicalTextureLifetime &lifetimes() const
         {
@@ -108,6 +109,8 @@ namespace nitro::frame
         const std::vector<uint32_t> &executionOrder() const { return m_executionOrder; }
         uint32_t orderOf(const std::string &passName) const;
 
+        Blackboard &blackboard() { return m_blackboard; }
+        const Blackboard &blackboard() const { return m_blackboard; }
         void execute(const CompiledRenderGraph &compiledGraph, const GraphExecuteInfo &info);
 
     private:
@@ -115,10 +118,11 @@ namespace nitro::frame
         LogicalBufferHandle addLogical(const PhysicalBufferHandle handle, bool history);
 
         const PhysicalTextureLifetime calculateLifetimes() const;
-        const CompiledRenderGraph::Step buildRenderPassStep(int passIdx, int order);
+        CompiledRenderGraph::Step buildRenderPassStep(int passIdx, int order);
 
     private:
         Graph m_graph;
+        Blackboard m_blackboard;
         ResourceManager &m_resourceManager;
         ResourcePool<LogicalTexture, LogicalTextureTag> m_logicalTextures;
         ResourcePool<LogicalBuffer, LogicalBufferTag> m_logicalBuffers;

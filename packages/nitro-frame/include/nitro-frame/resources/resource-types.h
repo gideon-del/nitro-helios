@@ -235,5 +235,6 @@ namespace nitro::frame
             int passIdx;
         };
         std::vector<Step> steps;
+        PhysicalTextureLifetime lifetimes;
     };
 } // namespace nitro::frame

@@ -7,7 +7,7 @@
 
 using namespace nitro;
 
-frame::RenderPassExecute noop = [](const frame::PassContext &ctx) {};
+static const frame::RenderPassExecute noop = [](const frame::PassContext &ctx) {};
 TEST_CASE("RAW chain")
 {
     tests::CountingDevice device;
@@ -240,9 +240,10 @@ TEST_CASE("Transient lifetime")
     renderGraph.addRenderPass("C", noop)
         .write(Y, rhi::ResourceState::ShaderWrite);
 
-    REQUIRE_NOTHROW(renderGraph.compile());
+    frame::CompiledRenderGraph compiledGraph;
+    REQUIRE_NOTHROW(compiledGraph = renderGraph.compile());
 
-    auto lifetimes = renderGraph.lifetimes();
+    auto lifetimes = compiledGraph.lifetimes;
 
     auto *logical = renderGraph.get(X);
     const auto &xLifetime = lifetimes.at(logical->physicalHandle);
@@ -402,13 +403,12 @@ void runFrame(frame::RenderGraphBuilder &builder, frame::ResourceManager &rm, rh
 {
 
     auto compiledGraph = builder.compile();
-    auto &lifetimes = builder.lifetimes();
 
     frame::ViewBuildInfo buildInfo{
         .handle = frameInfo.viewHandle,
         .extent = view.size,
         .structureHash = builder.structureHash(),
-        .lifetimes = lifetimes};
+        .lifetimes = compiledGraph.lifetimes};
 
     rm.build();
     rm.buildViewResources(buildInfo);

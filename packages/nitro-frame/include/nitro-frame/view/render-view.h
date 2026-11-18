@@ -14,11 +14,13 @@ namespace nitro::frame
 
     struct RenderView
     {
+
         Extent2D size;
 
         uint32_t frameIdx = 0;
         bool historyValid = false;
-        size_t compiledStructureHash = 0;
+
+        RenderViewHandle handle;
     };
 
 } // namespace nitro::frame
