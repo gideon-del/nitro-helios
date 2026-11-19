@@ -1,5 +1,6 @@
 #include "nitro-studio/application.h"
 #include "nitro-studio/device-factory.h"
+#include "imgui.h"
 
 namespace nitro::studio
 {
@@ -26,6 +27,12 @@ namespace nitro::studio
           m_scene(m_device, m_meshManager, m_materialManager, m_assetManager, m_entityStore, m_lightManager)
 
     {
+
+        int w, h;
+        glfwGetFramebufferSize(m_window.get(), &w, &h);
+
+        m_swapchainExtent = {(uint32_t)w, (uint32_t)h};
+        m_frameClock.time = glfwGetTime();
     }
 
     Application::~Application()
@@ -40,12 +47,39 @@ namespace nitro::studio
         {
             glfwPollEvents();
 
+            m_frameClock.tick(glfwGetTime());
+            handleResize();
             renderFrame();
         }
     }
 
+    void Application::handleResize()
+    {
+        int w, h;
+        glfwGetFramebufferSize(m_window.get(), &w, &h);
+
+        if (w == 0 || h == 0)
+            return;
+        Extent2D extent{uint32_t(w), uint32_t(h)};
+
+        if (extent == m_swapchainExtent)
+            return;
+
+        m_device->waitIdle();
+        m_swapchain->resize(extent.width, extent.height);
+        m_swapchainExtent = extent;
+    }
+
     void Application::renderFrame()
     {
+
+        m_device->beginImGuiFrame();
+        ImGui::DockSpaceOverViewport();
+        ImGui::Begin("Viewport");
+        ImGui::Text("dt: %.3f ms", m_frameClock.dt * 1000.0f);
+        ImGui::End();
+        m_device->endImGuiFrame();
+
         auto *cmd = m_device->beginFrame();
 
         rhi::RHIRenderPassDesc rpDesc{};
@@ -57,7 +91,7 @@ namespace nitro::studio
         rpDesc.hasDepth = true;
 
         cmd->beginRenderPass(rpDesc);
-
+        m_device->drawImGui(cmd);
         cmd->endRenderPass();
 
         cmd->present();

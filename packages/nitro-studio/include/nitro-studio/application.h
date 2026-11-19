@@ -28,6 +28,19 @@ namespace nitro::studio
         void operator()(GLFWwindow *w) const { glfwDestroyWindow(w); }
     };
 
+    struct FrameClock
+    {
+        double time = 0.0;
+        float dt = 0.0f;
+        uint64_t frameNumber = 0;
+
+        void tick(double now)
+        {
+            dt = static_cast<float>(std::min(now - time, 0.1));
+            time = now;
+            ++frameNumber;
+        }
+    };
     class Application
     {
 
@@ -42,7 +55,7 @@ namespace nitro::studio
 
     private:
         void handleInput();
-        void handleResize(const Extent2D &viewSize);
+        void handleResize();
         void renderFrame();
 
     private:
@@ -64,5 +77,8 @@ namespace nitro::studio
         geometry::OrbitalCamera m_editorCamera;
 
         CameraController m_cameraController;
+        FrameClock m_frameClock;
+
+        Extent2D m_swapchainExtent;
     };
 } // namespace nitro::studio
