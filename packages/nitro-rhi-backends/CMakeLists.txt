@@ -59,6 +59,7 @@ if(APPLE)
     )
 
     target_link_libraries(nitro-rhi-metal
+    PUBLIC metal-cpp
        PUBLIC nitro-core
         PUBLIC nitro-rhi
         PUBLIC glfw
@@ -69,10 +70,7 @@ if(APPLE)
         "-framework Foundation"
         "-framework QuartzCore"
     )
-    target_compile_definitions(
-    nitro-rhi-metal
-    PRIVATE IMGUI_IMPL_METAL_CPP
-)
+   
 endif()
 
 target_link_libraries(nitro-rhi-backends

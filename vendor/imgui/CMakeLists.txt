@@ -16,5 +16,6 @@ target_link_libraries(imgui-backend-vulkan PUBLIC imgui-core Vulkan::Vulkan)
 
 if(APPLE)
     add_library(imgui-backend-metal STATIC backends/imgui_impl_metal.mm)
-    target_link_libraries(imgui-backend-metal PUBLIC imgui-core)
+    target_link_libraries(imgui-backend-metal PUBLIC imgui-core metal-cpp)
+    target_compile_definitions(imgui-backend-metal PUBLIC IMGUI_IMPL_METAL_CPP)
 endif()

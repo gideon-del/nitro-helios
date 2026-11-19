@@ -1,7 +1,7 @@
 #pragma once
-#include <GLFW/glfw3.h>
 #include "nitro-rhi/rhi-device.h"
 
+struct GLFWwindow;
 namespace nitro::studio
 {
     enum class Backend
@@ -10,6 +10,6 @@ namespace nitro::studio
         Metal
     };
     Backend defaultBackend();
-    Backend backendFromArgs(int argc, char **argv);
+    // Backend backendFromArgs(int argc, char **argv);
     std::shared_ptr<rhi::RHIDevice> createDevice(Backend backend, GLFWwindow *window);
 }

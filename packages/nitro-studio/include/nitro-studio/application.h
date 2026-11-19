@@ -9,6 +9,7 @@
 #include "nitro-geometry/camera.h"
 #include "nitro-core/types/size.h"
 #include "nitro-renderer/cache/gpu-resource-cache.h"
+#include "nitro-studio/camera-controller.h"
 #include <GLFW/glfw3.h>
 
 namespace nitro::studio
@@ -27,7 +28,7 @@ namespace nitro::studio
         void operator()(GLFWwindow *w) const { glfwDestroyWindow(w); }
     };
 
-        class Application
+    class Application
     {
 
     public:
@@ -61,5 +62,7 @@ namespace nitro::studio
         renderer::Scene m_scene;
 
         geometry::OrbitalCamera m_editorCamera;
+
+        CameraController m_cameraController;
     };
 } // namespace nitro::studio

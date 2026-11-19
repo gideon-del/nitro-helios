@@ -26,9 +26,9 @@ namespace nitro::geometry
             return eye;
         }
 
-        void onMouseMove(float dx, float dy)
+        void onMouseMove(float dx, float dy, float sensitivity = 0.01f)
         {
-            float sensitivity = 0.01;
+
             m_phi -= dx * sensitivity;
             m_theta -= dy * sensitivity;
             m_theta = glm::clamp(m_theta, 0.1f, glm::pi<float>() - 0.1f);
@@ -37,7 +37,7 @@ namespace nitro::geometry
             calculateViewProj();
         }
 
-        void onScroll(float delta, float sensitivity = 0.01)
+        void onScroll(float delta, float sensitivity = 0.01f)
         {
 
             m_radius -= delta * sensitivity;

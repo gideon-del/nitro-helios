@@ -13,7 +13,7 @@ target_include_directories(
 )
 target_link_libraries(nitro-assets
 PUBLIC nitro-core
-PRIVATE stb_image
+PUBLIC stb_image
 PUBLIC nitro-geometry
 PUBLIC glm::glm
 PUBLIC nlohmann_json

@@ -9,8 +9,8 @@ namespace nitro::studio
         glm::vec2 mouseDelta{0.0f};
         float scroll = 0.0f;
         bool orbit = false;
-        glm::vec2 move;
-        bool enabled;
+        glm::vec2 move{0.0f};
+        bool enabled = false;
     };
     class CameraController
     {
