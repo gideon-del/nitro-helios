@@ -20,6 +20,9 @@ namespace nitro::rhi::metal
     {
         commandBuffer = m_device->commandQueue->commandBuffer();
     }
+
+    void MetalCommandBuffer::beginRendering(const RenderingDesc &) { assert(false && "beginRendering: Metal implementation lands in card 5"); }
+    void MetalCommandBuffer::endRendering() { assert(false && "endRendering: Metal implementation lands in card 5"); }
     void MetalCommandBuffer::beginRenderPass(const RHIRenderPassDesc &desc)
     {
         rpd = MTL::RenderPassDescriptor::alloc()->init();

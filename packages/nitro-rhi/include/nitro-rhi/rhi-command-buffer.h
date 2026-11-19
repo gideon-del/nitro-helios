@@ -4,6 +4,7 @@
 #include <span>
 #include "rhi-texture.h"
 #include "rhi-buffer.h"
+#include "rhi-render-pass.h"
 #include "nitro-core/types/size.h"
 
 namespace nitro::rhi
@@ -118,6 +119,43 @@ namespace nitro::rhi
     {
         return from != to || isWriteState(to);
     }
+
+    enum class LoadOp
+    {
+        DontCare,
+        Load,
+        Clear
+    };
+    enum class StoreOp
+    {
+        DontCare,
+        Store,
+        None
+    };
+    struct ColorAttachment
+    {
+        RHITexture *texture = nullptr;
+        LoadOp load = LoadOp::Clear;
+        StoreOp store = StoreOp::Store;
+        float clear[4] = {0, 0, 0, 1};
+    };
+    struct DepthStencilAttachment
+    {
+        RHITexture *texture = nullptr;
+        LoadOp depthLoad = LoadOp::Clear;
+        StoreOp depthStore = StoreOp::Store;
+        float clearDepth = 1.0f;
+        LoadOp stencilLoad = LoadOp::DontCare;
+        StoreOp stencilStore = StoreOp::DontCare;
+        uint32_t clearStencil = 0;
+        bool readOnly = false;
+    };
+
+    struct RenderingDesc
+    {
+        std::span<const ColorAttachment> colors;
+        DepthStencilAttachment depth;
+    };
     class RHICommandBuffer
     {
     public:
@@ -126,6 +164,9 @@ namespace nitro::rhi
         virtual void beginRenderPass(const RHIRenderPassDesc &desc) = 0;
         virtual void beginRenderPass(RHIRenderPass *renderPass) = 0;
         virtual void endRenderPass() = 0;
+
+        virtual void beginRendering(const RenderingDesc &desc) = 0;
+        virtual void endRendering() = 0;
 
         virtual void bindPipeline(RHIPipeline *pipeline) = 0;
         virtual void bindComputePipeline(RHIComputePipeline *pipeline) = 0;

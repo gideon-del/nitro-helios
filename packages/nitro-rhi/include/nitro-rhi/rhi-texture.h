@@ -288,9 +288,34 @@ namespace nitro::rhi
         }
     }
 
-    inline bool isDepthFormat(TextureDesc::ImageFormat format)
+    inline bool formatHasDepth(TextureDesc::ImageFormat f)
     {
-        return format == rhi::TextureDesc::ImageFormat::Depth32Float || format == rhi::TextureDesc::ImageFormat::Depth32FloatStencil8;
+        TextureDesc::ImageFormat depthFormats[] = {
+            TextureDesc::ImageFormat::Depth32Float,
+            TextureDesc::ImageFormat::Depth32FloatStencil8};
+
+        for (auto &format : depthFormats)
+        {
+            if (format == f)
+                return true;
+        }
+
+        return false;
+    }
+    inline bool formatHasStencil(TextureDesc::ImageFormat f)
+    {
+
+        TextureDesc::ImageFormat stencilFormat[] = {
+
+            TextureDesc::ImageFormat::Depth32FloatStencil8};
+
+        for (auto &format : stencilFormat)
+        {
+            if (format == f)
+                return true;
+        }
+
+        return false;
     }
 
 }

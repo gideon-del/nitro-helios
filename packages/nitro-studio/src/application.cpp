@@ -1,7 +1,7 @@
 #include "nitro-studio/application.h"
 #include "nitro-studio/device-factory.h"
-#include "imgui.h"
 
+#include "nitro-renderer/render-pipeline/clear-pipeline.h"
 namespace nitro::studio
 {
 
@@ -17,6 +17,7 @@ namespace nitro::studio
     Application::Application()
         : m_window(createWindow(800, 600, "Nitro Studio")),
           m_device(createDevice(defaultBackend(), m_window.get())),
+          m_renderer(*m_device.get()),
           m_swapchain(m_device->createSwapchain(nullptr)),
           m_assetManager(std::make_shared<assets::AssetManager>()),
           m_entityStore(std::make_shared<renderer::EntityStore>()),
@@ -28,6 +29,8 @@ namespace nitro::studio
 
     {
 
+        m_view = m_renderer.createView({800, 600}, std::make_unique<renderer::ClearPipeline>());
+        m_viewportExtent = {800, 600};
         int w, h;
         glfwGetFramebufferSize(m_window.get(), &w, &h);
 
@@ -55,6 +58,12 @@ namespace nitro::studio
 
     void Application::handleResize()
     {
+
+        if (m_pendingViewResize)
+        {
+            m_renderer.resize(m_view, m_pendingViewResize.value());
+            m_pendingViewResize = std::nullopt;
+        }
         int w, h;
         glfwGetFramebufferSize(m_window.get(), &w, &h);
 
@@ -73,14 +82,18 @@ namespace nitro::studio
     void Application::renderFrame()
     {
 
-        m_device->beginImGuiFrame();
-        ImGui::DockSpaceOverViewport();
-        ImGui::Begin("Viewport");
-        ImGui::Text("dt: %.3f ms", m_frameClock.dt * 1000.0f);
-        ImGui::End();
-        m_device->endImGuiFrame();
-
         auto *cmd = m_device->beginFrame();
+
+        frame::FrameInfo frameInfo{
+            .cmd = *cmd,
+            .frameIndex = m_device->getCurrentFrameIndex(),
+            .frameNumber = m_frameClock.frameNumber,
+
+        };
+
+        renderer::RenderRequest request{};
+
+        auto sceneTexture = m_renderer.render(m_view, request, frameInfo);
 
         rhi::RHIRenderPassDesc rpDesc{};
         rpDesc.clearColor[0] = 0.0f;
@@ -91,6 +104,27 @@ namespace nitro::studio
         rpDesc.hasDepth = true;
 
         cmd->beginRenderPass(rpDesc);
+
+        m_device->beginImGuiFrame();
+        ImGui::DockSpaceOverViewport();
+        ImGui::Begin("Viewport");
+        // ImGui::Text("dt: %.3f ms", m_frameClock.dt * 1000.0f);
+
+        ImVec2 size = ImGui::GetContentRegionAvail();
+
+        ImGui::Image((ImTextureID)m_device->getImGuiTextureRef(m_device->resolve(sceneTexture)), size);
+
+        float dpi = ImGui::GetWindowViewport()->DpiScale;
+        Extent2D pixels{uint32_t(size.x * dpi), uint32_t(size.y * dpi)};
+        if (pixels != m_viewportExtent && pixels.width >= 8 && pixels.height >= 8)
+        {
+            m_pendingViewResize = pixels;
+            m_viewportExtent = pixels;
+        }
+
+        ImGui::End();
+
+        m_device->endImGuiFrame();
         m_device->drawImGui(cmd);
         cmd->endRenderPass();
 

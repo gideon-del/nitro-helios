@@ -8,7 +8,7 @@
 #include <nitro-rhi-backends/vulkan/vulkan-render-pass.h>
 #include <nitro-rhi-backends/vulkan/vulkan-descriptor-set.h>
 #include <nitro-rhi-backends/vulkan/vulkan-compute-pipeline.h>
-
+#include "nitro-rhi/rhi-constants.h"
 namespace nitro::rhi::vulkan
 {
 
@@ -45,6 +45,135 @@ namespace nitro::rhi::vulkan
             vkDestroySemaphore(m_device->device, imageAvailable, nullptr);
         }
     };
+
+    void VulkanCommandBuffer::beginRendering(const RenderingDesc &desc)
+    {
+
+        assert(desc.colors.size() <= kMaxColorAttachments);
+        assert(!desc.colors.empty() || desc.depth.texture);
+
+        assert(!m_renderingActive && "beginRendering called twice without endRendering");
+        m_renderingActive = true;
+        std::array<VkRenderingAttachmentInfo, kMaxColorAttachments> colorAttachments;
+
+        VkRenderingInfo renderingInfo{};
+        renderingInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+
+        Extent3D area{
+            .width = 0,
+            .height = 0};
+        auto check = [&](RHITexture *t)
+        {
+            auto e = t->extent();
+            if (area.width == 0)
+                area = e;
+            assert(e.width == area.width && e.height == area.height && "all attachments must have the same extent");
+        };
+        for (size_t i = 0; i < desc.colors.size(); i++)
+        {
+            auto &colorAttachmentDesc = desc.colors[i];
+            assert(colorAttachmentDesc.texture);
+            const auto &state = colorAttachmentDesc.texture->state();
+
+            auto resolvedRange = TextureSubresource::all().resolve(state.mipCount(), state.layerCount());
+
+            assert(state.isRangeIn(ResourceState::RenderTarget,
+                                   resolvedRange.baseMip,
+                                   resolvedRange.mipCount,
+                                   resolvedRange.baseLayer,
+                                   resolvedRange.layerCount) &&
+                   "barrier to RenderTarget before begining a render pass");
+
+            check(colorAttachmentDesc.texture);
+            auto colorTexture = static_cast<VulkanTexture *>(colorAttachmentDesc.texture);
+
+            VkRenderingAttachmentInfo colorAttachmentInfo{};
+            colorAttachmentInfo.sType =
+                VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+
+            colorAttachmentInfo.imageView =
+                colorTexture->imageView;
+
+            colorAttachmentInfo.imageLayout =
+                convertResourceStateToImageLayout(ResourceState::RenderTarget);
+
+            colorAttachmentInfo.loadOp =
+                convertToLoadOp(colorAttachmentDesc.load);
+
+            colorAttachmentInfo.storeOp =
+                convertToStoreOp(colorAttachmentDesc.store);
+
+            colorAttachmentInfo.clearValue.color =
+                {{colorAttachmentDesc.clear[0], colorAttachmentDesc.clear[1], colorAttachmentDesc.clear[2], colorAttachmentDesc.clear[3]}};
+
+            colorAttachments[i] = colorAttachmentInfo;
+        }
+
+        if (!desc.colors.empty())
+        {
+            renderingInfo.colorAttachmentCount = static_cast<uint32_t>(desc.colors.size());
+            renderingInfo.pColorAttachments = colorAttachments.data();
+        }
+        VkRenderingAttachmentInfo depthInfo{};
+        VkRenderingAttachmentInfo stencilInfo{};
+        const auto &ds = desc.depth;
+        if (ds.texture)
+        {
+            check(desc.depth.texture);
+            auto *tex = static_cast<VulkanTexture *>(ds.texture);
+            const auto fmt = ds.texture->format();
+            const bool hasDepth = formatHasDepth(fmt);
+            const bool hasStencil = formatHasStencil(fmt);
+
+            auto expectedState = ds.readOnly ? ResourceState::DepthRead : ResourceState::DepthWrite;
+            const auto &state = desc.depth.texture->state();
+
+            auto resolvedRange = TextureSubresource::all().resolve(state.mipCount(), state.layerCount());
+
+            assert(state.isRangeIn(expectedState,
+                                   resolvedRange.baseMip,
+                                   resolvedRange.mipCount,
+                                   resolvedRange.baseLayer,
+                                   resolvedRange.layerCount) &&
+                   "barrier to DepthState before begining a render pass");
+            VkImageLayout layout = hasStencil
+                                       ? (ds.readOnly ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+                                       : convertResourceStateToImageLayout(expectedState);
+
+            if (hasDepth)
+            {
+                depthInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+                depthInfo.imageView = tex->imageView;
+                depthInfo.imageLayout = layout;
+                depthInfo.loadOp = convertToLoadOp(ds.depthLoad);
+                depthInfo.storeOp = convertToStoreOp(ds.depthStore);
+                depthInfo.clearValue.depthStencil.depth = ds.clearDepth;
+            }
+            if (hasStencil)
+            {
+                stencilInfo.sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
+                stencilInfo.imageView = tex->imageView;
+                stencilInfo.imageLayout = layout;
+                stencilInfo.loadOp = convertToLoadOp(ds.stencilLoad);
+                stencilInfo.storeOp = convertToStoreOp(ds.stencilStore);
+                stencilInfo.clearValue.depthStencil.stencil = ds.clearStencil;
+            }
+
+            renderingInfo.pDepthAttachment = hasDepth ? &depthInfo : nullptr;
+            renderingInfo.pStencilAttachment = hasStencil ? &stencilInfo : nullptr;
+        }
+
+        renderingInfo.renderArea = {{0, 0}, {area.width, area.height}};
+        renderingInfo.layerCount = 1;
+        vkCmdBeginRendering(cmd, &renderingInfo);
+    }
+
+    void VulkanCommandBuffer::endRendering()
+    {
+        assert(m_renderingActive && "endRendering without beginRendering");
+        m_renderingActive = false;
+        vkCmdEndRendering(cmd);
+    }
 
     void VulkanCommandBuffer::beginRenderPass(const RHIRenderPassDesc &desc)
     {

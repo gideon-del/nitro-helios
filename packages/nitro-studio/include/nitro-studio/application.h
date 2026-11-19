@@ -10,7 +10,9 @@
 #include "nitro-core/types/size.h"
 #include "nitro-renderer/cache/gpu-resource-cache.h"
 #include "nitro-studio/camera-controller.h"
+#include "nitro-renderer/scene-renderer.h"
 #include <GLFW/glfw3.h>
+#include <imgui.h>
 
 namespace nitro::studio
 {
@@ -62,6 +64,7 @@ namespace nitro::studio
         GlfwContext m_glfw;
         std::unique_ptr<GLFWwindow, WindowDeleter> m_window;
         std::shared_ptr<rhi::RHIDevice> m_device;
+        renderer::SceneRenderer m_renderer;
         std::shared_ptr<rhi::RHISwapchain> m_swapchain;
 
         std::shared_ptr<assets::AssetManager> m_assetManager;
@@ -80,5 +83,9 @@ namespace nitro::studio
         FrameClock m_frameClock;
 
         Extent2D m_swapchainExtent;
+        frame::RenderViewHandle m_view;
+
+        std::optional<Extent2D> m_pendingViewResize = std::nullopt;
+        Extent2D m_viewportExtent;
     };
 } // namespace nitro::studio

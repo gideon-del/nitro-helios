@@ -7,6 +7,7 @@
 #include "nitro-rhi/rhi-utils.h"
 #include "nitro-rhi/rhi-texture.h"
 #include "nitro-core/types/size.h"
+#include "nitro-rhi/rhi-command-buffer.h"
 
 namespace nitro::rhi::vulkan
 {
@@ -221,4 +222,33 @@ namespace nitro::rhi::vulkan
         vkSetDebugUtilsObjectNameEXT(d, &info);
 #endif
     }
+
+    inline VkAttachmentLoadOp convertToLoadOp(LoadOp loadOp)
+    {
+        switch (loadOp)
+        {
+        case LoadOp::Clear:
+            return VK_ATTACHMENT_LOAD_OP_CLEAR;
+        case LoadOp::DontCare:
+            return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        case LoadOp::Load:
+            return VK_ATTACHMENT_LOAD_OP_LOAD;
+        }
+        return VK_ATTACHMENT_LOAD_OP_CLEAR;
+    }
+    inline VkAttachmentStoreOp convertToStoreOp(StoreOp storeOp)
+    {
+        switch (storeOp)
+        {
+        case StoreOp::Store:
+            return VK_ATTACHMENT_STORE_OP_STORE;
+        case StoreOp::DontCare:
+            return VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        case StoreOp::None:
+            return VK_ATTACHMENT_STORE_OP_NONE;
+        default:
+            return VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        }
+    }
+
 } // namespace nitro::rhi::vulkan

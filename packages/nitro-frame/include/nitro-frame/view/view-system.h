@@ -47,6 +47,8 @@ namespace nitro::frame
 
         void destroyView(const RenderViewHandle handle);
 
+        void resetView(RenderViewHandle handle);
+
         rhi::RHITextureHandle render(const RenderViewHandle viewHandle, const FrameInfo &info, const ViewBuildFn &build);
     };
 } // namespace nitro::frame

@@ -51,6 +51,20 @@ namespace nitro::frame
         m_resourceManager.destroyViewResources(handle);
         m_renderViews.free(handle);
     };
+    void ViewSystem::resetView(RenderViewHandle handle)
+    {
+        auto viewState = m_renderViews.get(handle);
+        if (!viewState)
+            return;
+
+        viewState->get()->structureHash = 0;
+        viewState->get()->compiled = false;
+        viewState->get()->historyLost = true;
+        viewState->get()->lastFrameNumber = UINT64_MAX;
+        viewState->get()->view.historyValid = false;
+
+        m_resourceManager.destroyViewResources(handle);
+    };
 
     rhi::RHITextureHandle ViewSystem::render(const RenderViewHandle viewHandle, const FrameInfo &info, const ViewBuildFn &build)
     {

@@ -4,7 +4,6 @@
 #include "nitro-rhi/rhi-texture.h"
 #include "nitro-frame/graph/render-graph.h"
 #include "nitro-frame/view/render-view.h"
-#include "nitro-frame/graph/blackboard.h"
 #include <span>
 namespace nitro::renderer
 {
@@ -91,8 +90,8 @@ namespace nitro::renderer
     {
         struct Bloom
         {
-            float threshold = 0.4;
-            float intensity = 0.5;
+            float threshold = 0.4f;
+            float intensity = 0.5f;
             bool enable = false;
         } bloom;
 

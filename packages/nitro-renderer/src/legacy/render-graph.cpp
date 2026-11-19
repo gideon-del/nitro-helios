@@ -322,7 +322,7 @@ namespace nitro::renderer
             rhi::TextureDesc textureDesc;
             textureDesc.usage = rhi::TextureDesc::Usage::ShaderRead;
             textureDesc.format = desc.format;
-            if (isDepthFormat(desc.format))
+            if (formatHasDepth(desc.format))
             {
                 textureDesc.usage = rhi::TextureDesc::Usage::ShaderRead | rhi::TextureDesc::Usage::DepthStencil;
             }
@@ -419,7 +419,7 @@ namespace nitro::renderer
             rhi::TextureDesc textureDesc;
             textureDesc.usage = rhi::TextureDesc::Usage::ShaderRead;
             textureDesc.format = desc.format;
-            if (isDepthFormat(desc.format))
+            if (formatHasDepth(desc.format))
             {
                 textureDesc.usage = rhi::TextureDesc::Usage::ShaderRead | rhi::TextureDesc::Usage::DepthStencil;
             }
@@ -427,7 +427,7 @@ namespace nitro::renderer
             {
                 textureDesc.usage |= rhi::TextureDesc::Usage::Storage | rhi::TextureDesc::Usage::ShaderRead;
             }
-            if (isWrittenByAnyPass(tid) && !isDepthFormat(desc.format))
+            if (isWrittenByAnyPass(tid) && !formatHasDepth(desc.format))
             {
                 textureDesc.usage |= rhi::TextureDesc::Usage::RenderTarget | rhi::TextureDesc::Usage::ShaderRead;
             }
@@ -539,7 +539,7 @@ namespace nitro::renderer
         m_allocatedBuffers.clear();
     }
 
-    bool RenderGraph::isDepthFormat(rhi::TextureDesc::ImageFormat format)
+    bool RenderGraph::formatHasDepth(rhi::TextureDesc::ImageFormat format)
     {
         return format == rhi::TextureDesc::ImageFormat::Depth32Float || format == rhi::TextureDesc::ImageFormat::Depth32FloatStencil8;
     }

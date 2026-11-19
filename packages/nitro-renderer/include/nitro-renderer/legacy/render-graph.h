@@ -184,7 +184,7 @@ namespace nitro::renderer
 
     private:
         void drawLifetimeTimeline();
-        bool isDepthFormat(rhi::TextureDesc::ImageFormat format);
+        bool formatHasDepth(rhi::TextureDesc::ImageFormat format);
         bool isWrittenByAnyPass(RGResourceID id);
         bool isSharedStorageBuffer(RGResourceID id);
         int writerOutputIndex(int passIdx, RGTextureID tid);

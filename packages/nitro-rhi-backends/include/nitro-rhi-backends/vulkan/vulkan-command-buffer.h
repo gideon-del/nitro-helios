@@ -23,6 +23,10 @@ namespace nitro::rhi::vulkan
         void beginRenderPass(RHIRenderPass *renderPass) override;
         void bindComputePipeline(RHIComputePipeline *pipeline) override;
         void endRenderPass() override;
+
+        void beginRendering(const RenderingDesc &desc) override;
+        void endRendering() override;
+
         void bindPipeline(RHIPipeline *pipeline) override;
         void bindVertexBuffer(RHIBuffer *buffer) override;
         void bindIndexBuffer(RHIBuffer *buffer) override;
@@ -70,5 +74,7 @@ namespace nitro::rhi::vulkan
         VulkanRenderPass *m_activeRenderPass = nullptr;
         VulkanComputePipeline *m_computePipeline = nullptr;
         FrameStats m_FrameStats;
+
+        bool m_renderingActive = false;
     };
 } // namespace nitro::rhi::vulkan
