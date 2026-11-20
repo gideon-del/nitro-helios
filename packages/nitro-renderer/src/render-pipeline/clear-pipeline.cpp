@@ -19,8 +19,14 @@ namespace nitro::renderer
 
         const auto physicalOutputHandle = ctx.builder.get(outputHandle)->physicalHandle;
 
+        const rhi::RHIDescriptorBinding bindings[] = {
+            {rhi::RHIDescriptorBinding::Type::Sampler, rhi::RHIDescriptorBinding::ShaderStage::Fragment, 0},
+        };
+        auto *layout = ctx.layouts.get(bindings);
         ctx.builder.addRenderPass("Clear Pass", [=](const frame::PassContext &passCtx)
                                   {
+                                    auto* set = passCtx.cmd.allocateDescriptorSet(layout);   
+    assert(set);
                                       auto *outputTexture = passCtx.resources.get(physicalOutputHandle, passCtx.frame);
                                       rhi::ColorAttachment color{ .texture = outputTexture, .load = rhi::LoadOp::Clear, .clear = {0.9f, 0.3f, 0.2f, 1.0f} };
 

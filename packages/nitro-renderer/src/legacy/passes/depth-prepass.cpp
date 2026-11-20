@@ -25,12 +25,12 @@ namespace nitro::renderer
         rhi::PipelineDesc pipelineDesc;
         pipelineDesc.depthTest = rhi::CompareOp::Less;
         pipelineDesc.depthWrite = true;
-        pipelineDesc.hasColorAttachment = false;
+
         pipelineDesc.layouts = {m_descriptorLayout};
         pipelineDesc.vertexLayout = geometry::Vertex::getVertexLayout();
         pipelineDesc.depthAttachmentFormat = rhi::TextureDesc::ImageFormat::Depth32Float;
         pipelineDesc.hasDepth = true;
-        pipelineDesc.hasStencil = false;
+
         pipelineDesc.hasPushConstant = false;
         std::string shaderPath = shaderDir + "/depth-prepass/depth-prepass";
 

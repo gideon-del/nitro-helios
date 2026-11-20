@@ -4,6 +4,8 @@
 #include "nitro-renderer/render-pipeline/render-pipeline.h"
 #include "nitro-renderer/render-context.h"
 #include "nitro-rhi/rhi-device.h"
+#include "nitro-rhi/pipeline-cache.h"
+#include "nitro-rhi/descriptor-layout-cache.h"
 #include <unordered_map>
 #include <memory>
 
@@ -12,7 +14,7 @@ namespace nitro::renderer
     class SceneRenderer
     {
     public:
-        explicit SceneRenderer(rhi::RHIDevice &device) : m_resourceManager(device), m_viewSystem(m_resourceManager) {}
+        explicit SceneRenderer(rhi::RHIDevice &device) : m_resourceManager(device), m_viewSystem(m_resourceManager), m_layoutCache(device), m_pipelineCache(device) {}
         ~SceneRenderer();
 
         frame::RenderViewHandle createView(const Extent2D &extent, std::unique_ptr<IRenderPipeline> pipeline);
@@ -27,6 +29,8 @@ namespace nitro::renderer
         SceneRenderer &operator=(const SceneRenderer &) = delete;
 
     private:
+        rhi::DescriptorLayoutCache m_layoutCache;
+        rhi::PipelineCache m_pipelineCache;
         frame::ResourceManager m_resourceManager;
         frame::ViewSystem m_viewSystem;
 

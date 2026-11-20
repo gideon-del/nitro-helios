@@ -25,7 +25,6 @@ namespace nitro::renderer
         pipelineDesc.depthTest = rhi::CompareOp::Always;
         pipelineDesc.depthWrite = false;
         pipelineDesc.hasDepth = false;
-        pipelineDesc.hasStencil = false;
         pipelineDesc.hasPushConstant = true;
         pipelineDesc.pushConstantSize = sizeof(ToneMapPassUBO);
         pipelineDesc.cullMode = rhi::PipelineDesc::CullMode::None;

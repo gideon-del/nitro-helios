@@ -9,11 +9,12 @@
 #include <nitro-rhi-backends/vulkan/vulkan-descriptor-set.h>
 #include <nitro-rhi-backends/vulkan/vulkan-compute-pipeline.h>
 #include "nitro-rhi/rhi-constants.h"
+#include "nitro-rhi-backends/vulkan/vulkan-descriptor-allocator.h"
 namespace nitro::rhi::vulkan
 {
 
     VulkanCommandBuffer::VulkanCommandBuffer(VulkanDevice *device, VulkanSwapchain *swapchain,
-                                             VkCommandBuffer cmd, uint32_t frameIdx, bool isOneTime) : m_device(device), swapchain(swapchain), cmd(cmd), m_frameIdx(frameIdx)
+                                             VkCommandBuffer cmd, uint32_t frameIdx, bool isOneTime) : m_device(device), swapchain(swapchain), cmd(cmd), m_frameIdx(frameIdx), m_isOneTime(isOneTime)
     {
         if (isOneTime)
             return;
@@ -859,5 +860,11 @@ namespace nitro::rhi::vulkan
         copyInfo.dstImageLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
         vkCmdCopyBufferToImage2(cmd, &copyInfo);
+    }
+
+    RHIDescriptorSet *VulkanCommandBuffer::allocateDescriptorSet(RHIDescriptorLayout *layout)
+    {
+        assert(!m_isOneTime && "frame descriptor sets only exist on frame command buffers");
+        return m_device->frameDescriptors().allocate(static_cast<VulkanDescriptorLayout *>(layout), m_frameIdx);
     }
 }

@@ -41,13 +41,13 @@ namespace nitro::renderer
         rhi::PipelineDesc pipelineDesc;
 
         pipelineDesc.hasDepth = false;
-        pipelineDesc.hasStencil = false;
+
         pipelineDesc.layouts = {m_descriptorLayout};
         pipelineDesc.hasPushConstant = false;
         rhi::RHIBlendDesc blendDesc;
         blendDesc.enabled = true;
         pipelineDesc.colorAttachments = {rhi::PipelineDesc::ColorAttachmentDesc(rhi::TextureDesc::ImageFormat::ColorRGBA16, blendDesc)};
-        pipelineDesc.hasColorAttachment = true;
+
         std::string shaderPath = shaderDir + "/tiled-light-shading/tiled-light-shading";
         pipelineDesc.cullMode = PipelineDesc::CullMode::None;
 

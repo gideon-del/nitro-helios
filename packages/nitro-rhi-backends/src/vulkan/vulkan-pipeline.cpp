@@ -417,7 +417,7 @@ namespace nitro::rhi::vulkan
         {
             colorFormats.push_back(m_device->getSurfaceFormat());
         }
-        if (desc.hasColorAttachment)
+        if (!desc.colorAttachments.empty())
         {
             renderingInfo.colorAttachmentCount = static_cast<uint32_t>(colorFormats.size());
             renderingInfo.pColorAttachmentFormats =

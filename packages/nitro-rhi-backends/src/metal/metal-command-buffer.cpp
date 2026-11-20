@@ -459,4 +459,10 @@ namespace nitro::rhi::metal
         }
         blitEncoder->endEncoding();
     }
+
+    RHIDescriptorSet *MetalCommandBuffer::allocateDescriptorSet(RHIDescriptorLayout *layout)
+    {
+        assert(false && "Not yet implemented on Metal");
+        return nullptr;
+    }
 } // namespace nitro::rhi::metal

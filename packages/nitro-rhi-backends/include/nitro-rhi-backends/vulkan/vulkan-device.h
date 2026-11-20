@@ -35,6 +35,7 @@ namespace nitro::rhi::vulkan
     class VulkanTexture;
     class VulkanBuffer;
     class VulkanHeap;
+    class VulkanFrameDescriptorAllocator;
     class VulkanDevice : public RHIDevice
     {
 
@@ -108,6 +109,8 @@ namespace nitro::rhi::vulkan
 
         VkFormat getSurfaceFormat() const;
         bool supportsSamplerComparison() const { return m_mutableComparisonSamplers; };
+
+        VulkanFrameDescriptorAllocator &frameDescriptors() { return *m_frameDescriptors; }
         VkDevice device;
         VmaAllocator allocator;
         VkCommandPool commandPool;
@@ -145,6 +148,8 @@ namespace nitro::rhi::vulkan
 
         std::unordered_map<RHIDescriptorSet *, std::source_location> m_liveSets;
         std::unordered_map<RHIDescriptorLayout *, std::source_location> m_liveDescriptorLayouts;
+
+        std::unique_ptr<VulkanFrameDescriptorAllocator> m_frameDescriptors;
 
     private:
         void checkMutableComparisonSampler();

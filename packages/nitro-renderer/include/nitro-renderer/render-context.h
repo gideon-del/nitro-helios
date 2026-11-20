@@ -2,6 +2,8 @@
 #include <glm/glm.hpp>
 #include "nitro-rhi/rhi-buffer.h"
 #include "nitro-rhi/rhi-texture.h"
+#include "nitro-rhi/pipeline-cache.h"
+#include "nitro-rhi/descriptor-layout-cache.h"
 #include "nitro-frame/graph/render-graph.h"
 #include "nitro-frame/view/render-view.h"
 #include <span>
@@ -135,5 +137,7 @@ namespace nitro::renderer
         frame::RenderGraphBuilder &builder;
         const frame::RenderView &view;
         const RenderRequest &request;
+        rhi::PipelineCache &pipelines;
+        rhi::DescriptorLayoutCache &layouts;
     };
 } // namespace nitro::renderer

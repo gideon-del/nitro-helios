@@ -6,7 +6,7 @@
 #include "rhi-buffer.h"
 #include "rhi-render-pass.h"
 #include "nitro-core/types/size.h"
-
+#include "nitro-rhi/rhi-descriptor-layout.h"
 namespace nitro::rhi
 {
     struct FrameStats
@@ -197,6 +197,8 @@ namespace nitro::rhi
         virtual void present() = 0;
         virtual void dispatch(uint32_t x, uint32_t y, uint32_t z) = 0;
         virtual void dispatchIndirect(RHIBuffer *indirectBuffer, size_t offset = 0) = 0;
+        virtual RHIDescriptorSet *allocateDescriptorSet(RHIDescriptorLayout *layout) = 0;
+
         void copyBufferToTexture(RHIBuffer &src, RHITexture &dst, std::span<const BufferTextureCopy> regions)
         {
             auto extent = dst.extent();

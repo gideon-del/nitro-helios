@@ -20,6 +20,7 @@
 #include <set>
 #include <ImGuizmo.h>
 #include "nitro-rhi/rhi-constants.h"
+#include "nitro-rhi-backends/vulkan/vulkan-descriptor-allocator.h"
 
 namespace nitro::rhi::vulkan
 {
@@ -438,6 +439,8 @@ namespace nitro::rhi::vulkan
         m_defaultSamplers.nearestRepeat = create(RHISamplerDesc::NearestRepeat());
         m_defaultSamplers.shadow = create(RHISamplerDesc::Shadow());
 
+        m_frameDescriptors = std::make_unique<VulkanFrameDescriptorAllocator>(*this);
+
         // ImGUI
         float main_scale = ImGui_ImplGlfw_GetContentScaleForMonitor(glfwGetPrimaryMonitor());
         IMGUI_CHECKVERSION();
@@ -490,6 +493,7 @@ namespace nitro::rhi::vulkan
     {
 
         vkQueueWaitIdle(graphicsQueue);
+        m_frameDescriptors.reset();
 
         for (auto &[h, ds] : m_imguiTextureCache)
             ImGui_ImplVulkan_RemoveTexture(ds);
@@ -810,6 +814,8 @@ namespace nitro::rhi::vulkan
         vkWaitForFences(device, 1, &vulkanCommandBuffer->inFlight, VK_TRUE, UINT64_MAX);
 
         collectGarbage();
+
+        m_frameDescriptors.get()->reset(m_currentFrame);
         uint32_t imageIdx;
 
         while (true)

@@ -29,7 +29,7 @@ namespace nitro::rhi::vulkan
         };
 
     public:
-        VulkanDescriptorSet(VulkanDevice *device, VulkanDescriptorLayout *layout, VkDescriptorSet descriptorSet);
+        VulkanDescriptorSet(VulkanDevice *device, VulkanDescriptorLayout *layout, VkDescriptorSet descriptorSet, bool ownSet = true);
         ~VulkanDescriptorSet() override;
         void writeBuffer(RHIBuffer *buffer, uint32_t binding) override;
         void writeTexture(const TextureBinding &textureBinding, uint32_t binding, ImageLayout imageLayout) override;
@@ -38,6 +38,7 @@ namespace nitro::rhi::vulkan
         void writeBindlessTextures(const std::vector<RHITexture *> &textures, uint32_t binding) override;
         void writeTextureMip(const TextureBinding &textureBinding, uint32_t binding, ImageLayout imageLayout, TextureSubresource subresource = TextureSubresource{}) override;
         void writeSampler(RHISamplerHandle sampler, uint32_t binding) override;
+        void reset(VulkanDescriptorLayout *layout, VkDescriptorSet set);
         VkDescriptorSet descriptorSet;
 
     private:
@@ -47,6 +48,7 @@ namespace nitro::rhi::vulkan
         std::vector<VkDescriptorImageInfo> m_imageInfos;
         std::vector<std::vector<VkDescriptorImageInfo>> m_bindlessImageInfos;
 
+        bool m_ownsSet = true;
         VulkanDevice *m_device;
         VulkanDescriptorLayout *m_layout;
     };

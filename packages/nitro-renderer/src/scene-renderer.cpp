@@ -57,7 +57,9 @@ namespace nitro::renderer
          RenderContext ctx{
             .builder = builder,
             .view = renderView,
-            .request = request
+            .request = request,
+            .pipelines = m_pipelineCache,
+            .layouts = m_layoutCache
          };
 
          pipeline->declare(ctx);

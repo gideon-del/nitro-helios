@@ -22,7 +22,6 @@ namespace nitro::renderer
         m_descriptorLayout = m_device->createDescriptorLayout(bindings);
 
         rhi::PipelineDesc pipelineDesc;
-        pipelineDesc.hasColorAttachment = true;
         pipelineDesc.colorAttachments = {rhi::TextureDesc::ImageFormat::ColorRGBA8, rhi::TextureDesc::ImageFormat::ColorRG8U, rhi::TextureDesc::ImageFormat::ColorRGBA8,
                                          rhi::TextureDesc::ImageFormat::ColorRGBA16};
         pipelineDesc.depthWrite = false;

@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Vulkan REQUIRED)
 find_package(glfw3  REQUIRED)
 find_package(glm REQUIRED)
+
 add_library(nitro-rhi-backends STATIC
 src/vulkan/vulkan-device.cpp
 src/vulkan/vulkan-buffer.cpp
@@ -23,6 +24,7 @@ src/vulkan/vulkan-timer.cpp
 src/vulkan/vulkan-compute-pipeline.cpp
 src/vulkan/vulkan-sampler.cpp
 src/vulkan/vulkan-heap.cpp
+src/vulkan/vulkan-descriptor-allocator.cpp
 )
 
 

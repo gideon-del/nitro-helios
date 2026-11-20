@@ -57,6 +57,8 @@ namespace nitro::rhi::vulkan
         void copyTextureToTexture(RHITexture *src, RHITexture *dst) override;
 
         void fillBuffer(RHIBuffer *buffer, size_t offset, size_t size, uint32_t value) override;
+
+        RHIDescriptorSet *allocateDescriptorSet(RHIDescriptorLayout *layout) override;
         VkCommandBuffer cmd;
         VkFence inFlight = VK_NULL_HANDLE;
         VkSemaphore imageAvailable = VK_NULL_HANDLE;
@@ -76,5 +78,6 @@ namespace nitro::rhi::vulkan
         FrameStats m_FrameStats;
 
         bool m_renderingActive = false;
+        bool m_isOneTime = false;
     };
 } // namespace nitro::rhi::vulkan

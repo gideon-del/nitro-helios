@@ -189,7 +189,7 @@ namespace nitro::rhi::metal
         }
 
         {
-            if (desc.colorAttachments.empty() && desc.hasColorAttachment)
+            if (desc.colorAttachments.empty())
             {
                 pipeDesc->colorAttachments()->object(0)->setPixelFormat(MTL::PixelFormatBGRA8Unorm_sRGB);
             }
@@ -217,7 +217,7 @@ namespace nitro::rhi::metal
             pipeDesc->setDepthAttachmentPixelFormat(convertToPixelFormat(desc.depthAttachmentFormat));
         }
 
-        if (desc.hasStencil)
+        if (formatHasStencil(desc.depthAttachmentFormat))
         {
             pipeDesc->setStencilAttachmentPixelFormat(convertToPixelFormat(desc.depthAttachmentFormat));
         }
