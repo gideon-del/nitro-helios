@@ -16,6 +16,14 @@ namespace nitro::tests
         std::vector<RHIDescriptorBinding> bindings;
     };
 
+    struct FakePipeline : RHIPipeline
+    {
+        rhi::PipelineDesc desc;
+    };
+    struct FakeComputePipeline : RHIComputePipeline
+    {
+    };
+
     class CountingDevice : public RHIDevice
     {
 
@@ -29,8 +37,17 @@ namespace nitro::tests
         uint32_t m_heapCreates = 0, m_heapLive = 0;
 
         std::vector<std::unique_ptr<FakeDescriptorLayout>> m_layouts;
+        std::vector<std::unique_ptr<FakePipeline>> m_graphicPipelines;
+        std::vector<std::unique_ptr<FakeComputePipeline>> m_computePipelines;
+
         uint32_t m_layoutCreates = 0;
         uint32_t m_layoutDestroys = 0;
+
+        uint32_t m_graphicPiplineCreates = 0;
+        uint32_t m_graphicPiplineDestroys = 0;
+
+        uint32_t m_computePiplineCreates = 0;
+        uint32_t m_computePiplineDestroys = 0;
 
     public:
         CountingDevice() {}
@@ -146,11 +163,36 @@ namespace nitro::tests
             return handle;
         }
 
-        RHIPipeline *createPipeline(const PipelineDesc &desc) override { return nullptr; }
-        void destroyPipeline(RHIPipeline *pipeline) override {}
+        RHIPipeline *createPipeline(const PipelineDesc &desc) override
+        {
 
-        RHIComputePipeline *createComputePipeline(const ComputePipelineDesc &desc) override { return nullptr; }
-        void destroyComputePipeline(RHIComputePipeline *pipeline) override {}
+            auto pipeline = std::make_unique<FakePipeline>();
+            pipeline->desc = desc;
+
+            m_graphicPipelines.push_back(std::move(pipeline));
+            m_graphicPiplineCreates++;
+            return m_graphicPipelines.back().get();
+        }
+        void destroyPipeline(RHIPipeline *pipeline) override
+        {
+            if (pipeline)
+                m_graphicPiplineDestroys++;
+        }
+
+        RHIComputePipeline *createComputePipeline(const ComputePipelineDesc &desc) override
+        {
+
+            auto pipeline = std::make_unique<FakeComputePipeline>();
+
+            m_computePipelines.push_back(std::move(pipeline));
+            m_computePiplineCreates++;
+            return m_computePipelines.back().get();
+        }
+        void destroyComputePipeline(RHIComputePipeline *pipeline) override
+        {
+            if (pipeline)
+                m_computePiplineDestroys++;
+        }
 
         MemoryRequirements textureMemoryRequirements(const TextureDesc &desc) override
         {
@@ -219,5 +261,11 @@ namespace nitro::tests
         uint32_t getHeapLiveCount() const { return m_heapLive; }
         uint32_t layoutCreateCount() const { return m_layoutCreates; }
         uint32_t layoutDestroyCount() const { return m_layoutDestroys; }
+
+        uint32_t pipelineCreateCount() const { return m_graphicPiplineCreates; }
+        uint32_t pipelineDestroyCount() const { return m_graphicPiplineDestroys; }
+
+        uint32_t computePipelineCreateCount() const { return m_computePiplineCreates; }
+        uint32_t computePipelineDestroyCount() const { return m_computePiplineDestroys; }
     };
 }
