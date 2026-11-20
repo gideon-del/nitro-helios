@@ -150,6 +150,7 @@ namespace nitro::rhi::vulkan
         std::unordered_map<RHIDescriptorLayout *, std::source_location> m_liveDescriptorLayouts;
 
         std::unique_ptr<VulkanFrameDescriptorAllocator> m_frameDescriptors;
+        std::vector<std::pair<VkDescriptorSet, uint64_t>> m_imguiSetGraveyard;
 
     private:
         void checkMutableComparisonSampler();

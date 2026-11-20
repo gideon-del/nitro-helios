@@ -498,6 +498,10 @@ namespace nitro::rhi::vulkan
         for (auto &[h, ds] : m_imguiTextureCache)
             ImGui_ImplVulkan_RemoveTexture(ds);
         m_imguiTextureCache.clear();
+
+        for (auto &[ds, frame] : m_imguiSetGraveyard)
+            ImGui_ImplVulkan_RemoveTexture(ds);
+        m_imguiSetGraveyard.clear();
         m_texturePool.clear();
         m_textureGraveyard.collectAll();
 
@@ -664,10 +668,10 @@ namespace nitro::rhi::vulkan
         {
             return;
         }
-        if (m_imguiTextureCache.count(handle))
+        if (auto it = m_imguiTextureCache.find(handle); it != m_imguiTextureCache.end())
         {
-            ImGui_ImplVulkan_RemoveTexture(m_imguiTextureCache[handle]);
-            m_imguiTextureCache.erase(handle);
+            m_imguiSetGraveyard.push_back({it->second, m_frameNumber});
+            m_imguiTextureCache.erase(it);
         }
 
         m_textureGraveyard.push(std::move(*vkTex), m_frameNumber);
@@ -1069,6 +1073,11 @@ namespace nitro::rhi::vulkan
         if (m_frameNumber < kMaxFramesInFlight)
             return;
         auto completed = m_frameNumber - kMaxFramesInFlight;
+        std::erase_if(m_imguiSetGraveyard, [&](const auto &entry)
+                      {
+    if (entry.second > completed) return false;
+    ImGui_ImplVulkan_RemoveTexture(entry.first);
+    return true; });
         m_textureGraveyard.collect(completed);
         m_bufferGraveyard.collect(completed);
         m_heapGraveyard.collect(completed);
