@@ -25,6 +25,8 @@ namespace nitro::rhi
         uint32_t binding;
         bool isBindlessArray = false;
         uint32_t bindlessCount = 0;
+
+        bool operator==(const RHIDescriptorBinding &) const = default;
     };
 
     class RHIDescriptorLayout

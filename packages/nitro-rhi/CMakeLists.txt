@@ -4,16 +4,14 @@ project(nitro-rhi VERSION 1.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-
-add_library(nitro-rhi INTERFACE)
+file(GLOB_RECURSE NITRO_RHI_SOURCE CONFIGURE_DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
+add_library(nitro-rhi STATIC ${NITRO_RHI_SOURCE})
 find_package(glm REQUIRED)
 
 
-target_include_directories(nitro-rhi
-INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-
-target_link_libraries(nitro-rhi INTERFACE glm::glm imgui-core nitro-core)
+target_include_directories(nitro-rhi PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(nitro-rhi PUBLIC glm::glm imgui-core nitro-core)
 
 if(NITRO_BUILD_TESTS)
 

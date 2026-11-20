@@ -1,5 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
-#include "supports/counting-device.h"
+#include "counting-device.h"
 #include "nitro-frame/resources/resource-manager.h"
 
 using namespace nitro;

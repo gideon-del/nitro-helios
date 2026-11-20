@@ -3,7 +3,7 @@
 #include "recording-command-buffer.h"
 #include "nitro-frame/view/view-system.h"
 #include "nitro-frame/graph/render-graph.h"
-#include "supports/counting-device.h"
+#include "counting-device.h"
 #include "nitro-rhi/rhi-constants.h"
 
 using namespace nitro;

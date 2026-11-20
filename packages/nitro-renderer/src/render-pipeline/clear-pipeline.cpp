@@ -6,7 +6,7 @@ namespace nitro::renderer
     {
 
         rhi::TextureDesc desc;
-        desc.format = rhi::TextureDesc::ImageFormat::ColorRGBA8;
+        desc.format = rhi::TextureDesc::ImageFormat::ColorSRGB8;
         desc.usage = rhi::TextureDesc::Usage::RenderTarget | rhi::TextureDesc::Usage::ShaderRead;
 
         frame::GPUResourceOptions options;
@@ -23,7 +23,7 @@ namespace nitro::renderer
                                   {
                                       auto *outputTexture = passCtx.resources.get(physicalOutputHandle, passCtx.frame);
                                       rhi::ColorAttachment color{ .texture = outputTexture, .load = rhi::LoadOp::Clear, .clear = {0.9f, 0.3f, 0.2f, 1.0f} };
-                                      
+
 passCtx.cmd.beginRendering({ .colors = std::span(&color, 1) });
 passCtx.cmd.endRendering(); })
             .write(outputHandle, rhi::ResourceState::RenderTarget);

@@ -2,7 +2,7 @@
 #include "fake-texture.h"
 #include "recording-command-buffer.h"
 #include "nitro-frame/graph/render-graph.h"
-#include "supports/counting-device.h"
+#include "counting-device.h"
 #include <ranges>
 
 using namespace nitro;

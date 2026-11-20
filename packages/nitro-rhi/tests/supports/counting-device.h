@@ -3,10 +3,19 @@
 #include "fake-texture.h"
 #include "fake-buffer.h"
 #include "nitro-core/types/pool.h"
+#include <memory>
+#include <vector>
 
 namespace nitro::tests
 {
     using namespace nitro::rhi;
+
+    // Add overrides here if RHIDescriptorLayout gains pure virtuals.
+    struct FakeDescriptorLayout : RHIDescriptorLayout
+    {
+        std::vector<RHIDescriptorBinding> bindings;
+    };
+
     class CountingDevice : public RHIDevice
     {
 
@@ -19,12 +28,29 @@ namespace nitro::tests
         DefaultSamplers m_samplers{};
         uint32_t m_heapCreates = 0, m_heapLive = 0;
 
+        std::vector<std::unique_ptr<FakeDescriptorLayout>> m_layouts;
+        uint32_t m_layoutCreates = 0;
+        uint32_t m_layoutDestroys = 0;
+
     public:
         CountingDevice() {}
         ~CountingDevice() override {}
         RHISwapchain *createSwapchain(RHISurface *surface) override { return nullptr; }
-        RHIDescriptorLayout *createDescriptorLayout(const std::vector<RHIDescriptorBinding> bindings, std::source_location loc = std::source_location::current()) override { return nullptr; }
-        void destroyDescriptorLayout(RHIDescriptorLayout *layout) override {}
+
+        RHIDescriptorLayout *createDescriptorLayout(const std::vector<RHIDescriptorBinding> bindings, std::source_location loc = std::source_location::current()) override
+        {
+            ++m_layoutCreates;
+            auto layout = std::make_unique<FakeDescriptorLayout>();
+            layout->bindings = bindings;
+            m_layouts.push_back(std::move(layout));
+            return m_layouts.back().get();
+        }
+        void destroyDescriptorLayout(RHIDescriptorLayout *layout) override
+        {
+            if (layout)
+                ++m_layoutDestroys;
+        }
+
         RHIDescriptorSet *createDescriptorSet(RHIDescriptorLayout *layout, std::source_location loc = std::source_location::current()) override { return nullptr; }
         void destroyDescriptorSet(RHIDescriptorSet *set) override {};
 
@@ -191,5 +217,7 @@ namespace nitro::tests
         uint32_t getDestroyCount() const { return m_destroys; }
         uint32_t getHeapCreateCount() const { return m_heapCreates; }
         uint32_t getHeapLiveCount() const { return m_heapLive; }
+        uint32_t layoutCreateCount() const { return m_layoutCreates; }
+        uint32_t layoutDestroyCount() const { return m_layoutDestroys; }
     };
 }

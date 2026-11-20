@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <nitro-rhi/rhi-pipeline.h>
+#include "nitro-core/utils.h"
 namespace nitro::rhi
 {
     enum class SamplerFilter
@@ -162,34 +163,30 @@ namespace nitro::rhi
         }
     };
 
-    template <typename T>
-    inline void hashCombine(size_t &seed, const T &value)
-    {
-
-        seed ^= std::hash<T>{}(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-    }
-
     struct RHISamplerHash
     {
         size_t operator()(const RHISamplerDesc &desc) const
         {
             size_t seed = 0;
 
-            hashCombine<int>(seed, static_cast<int>(desc.addressU));
-            hashCombine<int>(seed, static_cast<int>(desc.addressV));
-            hashCombine<int>(seed, static_cast<int>(desc.addressW));
+            auto intHashFn = std::hash<int>{};
+            auto floatHashFn = std::hash<float>{};
+            auto boolHashFn = std::hash<bool>{};
+            hashCombine(seed, intHashFn(static_cast<int>(desc.addressU)));
+            hashCombine(seed, intHashFn(static_cast<int>(desc.addressV)));
+            hashCombine(seed, intHashFn(static_cast<int>(desc.addressW)));
 
-            hashCombine<bool>(seed, desc.anisotropy);
-            hashCombine<int>(seed, static_cast<int>(desc.borderColor));
-            hashCombine<bool>(seed, desc.compareEnabled);
-            hashCombine<int>(seed, static_cast<int>(desc.compareOp));
-            hashCombine<int>(seed, static_cast<int>(desc.magFilter));
-            hashCombine<int>(seed, static_cast<int>(desc.minFilter));
-            hashCombine<float>(seed, desc.maxAnisotropy);
-            hashCombine<float>(seed, desc.maxLod);
-            hashCombine<float>(seed, desc.minLod);
-            hashCombine<float>(seed, desc.mipLodBias);
-            hashCombine<int>(seed, static_cast<int>(desc.mipmapMode));
+            hashCombine(seed, boolHashFn(desc.anisotropy));
+            hashCombine(seed, intHashFn(static_cast<int>(desc.borderColor)));
+            hashCombine(seed, boolHashFn(desc.compareEnabled));
+            hashCombine(seed, intHashFn(static_cast<int>(desc.compareOp)));
+            hashCombine(seed, intHashFn(static_cast<int>(desc.magFilter)));
+            hashCombine(seed, intHashFn(static_cast<int>(desc.minFilter)));
+            hashCombine(seed, floatHashFn(desc.maxAnisotropy));
+            hashCombine(seed, floatHashFn(desc.maxLod));
+            hashCombine(seed, floatHashFn(desc.minLod));
+            hashCombine(seed, floatHashFn(desc.mipLodBias));
+            hashCombine(seed, intHashFn(static_cast<int>(desc.mipmapMode)));
 
             return seed;
         }
