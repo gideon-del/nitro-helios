@@ -198,6 +198,7 @@ namespace nitro::studio
         request.sceneData = &m_sceneData;
         request.camera = toCameraData(m_editorCamera);
         request.pipelineSettings = m_pipelineSettings;
+        request.postSettings = m_postSettings;
         auto sceneTexture = m_renderer.render(m_view, request, frameInfo);
 
         rhi::RHIRenderPassDesc rpDesc{};
@@ -264,6 +265,18 @@ namespace nitro::studio
         ImGui::DragFloat("Ambient Intensity", &m_environment.ambientIntensity, 0.005f, 0.0f, 2.0f);
         ImGui::ColorEdit3("Sky", &m_environment.skyColor.x);
 
+        ImGui::SeparatorText("Tonemap");
+        ImGui::DragFloat("Exposure", &m_postSettings.tonemap.exposure, 0.05f, 0.0f, 20.0f);
+
+        static constexpr const char *kTonemapModes[] = {
+            "Linear",
+            "Reinhard",
+            "ACES",
+        };
+
+        int tonemapMode = static_cast<int>(m_postSettings.tonemap.mode);
+        if (ImGui::Combo("Mode", &tonemapMode, kTonemapModes, IM_ARRAYSIZE(kTonemapModes)))
+            m_postSettings.tonemap.mode = static_cast<renderer::PostSettings::ToneMapMode>(tonemapMode);
         ImGui::End();
         m_device->endImGuiFrame();
         m_device->drawImGui(cmd);

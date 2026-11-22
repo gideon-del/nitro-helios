@@ -4,6 +4,7 @@
 #include "nitro-renderer/passes/gbuffer-pass.h"
 #include "nitro-renderer/passes/debug-view-pass.h"
 #include "nitro-renderer/passes/deferred-lighting-pass.h"
+#include "nitro-renderer/passes/tonemap-pass.h"
 #include "nitro-renderer/stage-outputs.h"
 namespace nitro::renderer
 {
@@ -51,15 +52,20 @@ namespace nitro::renderer
             case PipelineSettings::DebugMode::WorldPosition:
                 return GBufferView::WorldPosition;
             case PipelineSettings::DebugMode::Lit:
-                break;
+            case PipelineSettings::DebugMode::GGX:
+            case PipelineSettings::DebugMode::Fresnel:
+            case PipelineSettings::DebugMode::Geometry:
+            case PipelineSettings::DebugMode::Ambient:
+            case PipelineSettings::DebugMode::Direct:
+                break
             }
             assert(false && "mode has no G-buffer view");
             return GBufferView::Albedo;
         }
 
-        void publish(RenderContext &ctx, const DebugViewOutput &out)
+        void publish(RenderContext &ctx, frame::LogicalTextureHandle output)
         {
-            ctx.builder.blackboard().add<SceneColor>().texture = out.output;
+            ctx.builder.blackboard().add<SceneColor>().texture = output;
         }
 
         bool isGBufferView(PipelineSettings::DebugMode m) { return m >= PipelineSettings::DebugMode::Depth && m <= PipelineSettings::DebugMode::WorldPosition; }
@@ -71,12 +77,13 @@ namespace nitro::renderer
         auto depthOutput = addDepthPrepass(ctx, cull);
 
         if (mode == PipelineSettings::DebugMode::Depth)
-            return publish(ctx, addDebugViewPass(ctx, depthOutput.depth, GBufferView::Depth));
+            return publish(ctx, addDebugViewPass(ctx, depthOutput.depth, GBufferView::Depth).output);
         auto gbuf = addGBufferPass(ctx, cull, depthOutput);
         if (isGBufferView(mode))
-            return publish(ctx, addDebugViewPass(ctx, pick(gbuf, mode), toGBufferView(mode)));
+            return publish(ctx, addDebugViewPass(ctx, pick(gbuf, mode), toGBufferView(mode)).output);
 
         auto lightOutput = addDeferredLightingPass(ctx, gbuf);
-        publish(ctx, addDebugViewPass(ctx, lightOutput.sceneColor, GBufferView::Lit));
+
+        publish(ctx, addTonemapPass(ctx, lightOutput.sceneColor).output);
     }
 } // namespace nitro::renderer
