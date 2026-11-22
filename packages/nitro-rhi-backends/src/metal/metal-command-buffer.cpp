@@ -136,7 +136,7 @@ namespace nitro::rhi::metal
         encoder->setVertexBuffer(metalBuffer->buffer, NS::UInteger(0), NS::UInteger(binding));
     }
 
-    void MetalCommandBuffer::setPushConstant(void *data, size_t size, uint32_t binding, bool isCompute)
+    void MetalCommandBuffer::setPushConstant(const void *data, size_t size, uint32_t binding, bool isCompute)
     {
         if (isCompute && m_computeEncoder)
         {

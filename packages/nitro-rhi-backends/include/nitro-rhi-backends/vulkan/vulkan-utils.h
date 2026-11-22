@@ -79,6 +79,10 @@ namespace nitro::rhi::vulkan
 
         case ResourceState::IndirectDraw:
             return VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
+        case ResourceState::VertexBuffer:
+            return VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT;
+        case ResourceState::IndexBuffer:
+            return VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT;
         }
         assert(false && "unhandled ResourceState");
         return VK_PIPELINE_STAGE_2_NONE;
@@ -113,7 +117,7 @@ namespace nitro::rhi::vulkan
             return VK_ACCESS_2_SHADER_READ_BIT;
 
         case ResourceState::ShaderWrite:
-            return VK_ACCESS_2_SHADER_WRITE_BIT;
+            return VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
 
         case ResourceState::DepthReadStencilWrite:
             return VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
@@ -121,6 +125,10 @@ namespace nitro::rhi::vulkan
                    VK_ACCESS_2_SHADER_SAMPLED_READ_BIT;
         case ResourceState::IndirectDraw:
             return VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT;
+        case ResourceState::VertexBuffer:
+            return VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT;
+        case ResourceState::IndexBuffer:
+            return VK_ACCESS_2_INDEX_READ_BIT;
         }
 
         assert(false && "unhandled ResourceState");
@@ -170,13 +178,14 @@ namespace nitro::rhi::vulkan
             return VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
 
         case ResourceState::IndirectDraw:
-            assert(false && "IndirectDraw is buffer-only");
-            return VK_IMAGE_LAYOUT_UNDEFINED;
-
-        default:
-            assert(state != ResourceState::IndirectDraw && "Indirect draw are for buffers only");
+        case ResourceState::VertexBuffer:
+        case ResourceState::IndexBuffer:
+            assert(false && "buffer-only state used on an image");
             return VK_IMAGE_LAYOUT_UNDEFINED;
         }
+
+        assert(false && "unhandled ResourceState");
+        return VK_IMAGE_LAYOUT_UNDEFINED;
     }
 
     VkExtent3D inline convertToVkExtent3D(const Extent3D &extent)
@@ -246,9 +255,8 @@ namespace nitro::rhi::vulkan
             return VK_ATTACHMENT_STORE_OP_DONT_CARE;
         case StoreOp::None:
             return VK_ATTACHMENT_STORE_OP_NONE;
-        default:
-            return VK_ATTACHMENT_STORE_OP_DONT_CARE;
         }
+        return VK_ATTACHMENT_STORE_OP_DONT_CARE;
     }
 
 } // namespace nitro::rhi::vulkan

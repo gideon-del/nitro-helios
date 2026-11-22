@@ -11,6 +11,7 @@
 #include "nitro-renderer/cache/gpu-resource-cache.h"
 #include "nitro-studio/camera-controller.h"
 #include "nitro-renderer/scene-renderer.h"
+#include "nitro-studio/device-factory.h"
 #include <GLFW/glfw3.h>
 #include <imgui.h>
 
@@ -43,6 +44,8 @@ namespace nitro::studio
             ++frameNumber;
         }
     };
+
+    renderer::CameraData toCameraData(const geometry::OrbitalCamera &camera);
     class Application
     {
 
@@ -59,10 +62,15 @@ namespace nitro::studio
         void handleInput();
         void handleResize();
         void renderFrame();
+        void flush();
+        void handleCameraInput();
 
     private:
         GlfwContext m_glfw;
         std::unique_ptr<GLFWwindow, WindowDeleter> m_window;
+
+        const Backend m_backend;
+
         std::shared_ptr<rhi::RHIDevice> m_device;
         renderer::SceneRenderer m_renderer;
         std::shared_ptr<rhi::RHISwapchain> m_swapchain;
@@ -87,5 +95,11 @@ namespace nitro::studio
 
         std::optional<Extent2D> m_pendingViewResize = std::nullopt;
         Extent2D m_viewportExtent;
+        renderer::SceneRenderData m_sceneData;
+        renderer::PipelineSettings m_pipelineSettings{};
+
+        bool m_viewportHovered = false;
+        bool m_viewportFocused = false;
+        bool m_cameraDragging = false;
     };
 } // namespace nitro::studio

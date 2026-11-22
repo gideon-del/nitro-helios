@@ -2,6 +2,25 @@
 #include "nitro-renderer/stage-outputs.h"
 namespace nitro::renderer
 {
+
+    static SceneGraphResources importScene(frame::RenderGraphBuilder &b, const SceneRenderData *data)
+    {
+        SceneGraphResources r{};
+        if (!data)
+            return r;
+        auto imp = [&](const char *name, rhi::RHIBufferHandle h)
+        {
+            return h.isValid() ? b.importBuffer(name, h) : frame::LogicalBufferHandle{};
+        };
+        r.vertices = imp("Scene/Vertices", data->vertexBuffer);
+        r.indices = imp("Scene/Indices", data->indexBuffer);
+        r.meshes = imp("Scene/Meshes", data->meshBuffer);
+        r.instances = imp("Scene/Instances", data->meshInstanceBuffer);
+        r.sceneInstanceIds = imp("Scene/SceneInstanceIds", data->sceneInstanceIdBuffer);
+        r.materials = imp("Scene/Materials", data->materialBuffer);
+        r.lights = imp("Scene/Lights", data->lightBuffer);
+        return r;
+    }
     SceneRenderer::~SceneRenderer()
     {
         for (auto &[handle, pipeline] : m_viewPipelineLookup)
@@ -59,7 +78,10 @@ namespace nitro::renderer
             .view = renderView,
             .request = request,
             .pipelines = m_pipelineCache,
-            .layouts = m_layoutCache
+            .layouts = m_layoutCache,
+            .shaders = m_shaderLocator,
+            .scene = importScene(builder, request.sceneData),
+            .samplers = m_defaultSamplers
          };
 
          pipeline->declare(ctx);

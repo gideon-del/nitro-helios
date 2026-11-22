@@ -528,7 +528,7 @@ namespace nitro::rhi::vulkan
     {
         m_FrameStats.vertices += count;
     }
-    void VulkanCommandBuffer::setPushConstant(void *data, size_t size, uint32_t binding, bool isCompute)
+    void VulkanCommandBuffer::setPushConstant(const void *data, size_t size, uint32_t binding, bool isCompute)
     {
 
         if (isCompute)
@@ -774,7 +774,7 @@ namespace nitro::rhi::vulkan
             barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 
             barrier.image = vkTexture->image;
-            barrier.oldLayout = convertResourceStateToImageLayout(barrierInfo.from);
+            barrier.oldLayout = barrierInfo.discard ? VK_IMAGE_LAYOUT_UNDEFINED : convertResourceStateToImageLayout(barrierInfo.from);
             barrier.newLayout = convertResourceStateToImageLayout(barrierInfo.to);
 
             barrier.subresourceRange.aspectMask = vkTexture->imageAspect;

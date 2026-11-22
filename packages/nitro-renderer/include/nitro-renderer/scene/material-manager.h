@@ -41,12 +41,14 @@ namespace nitro::renderer
         MaterialParameters parameters;
     };
 
+    static constexpr uint32_t kMaxMaterialTextures = 1024;
     struct MaterialManagerFrameResource
     {
         rhi::RHIBuffer *materialBuffer = nullptr;
-
         size_t capacity = 1024;
+        rhi::RHIDescriptorSet *textureSet = nullptr;
     };
+    static constexpr uint8_t kAllFrames = (1 << rhi::kMaxFramesInFlight) - 1;
     class MaterialManager
     {
     public:
@@ -89,14 +91,18 @@ namespace nitro::renderer
         };
         void markMaterialBufferAsDirty()
         {
-            m_dirtMaterialBuffer = (1 << rhi::kMaxFramesInFlight) - 1;
+            m_dirtMaterialBuffer = kAllFrames;
         }
         void markMaterialTexturesAsDirty()
         {
-            m_dirtMaterialTextures = (1 << rhi::kMaxFramesInFlight) - 1;
+            m_dirtMaterialTextures = kAllFrames;
+            m_dirtyTextureSets = kAllFrames;
         }
         uint32_t
         addTexture(const assets::TextureHandle &handle, rhi::TextureDesc::ImageFormat format);
+
+        rhi::RHIDescriptorLayout *textureLayout() const { return m_textureLayout; }
+        rhi::RHIDescriptorSet *textureSet() { return m_resources.current(m_device->getCurrentFrameIndex()).textureSet; }
 
     private:
         std::shared_ptr<rhi::RHIDevice> m_device;
@@ -109,7 +115,13 @@ namespace nitro::renderer
 
         uint8_t m_dirtMaterialBuffer = 0;
         uint8_t m_dirtMaterialTextures = 0;
+        uint8_t m_dirtyTextureSets = 0;
+
+        rhi::RHIDescriptorLayout *m_textureLayout = nullptr;
+
+    private:
         void buildFrameBuffer(uint32_t frameIdx);
+        void writeTextureSet(uint32_t frameIdx);
     };
 
 } // namespace nitro::renderer

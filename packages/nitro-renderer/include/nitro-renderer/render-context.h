@@ -7,6 +7,7 @@
 #include "nitro-frame/graph/render-graph.h"
 #include "nitro-frame/view/render-view.h"
 #include <span>
+#include "nitro-renderer/shader-locator.h"
 namespace nitro::renderer
 {
 
@@ -37,6 +38,8 @@ namespace nitro::renderer
 
         std::span<const rhi::RHITextureHandle> materialTextures;
         rhi::RHIBufferHandle materialBuffer;
+        rhi::RHIDescriptorLayout *materialTextureLayout = nullptr;
+        rhi::RHIDescriptorSet *materialTextureSet = nullptr;
 
         DirectionalLight directionalLight;
 
@@ -60,22 +63,15 @@ namespace nitro::renderer
             float depthSigma = 1.0f;
         } ssao;
 
-        enum class DebugMode
+        enum class DebugMode : uint32_t
         {
-            Lit = 0,
-            Albedo = 1,
-            Normal = 2,
-            Depth = 3,
-            WorldPosition = 4,
-            CascadeColor = 5,
-            PointLight = 6,
-            DirectionalLight = 7,
-            HeatMap = 8,
-            DistributionGGX = 9,
-            FresnelSchlick = 10,
-            GeometrySmith = 11,
-            Ambient = 12,
-            SpecularIBL = 13,
+            Lit,
+            Depth,
+            Albedo,
+            Normal,
+            Material,
+            Emissive,
+            WorldPosition
         } debugMode = DebugMode::Lit;
 
         struct Lighting
@@ -132,6 +128,17 @@ namespace nitro::renderer
         float time = 0.0f;
     };
 
+    struct SceneGraphResources
+    {
+        frame::LogicalBufferHandle vertices;
+        frame::LogicalBufferHandle indices;
+        frame::LogicalBufferHandle meshes;
+        frame::LogicalBufferHandle instances;
+        frame::LogicalBufferHandle sceneInstanceIds;
+        frame::LogicalBufferHandle materials;
+        frame::LogicalBufferHandle lights;
+    };
+
     struct RenderContext
     {
         frame::RenderGraphBuilder &builder;
@@ -139,5 +146,8 @@ namespace nitro::renderer
         const RenderRequest &request;
         rhi::PipelineCache &pipelines;
         rhi::DescriptorLayoutCache &layouts;
+        const ShaderLocator &shaders;
+        const SceneGraphResources &scene;
+        const rhi::DefaultSamplers &samplers;
     };
 } // namespace nitro::renderer

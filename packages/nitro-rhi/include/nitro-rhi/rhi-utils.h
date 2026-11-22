@@ -20,6 +20,8 @@ namespace nitro::rhi
         IndirectDraw,
         Present,
 
+        VertexBuffer,
+        IndexBuffer
     };
     enum class ImageLayout
     {

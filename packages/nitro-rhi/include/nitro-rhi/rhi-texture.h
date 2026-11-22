@@ -72,6 +72,7 @@ namespace nitro::rhi
     struct TextureState
     {
 
+        bool discardPending = false;
         TextureState(uint32_t mipCount = 1, uint32_t layers = 1) : perSub(mipCount * layers, ResourceState::Undefined), m_mipCount(mipCount), m_layers(layers)
         {
             assert(mipCount >= 1 && layers >= 1);

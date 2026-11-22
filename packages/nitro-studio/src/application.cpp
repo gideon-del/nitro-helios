@@ -1,9 +1,24 @@
 #include "nitro-studio/application.h"
 #include "nitro-studio/device-factory.h"
-
-#include "nitro-renderer/render-pipeline/clear-pipeline.h"
+#include <random>
+#include "nitro-renderer/render-pipeline/deferred-pipeline.h"
+#include <string>
 namespace nitro::studio
 {
+
+    static void addRandomSpheres(uint32_t count, float areaSize, renderer::Scene &scene, renderer::GPUMeshHandle mesh, renderer::GPUMaterialHandle material)
+    {
+        std::mt19937 rng(50); // fixed seed
+        std::uniform_real_distribution<float> pos(-areaSize, areaSize);
+
+        for (uint32_t i = 0; i < count; i++)
+        {
+
+            auto transformation = geometry::MeshTransformation(glm::translate(glm::mat4(1.0f), glm::vec3(pos(rng), 10.0f, pos(rng))));
+
+            scene.addMeshEntity(mesh, material, transformation, "Sphere");
+        }
+    }
 
     static GLFWwindow *createWindow(int width, int height, const char *title)
     {
@@ -16,8 +31,9 @@ namespace nitro::studio
 
     Application::Application()
         : m_window(createWindow(800, 600, "Nitro Studio")),
-          m_device(createDevice(defaultBackend(), m_window.get())),
-          m_renderer(*m_device.get()),
+          m_backend(defaultBackend()),
+          m_device(createDevice(m_backend, m_window.get())),
+          m_renderer(*m_device.get(), std::string(SHADER_DIR), m_backend == Backend::Metal),
           m_swapchain(m_device->createSwapchain(nullptr)),
           m_assetManager(std::make_shared<assets::AssetManager>()),
           m_entityStore(std::make_shared<renderer::EntityStore>()),
@@ -29,15 +45,45 @@ namespace nitro::studio
 
     {
 
-        m_view = m_renderer.createView({800, 600}, std::make_unique<renderer::ClearPipeline>());
+        m_view = m_renderer.createView({800, 600}, std::make_unique<renderer::DeferredPipeline>());
         m_viewportExtent = {800, 600};
         int w, h;
         glfwGetFramebufferSize(m_window.get(), &w, &h);
 
         m_swapchainExtent = {(uint32_t)w, (uint32_t)h};
         m_frameClock.time = glfwGetTime();
+
+        auto sphereMesh = m_meshManager->addMesh(geometry::MeshGenerator::createUVSphere(5, 10, 100));
+
+        auto material = std::make_unique<assets::Material>();
+        material->parameters.roughness = 0.5f;
+        material->parameters.metallic = 1.0f;
+
+        assets::MaterialAssetHandle sphereMaterial = m_assetManager->registerMaterial(std::move(material), "Sphere Material");
+
+        addRandomSpheres(100, 400, m_scene, sphereMesh, m_materialManager->addMaterial(sphereMaterial));
+
+        m_meshManager->buildMegaBuffers();
+        m_materialManager->buildMegaMaterialBuffer();
+        m_scene.buildSceneInstanceId();
+        m_editorCamera.setFlipY(m_backend == Backend::Vulkan);
+        m_editorCamera.setLens(60.0f, 0.1f, 1000.0f);
     }
 
+    renderer::CameraData toCameraData(const geometry::OrbitalCamera &camera)
+    {
+        renderer::CameraData cameraData;
+
+        cameraData.farPlane = camera.far();
+        cameraData.nearPlane = camera.near();
+        cameraData.invViewProj = camera.invViewProj();
+        cameraData.proj = camera.proj();
+        cameraData.view = camera.view();
+        cameraData.viewProj = camera.viewProj();
+        cameraData.position = camera.getEye();
+
+        return cameraData;
+    }
     Application::~Application()
     {
         m_device->waitIdle();
@@ -51,9 +97,60 @@ namespace nitro::studio
             glfwPollEvents();
 
             m_frameClock.tick(glfwGetTime());
+            m_device->beginImGuiFrame();
+            handleCameraInput();
+
             handleResize();
             renderFrame();
         }
+    }
+
+    void Application::flush()
+    {
+        m_meshManager->flusDirtyMeshInstances();
+        m_materialManager->flush();
+        m_lightManager->flush();
+        m_scene.flush();
+
+        m_sceneData.indexBuffer = m_meshManager->getIndexMegaBuffer()->getHandle();
+        m_sceneData.vertexBuffer = m_meshManager->getVertexMegaBuffer()->getHandle();
+        m_sceneData.meshBuffer = m_meshManager->descriptorBuffer()->getHandle();
+        m_sceneData.meshInstanceBuffer = m_meshManager->instanceBuffer()->getHandle();
+        m_sceneData.meshInstanceCount = m_meshManager->instanceCount();
+
+        m_sceneData.materialBuffer = m_materialManager->getMaterialBuffer()->getHandle();
+        m_sceneData.materialTextureLayout = m_materialManager->textureLayout();
+        m_sceneData.materialTextureSet = m_materialManager->textureSet();
+
+        m_sceneData.sceneInstanceIdBuffer = m_scene.sceneInstanceIdBuffer()->getHandle();
+
+        m_sceneData.lightBuffer = m_lightManager->getPointLightBuffer()->getHandle();
+
+        m_sceneData.lightCount = m_lightManager->pointLightCount();
+    }
+
+    void Application::handleCameraInput()
+    {
+        const ImGuiIO &io = ImGui::GetIO();
+
+        bool dragging = io.MouseDown[ImGuiMouseButton_Left] || io.MouseDown[ImGuiMouseButton_Right];
+        if (m_viewportHovered && (ImGui::IsMouseClicked(ImGuiMouseButton_Left) ||
+                                  ImGui::IsMouseClicked(ImGuiMouseButton_Right)))
+            m_cameraDragging = true;
+        if (!dragging)
+            m_cameraDragging = false;
+
+        CameraInput input{};
+        input.enabled = m_viewportHovered || m_cameraDragging;
+        input.mouseDelta = {io.MouseDelta.x, io.MouseDelta.y};
+        input.orbit = m_cameraDragging && io.MouseDown[ImGuiMouseButton_Left];
+        input.scroll = m_viewportHovered ? io.MouseWheel : 0.0f;
+        if (m_viewportFocused)
+        {
+            input.move.y = ImGui::IsKeyDown(ImGuiKey_W) - ImGui::IsKeyDown(ImGuiKey_S);
+            input.move.x = ImGui::IsKeyDown(ImGuiKey_D) - ImGui::IsKeyDown(ImGuiKey_A);
+        }
+        m_cameraController.update(m_editorCamera, input, m_frameClock.dt);
     }
 
     void Application::handleResize()
@@ -61,7 +158,9 @@ namespace nitro::studio
 
         if (m_pendingViewResize)
         {
-            m_renderer.resize(m_view, m_pendingViewResize.value());
+            auto e = *m_pendingViewResize;
+            m_renderer.resize(m_view, e);
+            m_editorCamera.setViewPort(e.width, e.height);
             m_pendingViewResize = std::nullopt;
         }
         int w, h;
@@ -84,6 +183,7 @@ namespace nitro::studio
 
         auto *cmd = m_device->beginFrame();
 
+        flush();
         frame::FrameInfo frameInfo{
             .cmd = *cmd,
             .frameIndex = m_device->getCurrentFrameIndex(),
@@ -93,6 +193,9 @@ namespace nitro::studio
 
         renderer::RenderRequest request{};
 
+        request.sceneData = &m_sceneData;
+        request.camera = toCameraData(m_editorCamera);
+        request.pipelineSettings = m_pipelineSettings;
         auto sceneTexture = m_renderer.render(m_view, request, frameInfo);
 
         rhi::RHIRenderPassDesc rpDesc{};
@@ -105,7 +208,6 @@ namespace nitro::studio
 
         cmd->beginRenderPass(rpDesc);
 
-        m_device->beginImGuiFrame();
         ImGui::DockSpaceOverViewport();
         ImGui::Begin("Viewport");
         // ImGui::Text("dt: %.3f ms", m_frameClock.dt * 1000.0f);
@@ -113,6 +215,8 @@ namespace nitro::studio
         ImVec2 size = ImGui::GetContentRegionAvail();
 
         ImGui::Image((ImTextureID)m_device->getImGuiTextureRef(m_device->resolve(sceneTexture)), size);
+        m_viewportHovered = ImGui::IsItemHovered();
+        m_viewportFocused = ImGui::IsWindowFocused();
 
         float dpi = ImGui::GetWindowViewport()->DpiScale;
         Extent2D pixels{uint32_t(size.x * dpi), uint32_t(size.y * dpi)};
@@ -124,6 +228,12 @@ namespace nitro::studio
 
         ImGui::End();
 
+        ImGui::Begin("Settings");
+        static constexpr const char *kModes[] = {"Lit", "Depth", "Albedo", "Normal", "Material", "Emissive", "World Position"};
+        int mode = static_cast<int>(m_pipelineSettings.debugMode);
+        if (ImGui::Combo("View", &mode, kModes, IM_ARRAYSIZE(kModes)))
+            m_pipelineSettings.debugMode = static_cast<renderer::PipelineSettings::DebugMode>(mode);
+        ImGui::End();
         m_device->endImGuiFrame();
         m_device->drawImGui(cmd);
         cmd->endRenderPass();

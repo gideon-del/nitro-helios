@@ -22,11 +22,13 @@ namespace nitro::tests
         void bindUniformBuffer(RHIBuffer *buffer, uint32_t binding) override {}
         void bindDescriptorSet(RHIDescriptorSet *descriptorSet, uint32_t binding) override {}
         void bindComputeDescriptorSet(RHIDescriptorSet *descriptorSet, uint32_t binding) override {}
-        void setPushConstant(void *data, size_t size, uint32_t binding, bool isCompute = false) override {}
+        void setPushConstant(const void *data, size_t size, uint32_t binding, bool isCompute = false) override {}
         void setViewPort(const RHIViewport &viewport) override {}
         void setScissor(const RHIScissor &scissor) override {}
         void setStencilReference(uint32_t reference) override {}
         void generateMipmaps(RHITexture *texture) override {}
+
+        rhi::RHIDescriptorSet *allocateDescriptorSet(rhi::RHIDescriptorLayout *layout) override { return nullptr; }
 
         void fillBuffer(RHIBuffer *buffer, size_t offset, size_t size, uint32_t value) override {}
         void draw(uint32_t vertexCount, uint32_t instanceCount = 1) override {}

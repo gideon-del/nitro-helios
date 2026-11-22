@@ -5,12 +5,22 @@ namespace nitro::renderer
 {
     MaterialManager::MaterialManager(std::shared_ptr<rhi::RHIDevice> device, std::shared_ptr<assets::AssetManager> assetManager, std::shared_ptr<GPUResourceCache> gpuResourceCache) : m_device(device), m_assetManager(std::move(assetManager)), m_gpuResourceCache(std::move(gpuResourceCache))
     {
+
+        std::vector<rhi::RHIDescriptorBinding> bindings{
+            {rhi::RHIDescriptorBinding::Type::Texture, rhi::RHIDescriptorBinding::ShaderStage::Fragment, 0, true, kMaxMaterialTextures},
+            {rhi::RHIDescriptorBinding::Type::SingleSampler, rhi::RHIDescriptorBinding::ShaderStage::Fragment, 1},
+        };
+        m_textureLayout = m_device->createDescriptorLayout(bindings);
         m_resources.create(
             kMaxFramesInFlight,
-            [](uint32_t frameIdx)
+            [&](uint32_t frameIdx)
             {
-                return MaterialManagerFrameResource{};
+                MaterialManagerFrameResource r{};
+                r.textureSet = m_device->createDescriptorSet(m_textureLayout);
+                return r;
             });
+
+        m_dirtyTextureSets = kAllFrames;
     }
 
     MaterialManager::~MaterialManager()
@@ -18,11 +28,14 @@ namespace nitro::renderer
         for (auto &resource : m_resources)
         {
             m_device->destroyBuffer(resource.materialBuffer);
+            m_device->destroyDescriptorSet(resource.textureSet);
         }
+        m_device->destroyDescriptorLayout(m_textureLayout);
     }
 
     uint32_t MaterialManager::addTexture(const assets::TextureHandle &handle, rhi::TextureDesc::ImageFormat format)
     {
+        assert(m_textures.size() < kMaxMaterialTextures);
         auto texture = m_assetManager->getAsset(handle);
         if (!texture)
             return INVALID_TEXTURE_INDEX;
@@ -87,6 +100,12 @@ namespace nitro::renderer
         {
             buildFrameBuffer(frameIdx);
             m_dirtMaterialBuffer &= ~bit;
+        }
+
+        if (m_dirtyTextureSets & bit)
+        {
+            writeTextureSet(frameIdx);
+            m_dirtyTextureSets &= ~bit;
         }
     }
 
@@ -154,12 +173,22 @@ namespace nitro::renderer
 
         return it->assetHandle;
     }
-
+    void MaterialManager::writeTextureSet(uint32_t frameIdx)
+    {
+        auto *set = m_resources.current(frameIdx).textureSet;
+        set->writeBindlessTextures(m_textures, 0);
+        set->writeSampler(m_device->defaultSamplers().anisotropicRepeat, 1);
+        set->commit();
+    }
     void MaterialManager::clear()
     {
 
         m_materials.clear();
+        m_textures.clear();
         m_assetHandleToGPUHandle.clear();
         m_gpuResourceCache->clear();
+
+        markMaterialTexturesAsDirty();
+        m_dirtyTextureSets = kAllFrames;
     }
 } // namespace nitro::renderer

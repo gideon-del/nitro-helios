@@ -93,6 +93,7 @@ namespace nitro::rhi
         ResourceState from;
         ResourceState to;
         TextureSubresource range;
+        bool discard = false;
     };
 
     struct ResolvedBufferBarrier
@@ -175,7 +176,7 @@ namespace nitro::rhi
         virtual void bindUniformBuffer(RHIBuffer *buffer, uint32_t binding) = 0;
         virtual void bindDescriptorSet(RHIDescriptorSet *descriptorSet, uint32_t binding) = 0;
         virtual void bindComputeDescriptorSet(RHIDescriptorSet *descriptorSet, uint32_t binding) = 0;
-        virtual void setPushConstant(void *data, size_t size, uint32_t binding, bool isCompute = false) = 0;
+        virtual void setPushConstant(const void *data, size_t size, uint32_t binding, bool isCompute = false) = 0;
         virtual void setViewPort(const RHIViewport &viewport) = 0;
         virtual void setScissor(const RHIScissor &scissor) = 0;
         virtual void setStencilReference(uint32_t reference) = 0;
@@ -254,7 +255,7 @@ namespace nitro::rhi
                 return;
             emitBarriers(textureResolvedBarriers, bufferResolvedBarriers);
         };
-        void discard(RHITexture &texture) { mutableState(texture).updateAll(ResourceState::Undefined); }
+        void discard(RHITexture &texture) { mutableState(texture).discardPending = true; }
 
     protected:
         static TextureState &mutableState(RHITexture &texture) { return texture.m_resourceState; }
@@ -271,6 +272,15 @@ namespace nitro::rhi
             auto &state = mutableState(*barrier.texture);
 
             auto resolvedRange = barrier.range.resolve(state.mipCount(), state.layerCount());
+
+            if (state.discardPending)
+            {
+                auto from = state.get(0);
+                batch.push_back({barrier.texture, from, barrier.to, resolvedRange, true});
+                state.updateAll(barrier.to);
+                state.discardPending = false;
+                return;
+            }
 
             if (state.isUniform())
             {
