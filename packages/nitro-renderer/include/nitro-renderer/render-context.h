@@ -11,6 +11,13 @@
 namespace nitro::renderer
 {
 
+    struct EnvironmentData
+    {
+        glm::vec3 ambientColor{1.0f};
+        float ambientIntensity = 0.03f;
+        glm::vec3 skyColor{0.4f, 0.6f, 0.9f};
+    };
+
     struct CameraData
     {
         glm::mat4 view, proj, viewProj, invViewProj;
@@ -45,6 +52,8 @@ namespace nitro::renderer
 
         rhi::RHIBufferHandle lightBuffer;
         size_t lightCount = 0;
+
+        EnvironmentData environment;
     };
 
     struct PipelineSettings
@@ -71,7 +80,13 @@ namespace nitro::renderer
             Normal,
             Material,
             Emissive,
-            WorldPosition
+            WorldPosition,
+
+            GGX,
+            Fresnel,
+            Geometry,
+            Ambient,
+            Direct,
         } debugMode = DebugMode::Lit;
 
         struct Lighting
@@ -81,7 +96,7 @@ namespace nitro::renderer
 
         bool lodEnabled = true;
         bool frustumCullEnabled = true;
-        bool occlusionCullEnabled = true;
+        bool occlusionCullEnabled = false;
     };
 
     struct PostSettings
@@ -150,4 +165,5 @@ namespace nitro::renderer
         const SceneGraphResources &scene;
         const rhi::DefaultSamplers &samplers;
     };
+
 } // namespace nitro::renderer

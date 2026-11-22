@@ -3,6 +3,7 @@
 #include "nitro-renderer/passes/depth-prepass.h"
 #include "nitro-renderer/passes/gbuffer-pass.h"
 #include "nitro-renderer/passes/debug-view-pass.h"
+#include "nitro-renderer/passes/deferred-lighting-pass.h"
 #include "nitro-renderer/stage-outputs.h"
 namespace nitro::renderer
 {
@@ -60,6 +61,8 @@ namespace nitro::renderer
         {
             ctx.builder.blackboard().add<SceneColor>().texture = out.output;
         }
+
+        bool isGBufferView(PipelineSettings::DebugMode m) { return m >= PipelineSettings::DebugMode::Depth && m <= PipelineSettings::DebugMode::WorldPosition; }
     }
     void DeferredPipeline::declare(RenderContext &ctx)
     {
@@ -70,9 +73,10 @@ namespace nitro::renderer
         if (mode == PipelineSettings::DebugMode::Depth)
             return publish(ctx, addDebugViewPass(ctx, depthOutput.depth, GBufferView::Depth));
         auto gbuf = addGBufferPass(ctx, cull, depthOutput);
-        if (mode != PipelineSettings::DebugMode::Lit)
+        if (isGBufferView(mode))
             return publish(ctx, addDebugViewPass(ctx, pick(gbuf, mode), toGBufferView(mode)));
 
-        publish(ctx, addDebugViewPass(ctx, gbuf.albedo, GBufferView::Albedo));
+        auto lightOutput = addDeferredLightingPass(ctx, gbuf);
+        publish(ctx, addDebugViewPass(ctx, lightOutput.sceneColor, GBufferView::Lit));
     }
 } // namespace nitro::renderer

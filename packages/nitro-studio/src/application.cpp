@@ -57,7 +57,7 @@ namespace nitro::studio
 
         auto material = std::make_unique<assets::Material>();
         material->parameters.roughness = 0.5f;
-        material->parameters.metallic = 1.0f;
+        material->parameters.metallic = 0.0f;
 
         assets::MaterialAssetHandle sphereMaterial = m_assetManager->registerMaterial(std::move(material), "Sphere Material");
 
@@ -127,6 +127,8 @@ namespace nitro::studio
         m_sceneData.lightBuffer = m_lightManager->getPointLightBuffer()->getHandle();
 
         m_sceneData.lightCount = m_lightManager->pointLightCount();
+        m_sceneData.directionalLight = m_sun;
+        m_sceneData.environment = m_environment;
     }
 
     void Application::handleCameraInput()
@@ -229,10 +231,39 @@ namespace nitro::studio
         ImGui::End();
 
         ImGui::Begin("Settings");
-        static constexpr const char *kModes[] = {"Lit", "Depth", "Albedo", "Normal", "Material", "Emissive", "World Position"};
+
+        static constexpr const char *kModes[] = {
+            "Lit",
+            "Depth",
+            "Albedo",
+            "Normal",
+            "Material",
+            "Emissive",
+            "World Position",
+            "GGX (D)",
+            "Fresnel (F)",
+            "Geometry (G)",
+            "Ambient",
+            "Direct",
+        };
+        static_assert(IM_ARRAYSIZE(kModes) == static_cast<int>(renderer::PipelineSettings::DebugMode::Direct) + 1);
+
         int mode = static_cast<int>(m_pipelineSettings.debugMode);
         if (ImGui::Combo("View", &mode, kModes, IM_ARRAYSIZE(kModes)))
             m_pipelineSettings.debugMode = static_cast<renderer::PipelineSettings::DebugMode>(mode);
+
+        ImGui::SeparatorText("Sun");
+        if (ImGui::DragFloat3("Direction", &m_sun.direction.x, 0.01f, -1.0f, 1.0f))
+            if (glm::length(m_sun.direction) > 1e-4f)
+                m_sun.direction = glm::normalize(m_sun.direction);
+        ImGui::ColorEdit3("Color", &m_sun.color.x);
+        ImGui::DragFloat("Intensity", &m_sun.intensity, 0.05f, 0.0f, 20.0f);
+
+        ImGui::SeparatorText("Environment");
+        ImGui::ColorEdit3("Ambient", &m_environment.ambientColor.x);
+        ImGui::DragFloat("Ambient Intensity", &m_environment.ambientIntensity, 0.005f, 0.0f, 2.0f);
+        ImGui::ColorEdit3("Sky", &m_environment.skyColor.x);
+
         ImGui::End();
         m_device->endImGuiFrame();
         m_device->drawImGui(cmd);

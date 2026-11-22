@@ -52,7 +52,7 @@ vec3 reconstruct(float depth,vec2 uv) {
 
 void main() {
    vec4 s = texelFetch(source, ivec2(gl_FragCoord.xy), 0);
-    vec3 c = vec3(1.0, 0.0, 1.0);
+    vec3 c = s.rgb;
 
     switch(mode) {
         case MODE_DEPTH: c = linearizeDepth(s.r); break;

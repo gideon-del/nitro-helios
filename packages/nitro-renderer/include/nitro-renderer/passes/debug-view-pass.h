@@ -15,7 +15,8 @@ namespace nitro::renderer
         Normal,
         Material,
         Emissive,
-        WorldPosition
+        WorldPosition,
+        Lit
     };
     DebugViewOutput addDebugViewPass(RenderContext &ctx, frame::LogicalTextureHandle source, GBufferView view);
 

@@ -101,5 +101,12 @@ namespace nitro::studio
         bool m_viewportHovered = false;
         bool m_viewportFocused = false;
         bool m_cameraDragging = false;
+
+        renderer::DirectionalLight m_sun{
+            .direction = glm::normalize(glm::vec3(-0.3f, -1.0f, -0.5f)),
+            .color = glm::vec3(1.0f),
+            .intensity = 3.0f,
+        };
+        renderer::EnvironmentData m_environment{};
     };
 } // namespace nitro::studio
