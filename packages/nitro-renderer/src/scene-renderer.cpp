@@ -12,6 +12,10 @@ namespace nitro::renderer
         {
             return h.isValid() ? b.importBuffer(name, h) : frame::LogicalBufferHandle{};
         };
+        auto impTexture = [&](const char *name, rhi::RHITextureHandle h)
+        {
+            return h.isValid() ? b.importTexture(name, h) : frame::LogicalTextureHandle{};
+        };
         r.vertices = imp("Scene/Vertices", data->vertexBuffer);
         r.indices = imp("Scene/Indices", data->indexBuffer);
         r.meshes = imp("Scene/Meshes", data->meshBuffer);
@@ -19,6 +23,14 @@ namespace nitro::renderer
         r.sceneInstanceIds = imp("Scene/SceneInstanceIds", data->sceneInstanceIdBuffer);
         r.materials = imp("Scene/Materials", data->materialBuffer);
         r.lights = imp("Scene/Lights", data->lightBuffer);
+
+        if (data->environment.valid())
+        {
+            r.environment = impTexture("Scene/Environment", data->environment.environment);
+            r.irradiance = impTexture("Scene/Irradiance", data->environment.irradiance);
+            r.prefilter = impTexture("Scene/Prefilter", data->environment.prefiltered);
+            r.brdfLUT = impTexture("Scene/BRDFLUT", data->environment.brdfLut);
+        }
         return r;
     }
     SceneRenderer::~SceneRenderer()

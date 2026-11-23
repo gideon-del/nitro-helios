@@ -13,9 +13,16 @@ namespace nitro::renderer
 
     struct EnvironmentData
     {
+
+        rhi::RHITextureHandle environment, irradiance, prefiltered, brdfLut;
+        uint32_t prefilterMipCount = 0;
+        float intensity = 1.0f;
+
         glm::vec3 ambientColor{1.0f};
         float ambientIntensity = 0.03f;
         glm::vec3 skyColor{0.4f, 0.6f, 0.9f};
+
+        bool valid() const { return environment.isValid(); }
     };
 
     struct CameraData
@@ -87,6 +94,8 @@ namespace nitro::renderer
             Geometry,
             Ambient,
             Direct,
+            DiffuseIBL,
+            SpecularIBL
         } debugMode = DebugMode::Lit;
 
         struct Lighting
@@ -152,6 +161,11 @@ namespace nitro::renderer
         frame::LogicalBufferHandle sceneInstanceIds;
         frame::LogicalBufferHandle materials;
         frame::LogicalBufferHandle lights;
+
+        frame::LogicalTextureHandle environment;
+        frame::LogicalTextureHandle irradiance;
+        frame::LogicalTextureHandle prefilter;
+        frame::LogicalTextureHandle brdfLUT;
     };
 
     struct RenderContext

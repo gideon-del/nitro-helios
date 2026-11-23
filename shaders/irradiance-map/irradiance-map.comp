@@ -4,6 +4,7 @@ layout(local_size_x=16, local_size_y=16, local_size_z=1) in;
 layout(push_constant) uniform PushConstant {
     uint faceIndex;
     uint faceSize;
+    uint envFaceSize;
 } pc;
 
 
@@ -70,14 +71,14 @@ vec2 hammersley(uint i, uint N) {
 vec3 sampleIrradiance(mat3 TBN, vec3 normal, samplerCube environment) {
  vec3 irradiance = vec3(0.0);
  uint sampleCount =0u;
- float sampleDelta = 0.001;
-
+ float sampleDelta = 0.025;
+float srcMip = max(log2(float(pc.envFaceSize) / float(pc.faceSize)) - 1.0, 0.0);
  for(float theta =0; theta <= PI/2; theta+= sampleDelta){
     for(float phi =0.0; phi <= 2*PI; phi += sampleDelta) {
  vec3 tangentSample = vec3(sin(theta) * cos(phi), sin(theta)* sin(phi), cos(theta));
  vec3 mainSample = TBN * tangentSample;
 
- irradiance += textureLod(environment, mainSample, 0.0).rgb * cos(theta) * sin(theta);
+ irradiance += textureLod(environment, mainSample, srcMip).rgb * cos(theta) * sin(theta);
  sampleCount += 1u;
  }
  }

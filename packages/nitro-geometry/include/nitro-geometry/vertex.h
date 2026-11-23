@@ -55,5 +55,16 @@ namespace nitro::geometry
 
             return vertexLayout;
         }
+
+        static rhi::RHIVertexLayout getPositionOnlyLayout()
+        {
+            rhi::RHIVertexLayout layout;
+            layout.stride = sizeof(Vertex);
+            layout.attributes.resize(1);
+            layout.attributes[0].format = rhi::RHIVertexLayout::Attributes::Format::Float3;
+            layout.attributes[0].location = 0;
+            layout.attributes[0].offset = offsetof(Vertex, pos);
+            return layout;
+        }
     };
 } // namespace nitro::rhi

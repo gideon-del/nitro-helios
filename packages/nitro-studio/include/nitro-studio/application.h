@@ -14,6 +14,7 @@
 #include "nitro-studio/device-factory.h"
 #include <GLFW/glfw3.h>
 #include <imgui.h>
+#include <filesystem>
 
 namespace nitro::studio
 {
@@ -64,6 +65,11 @@ namespace nitro::studio
         void renderFrame();
         void flush();
         void handleCameraInput();
+        void scanEnvironments();
+
+        void destroyEnvironment();
+
+        void bakeEnvironment(const std::filesystem::path &path);
 
     private:
         GlfwContext m_glfw;
@@ -109,5 +115,10 @@ namespace nitro::studio
             .intensity = 3.0f,
         };
         renderer::EnvironmentData m_environment{};
+
+        std::vector<std::filesystem::path> m_hdrFiles;
+        int m_selectedHdr = 0;
+
+        bool m_pendingEnvironment = false;
     };
 } // namespace nitro::studio

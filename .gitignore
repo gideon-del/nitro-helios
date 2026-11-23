@@ -2,3 +2,5 @@ build/
 *.ppm
 *.gif
 xcode-build/
+
+assets/environments/*.hdr

@@ -7,6 +7,8 @@
 #define DEBUG_GEOMETRY 3
 #define DEBUG_AMBIENT  4
 #define DEBUG_DIRECT   5
+#define DEBUG_DiffuseIBL   6
+#define DEBUG_SpecularIBL   7
 
 
 layout(set = 0, binding = 0) uniform LightingFrame {
@@ -17,6 +19,9 @@ layout(set = 0, binding = 0) uniform LightingFrame {
     vec4 ambient;         
     vec4 skyColor;
     uint debugMode;
+    uint prefilterMipCount;
+    float envIntensity;
+    bool hasEnvironment;
 } frame;
 
 
@@ -25,6 +30,11 @@ layout(set=0, binding=2) uniform sampler2D gNormal;
 layout(set=0, binding=3) uniform sampler2D gMaterial;
 layout(set=0, binding=4) uniform sampler2D gEmissive;
 layout(set=0, binding=5) uniform sampler2D gDepth;
+
+layout(set = 0, binding = 6) uniform samplerCube environment;
+layout(set = 0, binding = 7) uniform samplerCube irradiance;
+layout(set = 0, binding = 8) uniform samplerCube prefiltered;
+layout(set = 0, binding = 9) uniform sampler2D   brdfLut;
 
 layout(location = 0) out vec4 outColor;
 layout(location = 0) in vec2  fragUV;
@@ -102,7 +112,14 @@ return ggx_L * ggx_V;
 void main() {
 ivec2 p = ivec2(gl_FragCoord.xy);
 float depth = texelFetch(gDepth, p, 0).r;
-if (depth >= 1.0) { outColor = vec4(frame.skyColor.rgb, 1); return; }
+if (depth >= 1.0) { 
+
+    vec4 farP = frame.invViewProj * vec4(fragUV * 2.0 -1.0,1.0,1.0);
+    vec3 dir = normalize(farP.xyz / farP.w - frame.cameraPosition.xyz);
+    vec3 sky = textureLod(environment, dir, 0.0).rgb * frame.envIntensity;
+  outColor = vec4(sky, 1.0);
+    return;
+ }
 
 vec3 albedo = texelFetch(gAlbedo, p, 0).rgb;
 vec3 N = decodeNormal(texelFetch(gNormal, p,0).rg);
@@ -128,16 +145,28 @@ vec3 F = fresnelSchlick(F0, max(dot(H, V), 0.0));
 vec3 specular = ( D * F * G) / max(4 * NdotL * NdotV, 1e-4);
 
 
-vec3 kD = (1.0 - F) * (1.0 - metallic);
+vec3 R = reflect(-V, N);
+vec3 Fr = F0 + (max(vec3(1.0-roughness), F0) - F0) * pow(1.0 - NdotV, 5.0);
+vec3 kD   = (1.0 - Fr) * (1.0 - metallic);
+
+vec3 diffuseIBL  = kD * albedo * texture(irradiance, N).rgb;
+vec3 prefilt     = textureLod(prefiltered, R, roughness * float(frame.prefilterMipCount - 1)).rgb;
+vec2 brdf        = texture(brdfLut, vec2(NdotV, roughness)).rg;
+vec3 specularIBL = prefilt * (F0 * brdf.x + brdf.y);
+
 vec3 radiance = frame.lightColor.rgb * frame.lightColor.a;
 
 
-vec3 direct = (kD * albedo / PI + specular) * radiance * NdotL;
+vec3 kDdirect = (1.0 - F) * (1.0 - metallic);
 
+vec3 direct = (kDdirect * albedo / PI + specular) * radiance * NdotL;
 
-vec3 ambient = frame.ambient.rgb * frame.ambient.a * albedo * (1.0 - metallic) * ao;
+vec3 ambient  = (diffuseIBL + specularIBL) * ao * frame.envIntensity;
 
 vec3 color = direct + ambient + texelFetch(gEmissive, p, 0).rgb;
+
+
+
 
 
 vec3 result;
@@ -148,8 +177,11 @@ switch (frame.debugMode)
     case DEBUG_GEOMETRY: result = vec3(G); break;
     case DEBUG_AMBIENT:  result = ambient; break;
     case DEBUG_DIRECT:   result = direct; break;
+    case DEBUG_DiffuseIBL:   result = diffuseIBL; break;
+    case DEBUG_SpecularIBL:   result = specularIBL; break;
     default:             result = color; break;
 }
+
 outColor = vec4(result, 1.0);
 
 

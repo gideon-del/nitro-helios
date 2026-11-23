@@ -27,7 +27,7 @@ namespace nitro::renderer
         pipelineDesc.depthWrite = true;
 
         pipelineDesc.layouts = {m_descriptorLayout};
-        pipelineDesc.vertexLayout = geometry::Vertex::getVertexLayout();
+        pipelineDesc.vertexLayout = geometry::Vertex::getPositionOnlyLayout();
         pipelineDesc.depthAttachmentFormat = rhi::TextureDesc::ImageFormat::Depth32Float;
         pipelineDesc.hasDepth = true;
 

@@ -8,7 +8,7 @@ namespace nitro::renderer
     rhi::RHITexture *generateIrradianceMap(
         std::shared_ptr<rhi::RHIDevice> device, rhi::RHITexture *environment, uint32_t size, std::string shaderDir, bool isMetal);
     rhi::RHITexture *generatePrefliteredMap(
-        std::shared_ptr<rhi::RHIDevice> device, rhi::RHITexture *environment, uint32_t size, std::string shaderDir, bool isMetal);
+        std::shared_ptr<rhi::RHIDevice> device, rhi::RHITexture *environment, uint32_t size, std::string shaderDir, bool isMetal, uint32_t mipmapCount = 5);
     rhi::RHITexture *generateBrdfLUT(
         std::shared_ptr<rhi::RHIDevice> device, uint32_t size, std::string shaderDir, bool isMetal);
 

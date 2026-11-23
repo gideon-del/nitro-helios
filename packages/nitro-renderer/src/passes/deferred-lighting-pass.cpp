@@ -12,7 +12,9 @@ namespace
         glm::vec4 ambient;
         glm::vec4 skyColor;
         uint32_t debugMode;
-        uint32_t _pad[3];
+        uint32_t prefilterMipCount;
+        float envIntensity;
+        uint32_t hasEnvironment;
     };
     static_assert(sizeof(LightingFrame) == 160);
 
@@ -31,6 +33,10 @@ namespace
             return 4;
         case M::Direct:
             return 5;
+        case M::DiffuseIBL:
+            return 6;
+        case M::SpecularIBL:
+            return 7;
         case M::Lit:
         case M::Depth:
         case M::Albedo:
@@ -66,6 +72,11 @@ namespace nitro::renderer
         auto emissivePhysicalHandle = ctx.builder.get(gbuf.emissive)->physicalHandle;
         auto depthPhysicalHandle = ctx.builder.get(gbuf.depth)->physicalHandle;
 
+        auto environmentPhysicalHandle = ctx.builder.get(ctx.scene.environment)->physicalHandle;
+        auto irradiancePhysicalHandle = ctx.builder.get(ctx.scene.irradiance)->physicalHandle;
+        auto prefilterPhysicalHandle = ctx.builder.get(ctx.scene.prefilter)->physicalHandle;
+        auto brdfLUTPhysicalHandle = ctx.builder.get(ctx.scene.brdfLUT)->physicalHandle;
+
         rhi::BufferDesc uboDesc;
 
         uboDesc.usage = rhi::BufferDesc::Usage::Uniform;
@@ -99,6 +110,18 @@ namespace nitro::renderer
             {rhi::RHIDescriptorBinding::Type::Sampler,
              rhi::RHIDescriptorBinding::ShaderStage::Fragment,
              5},
+            {rhi::RHIDescriptorBinding::Type::Sampler,
+             rhi::RHIDescriptorBinding::ShaderStage::Fragment,
+             6},
+            {rhi::RHIDescriptorBinding::Type::Sampler,
+             rhi::RHIDescriptorBinding::ShaderStage::Fragment,
+             7},
+            {rhi::RHIDescriptorBinding::Type::Sampler,
+             rhi::RHIDescriptorBinding::ShaderStage::Fragment,
+             8},
+            {rhi::RHIDescriptorBinding::Type::Sampler,
+             rhi::RHIDescriptorBinding::ShaderStage::Fragment,
+             9},
         };
 
         auto layout = ctx.layouts.get(bindings);
@@ -121,9 +144,10 @@ namespace nitro::renderer
             .lightColor = glm::vec4(ctx.request.sceneData->directionalLight.color, ctx.request.sceneData->directionalLight.intensity),
             .ambient = glm::vec4(ctx.request.sceneData->environment.ambientColor, ctx.request.sceneData->environment.ambientIntensity),
             .skyColor = glm::vec4(ctx.request.sceneData->environment.skyColor, 1.0f),
-            .debugMode = toLightingDebug(ctx.request.pipelineSettings.debugMode)
-
-        };
+            .debugMode = toLightingDebug(ctx.request.pipelineSettings.debugMode),
+            .prefilterMipCount = ctx.request.sceneData->environment.prefilterMipCount,
+            .envIntensity = ctx.request.sceneData->environment.intensity,
+            .hasEnvironment = ctx.request.sceneData->environment.valid() ? 1u : 0u};
         auto sampler = ctx.samplers.linearClamp;
 
         ctx.builder.addRenderPass("Deferred Lighting", [=](const frame::PassContext &p)
@@ -151,6 +175,18 @@ namespace nitro::renderer
 
                                       textureBinding.texture = p.resources.get(depthPhysicalHandle, p.frame);
                                       descriptorSet->writeTexture(textureBinding, 5, rhi::ImageLayout::ShaderReadOnly);
+
+                                      textureBinding.texture = p.resources.get(environmentPhysicalHandle, p.frame);
+                                      descriptorSet->writeTexture(textureBinding, 6, rhi::ImageLayout::ShaderReadOnly);
+
+                                      textureBinding.texture = p.resources.get(irradiancePhysicalHandle, p.frame);
+                                      descriptorSet->writeTexture(textureBinding, 7, rhi::ImageLayout::ShaderReadOnly);
+
+                                      textureBinding.texture = p.resources.get(prefilterPhysicalHandle, p.frame);
+                                      descriptorSet->writeTexture(textureBinding, 8, rhi::ImageLayout::ShaderReadOnly);
+
+                                      textureBinding.texture = p.resources.get(brdfLUTPhysicalHandle, p.frame);
+                                      descriptorSet->writeTexture(textureBinding, 9, rhi::ImageLayout::ShaderReadOnly);
 
                                       descriptorSet->commit();
 

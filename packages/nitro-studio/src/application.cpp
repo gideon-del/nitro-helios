@@ -3,6 +3,8 @@
 #include <random>
 #include "nitro-renderer/render-pipeline/deferred-pipeline.h"
 #include <string>
+#include <ranges>
+#include "nitro-renderer/utils.h"
 namespace nitro::studio
 {
 
@@ -69,6 +71,12 @@ namespace nitro::studio
         m_editorCamera.setFlipY(m_backend == Backend::Vulkan);
         m_editorCamera.setLens(60.0f, 0.1f, 1000.0f);
 
+        scanEnvironments();
+
+        if (!m_hdrFiles.empty())
+        {
+            bakeEnvironment(m_hdrFiles[m_selectedHdr]);
+        }
         m_scene.loadGltfScene("./assets/DamagedHelmet/DamagedHelmet.gltf", m_device);
     }
 
@@ -89,6 +97,7 @@ namespace nitro::studio
     Application::~Application()
     {
         m_device->waitIdle();
+        destroyEnvironment();
     }
 
     void Application::run()
@@ -130,6 +139,14 @@ namespace nitro::studio
 
         m_sceneData.lightCount = m_lightManager->pointLightCount();
         m_sceneData.directionalLight = m_sun;
+
+        if (m_pendingEnvironment)
+        {
+            m_device->waitIdle();
+            destroyEnvironment();
+            bakeEnvironment(m_hdrFiles[m_selectedHdr]);
+            m_pendingEnvironment = false;
+        }
         m_sceneData.environment = m_environment;
     }
 
@@ -155,6 +172,44 @@ namespace nitro::studio
             input.move.x = ImGui::IsKeyDown(ImGuiKey_D) - ImGui::IsKeyDown(ImGuiKey_A);
         }
         m_cameraController.update(m_editorCamera, input, m_frameClock.dt);
+    }
+
+    void Application::scanEnvironments()
+    {
+        m_hdrFiles.clear();
+
+        for (const auto &entry : std::filesystem::directory_iterator("./assets/environments"))
+        {
+            if (entry.is_regular_file() && entry.path().extension() == ".hdr")
+                m_hdrFiles.push_back(entry.path());
+        }
+        std::ranges::sort(m_hdrFiles);
+    }
+
+    void Application::bakeEnvironment(const std::filesystem::path &path)
+    {
+        auto hdriTexture = renderer::loadHDRImage(m_device, path.c_str());
+        auto cubemapTexture = renderer::createCubeMap(m_device, hdriTexture, 512, std::string(SHADER_DIR), m_backend == Backend::Metal);
+        auto irradianceTexture = renderer::generateIrradianceMap(m_device, cubemapTexture, 32, std::string(SHADER_DIR), m_backend == Backend::Metal);
+        auto prefilteredTexture = renderer::generatePrefliteredMap(m_device, cubemapTexture, 512, std::string(SHADER_DIR), m_backend == Backend::Metal, 5);
+        auto brdfLUT = renderer::generateBrdfLUT(m_device, 512, std::string(SHADER_DIR), m_backend == Backend::Metal);
+
+        m_device->waitIdle();
+        m_environment.environment = cubemapTexture->getHandle();
+        m_environment.irradiance = irradianceTexture->getHandle();
+        m_environment.prefiltered = prefilteredTexture->getHandle();
+        m_environment.brdfLut = brdfLUT->getHandle();
+        m_environment.prefilterMipCount = 5;
+
+        m_device->destroy(hdriTexture->getHandle());
+    }
+
+    void Application::destroyEnvironment()
+    {
+        m_device->destroy(m_environment.environment);
+        m_device->destroy(m_environment.irradiance);
+        m_device->destroy(m_environment.prefiltered);
+        m_device->destroy(m_environment.brdfLut);
     }
 
     void Application::handleResize()
@@ -248,8 +303,10 @@ namespace nitro::studio
             "Geometry (G)",
             "Ambient",
             "Direct",
+            "DiffuseIBL",
+            "SpeculaIBL",
         };
-        static_assert(IM_ARRAYSIZE(kModes) == static_cast<int>(renderer::PipelineSettings::DebugMode::Direct) + 1);
+        static_assert(IM_ARRAYSIZE(kModes) == static_cast<int>(renderer::PipelineSettings::DebugMode::SpecularIBL) + 1);
 
         int mode = static_cast<int>(m_pipelineSettings.debugMode);
         if (ImGui::Combo("View", &mode, kModes, IM_ARRAYSIZE(kModes)))
@@ -279,6 +336,17 @@ namespace nitro::studio
         int tonemapMode = static_cast<int>(m_postSettings.tonemap.mode);
         if (ImGui::Combo("Mode", &tonemapMode, kTonemapModes, IM_ARRAYSIZE(kTonemapModes)))
             m_postSettings.tonemap.mode = static_cast<renderer::PostSettings::ToneMapMode>(tonemapMode);
+
+        if (ImGui::BeginCombo("HDR", m_hdrFiles[m_selectedHdr].stem().string().c_str()))
+        {
+            for (int i = 0; i < m_hdrFiles.size(); ++i)
+                if (ImGui::Selectable(m_hdrFiles[i].stem().string().c_str(), i == m_selectedHdr))
+                {
+                    m_selectedHdr = i;
+                    m_pendingEnvironment = true;
+                }
+            ImGui::EndCombo();
+        }
         ImGui::End();
         m_device->endImGuiFrame();
         m_device->drawImGui(cmd);

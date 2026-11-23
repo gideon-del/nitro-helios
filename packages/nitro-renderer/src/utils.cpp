@@ -12,6 +12,13 @@ namespace nitro::renderer
         uint faceSize;
         float _pads[2];
     };
+    struct IrradiancePushConstant
+    {
+        uint face;
+        uint faceSize;
+        uint envFaceSize;
+        float _pads;
+    };
     struct BRDFPushConstant
     {
         uint faceSize;
@@ -55,7 +62,7 @@ namespace nitro::renderer
         cubemapTextureDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA16;
         cubemapTextureDesc.type = rhi::TextureDesc::Type::Cube;
         cubemapTextureDesc.usage = rhi::TextureDesc::Usage::Storage | rhi::TextureDesc::Usage::ShaderRead;
-        cubemapTextureDesc.mipmaps = 9;
+        cubemapTextureDesc.mipmaps = floor(log2(size)) + 1;
         rhi::RHITexture *cubemapTexture = device->createTexture(cubemapTextureDesc);
 
         std::vector<rhi::RHIDescriptorBinding> binding{
@@ -155,7 +162,7 @@ namespace nitro::renderer
         rhi::ComputePipelineDesc computePipelineDesc;
         computePipelineDesc.hasPushConstant = true;
         computePipelineDesc.layouts = {descriptorLayout};
-        computePipelineDesc.pushConstantSize = sizeof(CubemapPushConstant);
+        computePipelineDesc.pushConstantSize = sizeof(IrradiancePushConstant);
         rhi::ShaderDesc shaderDesc;
         shaderDesc.stage = rhi::ShaderStage::Compute;
         std::string shaderPath = shaderDir + "/irradiance-map/irradiance-map";
@@ -178,7 +185,7 @@ namespace nitro::renderer
         {
             rhi::TextureBinding textureBinding;
             textureBinding.texture = environment;
-            textureBinding.sampler = device->defaultSamplers().linearRepeat;
+            textureBinding.sampler = device->defaultSamplers().linearClamp;
 
             rhi::RHIDescriptorSet *descriptorSet = device->createDescriptorSet(descriptorLayout);
             descriptorSet->writeTexture(textureBinding, 2, rhi::ImageLayout::ShaderReadOnly);
@@ -205,10 +212,11 @@ namespace nitro::renderer
 
             cmd->bindComputePipeline(computePipeline);
             cmd->bindComputeDescriptorSet(descriptorSet, 0);
-            CubemapPushConstant pc;
+            IrradiancePushConstant pc;
             pc.face = face;
             pc.faceSize = size;
-            cmd->setPushConstant(&pc, sizeof(CubemapPushConstant), 1, true);
+            pc.envFaceSize = environment->extent().width;
+            cmd->setPushConstant(&pc, sizeof(IrradiancePushConstant), 1, true);
             uint32_t groups = (size + 15) / 16;
             cmd->dispatch(groups, groups, 1);
         }
@@ -231,14 +239,14 @@ namespace nitro::renderer
         return cubemapTexture;
     }
     rhi::RHITexture *generatePrefliteredMap(
-        std::shared_ptr<rhi::RHIDevice> device, rhi::RHITexture *environment, uint32_t size, std::string shaderDir, bool isMetal)
+        std::shared_ptr<rhi::RHIDevice> device, rhi::RHITexture *environment, uint32_t size, std::string shaderDir, bool isMetal, uint32_t mipmapCount)
     {
         rhi::TextureDesc cubemapTextureDesc;
         cubemapTextureDesc.size = {size, size};
         cubemapTextureDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA16;
         cubemapTextureDesc.type = rhi::TextureDesc::Type::Cube;
         cubemapTextureDesc.usage = rhi::TextureDesc::Usage::Storage | rhi::TextureDesc::Usage::ShaderRead;
-        cubemapTextureDesc.mipmaps = 5;
+        cubemapTextureDesc.mipmaps = mipmapCount;
 
         rhi::RHITexture *cubemapTexture = device->createTexture(cubemapTextureDesc);
 
@@ -309,8 +317,8 @@ namespace nitro::renderer
                 uint32_t mipSize = std::max(1u, size >> mip);
                 pc.face = face;
                 pc.faceSize = mipSize;
-                pc.roughness = mip / 4.0;
-                pc.resolution = 512;
+                pc.roughness = mip / float(mipmapCount - 1);
+                pc.resolution = environment->extent().width;
                 cmd->setPushConstant(&pc, sizeof(PrefilterPushConstant), 1, true);
                 uint32_t groups = (mipSize + 15) / 16;
                 cmd->dispatch(groups, groups, 1);
