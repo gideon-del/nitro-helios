@@ -68,6 +68,8 @@ namespace nitro::studio
         m_scene.buildSceneInstanceId();
         m_editorCamera.setFlipY(m_backend == Backend::Vulkan);
         m_editorCamera.setLens(60.0f, 0.1f, 1000.0f);
+
+        m_scene.loadGltfScene("./assets/DamagedHelmet/DamagedHelmet.gltf", m_device);
     }
 
     renderer::CameraData toCameraData(const geometry::OrbitalCamera &camera)

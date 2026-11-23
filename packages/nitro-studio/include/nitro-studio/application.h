@@ -97,7 +97,7 @@ namespace nitro::studio
         Extent2D m_viewportExtent;
         renderer::SceneRenderData m_sceneData;
         renderer::PipelineSettings m_pipelineSettings{};
-        renderer::PostSettings m_postSettings{};
+        renderer::PostSettings m_postSettings;
 
         bool m_viewportHovered = false;
         bool m_viewportFocused = false;

@@ -57,7 +57,7 @@ namespace nitro::renderer
             case PipelineSettings::DebugMode::Geometry:
             case PipelineSettings::DebugMode::Ambient:
             case PipelineSettings::DebugMode::Direct:
-                break
+                break;
             }
             assert(false && "mode has no G-buffer view");
             return GBufferView::Albedo;

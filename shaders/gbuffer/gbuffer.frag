@@ -90,12 +90,12 @@ void main() {
     Material material = materials[instance.materialId];
      
 
-    if(material.textures.albedo == INVALID_TEXTURE_INDEX){
-        gAlbedo = material.parameters.albedo;
-    } else {
-        gAlbedo = texture(sampler2D(allTextures[nonuniformEXT(material.textures.albedo)], defaultSampler), fragUV);
+  vec4 baseTex = material.textures.albedo == INVALID_TEXTURE_INDEX
+             ? vec4(1.0)
+             : texture(sampler2D(allTextures[nonuniformEXT(material.textures.albedo)], defaultSampler), fragUV);
+gAlbedo = material.parameters.albedo * baseTex;
 
-    }
+
 
     if(material.textures.normalMap == INVALID_TEXTURE_INDEX){
         gNormal = encodeNormal(fragNormal);
@@ -113,15 +113,10 @@ void main() {
         ao = texture(sampler2D(allTextures[nonuniformEXT(material.textures.occlusionMap)], defaultSampler), fragUV).r;
     }
 
-    if(material.textures.metallicRoughness == INVALID_TEXTURE_INDEX){
-         gMaterial = vec4(ao, material.parameters.metallic,material.parameters.roughness, 1.0);
-    } else {
-
-        vec3 metallicRoughness = texture(sampler2D(allTextures[nonuniformEXT(material.textures.metallicRoughness)], defaultSampler), fragUV).rgb;
-        gMaterial = vec4(ao,metallicRoughness.b,metallicRoughness.g,1.0);
-
-        
-    }
+ vec3 mr = material.textures.metallicRoughness == INVALID_TEXTURE_INDEX
+        ? vec3(1.0)
+        : texture(sampler2D(allTextures[nonuniformEXT(material.textures.metallicRoughness)], defaultSampler), fragUV).rgb;
+gMaterial = vec4(ao, material.parameters.metallic * mr.b, material.parameters.roughness * mr.g, 1.0);
 
 
     if(material.textures.emissive == INVALID_TEXTURE_INDEX){
