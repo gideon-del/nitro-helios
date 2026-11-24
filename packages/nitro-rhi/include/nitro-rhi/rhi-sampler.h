@@ -56,23 +56,7 @@ namespace nitro::rhi
         SamplerBorderColor borderColor =
             SamplerBorderColor::OpaqueBlack;
 
-        bool operator==(const RHISamplerDesc &o) const
-        {
-            return minFilter == o.minFilter &&
-                   magFilter == o.magFilter &&
-                   mipmapMode == o.mipmapMode &&
-                   addressU == o.addressU &&
-                   addressV == o.addressV &&
-                   addressW == o.addressW &&
-                   mipLodBias == o.mipLodBias &&
-                   anisotropy == o.anisotropy &&
-                   maxAnisotropy == o.maxAnisotropy &&
-                   compareEnabled == o.compareEnabled &&
-                   compareOp == o.compareOp &&
-                   minLod == o.minLod &&
-                   maxLod == o.maxLod &&
-                   borderColor == o.borderColor;
-        };
+        bool operator==(const RHISamplerDesc &o) const = default;
 
         static RHISamplerDesc LinearRepeat()
         {
@@ -159,6 +143,9 @@ namespace nitro::rhi
             desc.compareOp = CompareOp::LessOrEqual;
 
             desc.borderColor = SamplerBorderColor::OpaqueWhite;
+
+            desc.mipmapMode = SamplerMipmapMode::Nearest;
+            desc.maxLod = 0.0f;
             return desc;
         }
     };

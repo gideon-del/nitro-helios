@@ -6,6 +6,7 @@
 #include "nitro-renderer/passes/deferred-lighting-pass.h"
 #include "nitro-renderer/passes/tonemap-pass.h"
 #include "nitro-renderer/stage-outputs.h"
+#include <array>
 namespace nitro::renderer
 {
 
@@ -69,11 +70,63 @@ namespace nitro::renderer
         }
 
         bool isGBufferView(PipelineSettings::DebugMode m) { return m >= PipelineSettings::DebugMode::Depth && m <= PipelineSettings::DebugMode::WorldPosition; }
+        std::array<glm::vec4, 6> extractFrustum(const glm::mat4 &vp)
+        {
+            std::array<glm::vec4, 6> planes;
+            // Left Plane
+            planes[0] = glm::vec4(
+                vp[0][3] + vp[0][0],
+                vp[1][3] + vp[1][0],
+                vp[2][3] + vp[2][0],
+                vp[3][3] + vp[3][0]);
+
+            // Right Plane
+            planes[1] = glm::vec4(
+                vp[0][3] - vp[0][0],
+                vp[1][3] - vp[1][0],
+                vp[2][3] - vp[2][0],
+                vp[3][3] - vp[3][0]);
+            // Top Plane
+            planes[2] = glm::vec4(
+                vp[0][3] + vp[0][1],
+                vp[1][3] + vp[1][1],
+                vp[2][3] + vp[2][1],
+                vp[3][3] + vp[3][1]);
+
+            // Bottom Plane
+            planes[3] = glm::vec4(
+                vp[0][3] - vp[0][1],
+                vp[1][3] - vp[1][1],
+                vp[2][3] - vp[2][1],
+                vp[3][3] - vp[3][1]);
+
+            // Near Plane
+            planes[4] = glm::vec4(
+                vp[0][2],
+                vp[1][2],
+                vp[2][2],
+                vp[3][2]);
+
+            // Far Plane
+            planes[5] = glm::vec4(
+                vp[0][3] - vp[0][2],
+                vp[1][3] - vp[1][2],
+                vp[2][3] - vp[2][2],
+                vp[3][3] - vp[3][2]);
+
+            return planes;
+        };
     }
+
     void DeferredPipeline::declare(RenderContext &ctx)
     {
         const auto mode = ctx.request.pipelineSettings.debugMode;
-        auto cull = addMeshCompactPass(ctx, {.view = ctx.request.camera.view, .proj = ctx.request.camera.proj});
+        auto cull = addMeshCompactPass(ctx, {.planes = extractFrustum(ctx.request.camera.viewProj),
+                                             .frustumCull = true,
+                                             .lodEnabled = true,
+                                             .occlusion = false,
+                                             .testNearPlane = true,
+                                             .name = "Geometry"});
         auto depthOutput = addDepthPrepass(ctx, cull);
 
         if (mode == PipelineSettings::DebugMode::Depth)

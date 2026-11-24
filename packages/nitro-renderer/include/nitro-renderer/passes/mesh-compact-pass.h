@@ -8,8 +8,12 @@ namespace nitro::renderer
 
     struct CullParams
     {
-        glm::mat4 view, proj;
-        bool frustumCull = true, lod = true;
+        std::array<glm::vec4, 6> planes;
+        bool frustumCull = true;
+        bool lodEnabled = true;
+        bool occlusion = false;
+        bool testNearPlane = true;
+        std::string_view name;
     };
     struct CullOutputs
     {

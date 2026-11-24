@@ -71,7 +71,8 @@ namespace nitro::rhi::vulkan
 
         samplerInfo.anisotropyEnable = desc.anisotropy ? VK_TRUE : VK_FALSE;
         samplerInfo.borderColor = convertBorderColor(desc.borderColor);
-        samplerInfo.compareEnable = desc.compareEnabled && !device.supportsSamplerComparison() ? VK_TRUE : VK_FALSE;
+        assert((!desc.compareEnabled || device.supportsSamplerComparison()) && "comparison sampler requested but mutableComparisonSamplers not enabled");
+        samplerInfo.compareEnable = desc.compareEnabled ? VK_TRUE : VK_FALSE;
         samplerInfo.compareOp = convertToCompareOp(desc.compareOp);
         samplerInfo.maxAnisotropy = desc.maxAnisotropy;
 

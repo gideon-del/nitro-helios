@@ -1,0 +1,270 @@
+#version 450
+#define FLT_MAX 3.402823466e+38
+
+layout(local_size_x =64) in;
+
+
+struct MeshLOD {
+    uint indexOffset;
+    uint indexCount;
+    float screenThreshold;
+     float _pad;
+};
+
+struct MeshDescriptor {
+ uint vertexOffset;
+    uint indexOffset;
+    uint indexCount;
+    float _pad1;
+
+    vec3 aabbMin;
+    float boundingSphereRadius;
+
+    vec3 aabbMax;
+    float _pad2;
+       MeshLOD lods[4];
+       
+};
+
+   struct MeshInstance
+    {
+        uint meshId;
+        uint materialId;
+        float pads[2];
+        mat4 modelTransform;
+        mat4 normalTransform;           
+    };
+
+struct DrawIndexedIndirectCommand {
+uint indexCount;
+uint instanceCount;
+uint firstIndex;
+int vertexOffset;
+uint firstInstance;
+};
+
+struct CullStats {
+    uint totalObjects;
+    uint frustumCulled;
+    uint hiZCulled;
+    uint lodCounts[4];      
+    uint drawsEmitted;
+};
+
+
+layout(set=0, binding=0) uniform CullParams {
+vec4 cullPlanes[6];
+mat4 cameraView;
+mat4 cameraProj;
+  uint objectCount;
+  float projScaleY;
+   float screenHeight;
+    int maxMip;
+  uint lodEnabled;
+  uint frustumCullEnabled;
+  uint occlusionCullEnabled;
+  uint skipNearPlane;
+};
+
+layout(std430, set=0, binding=2)  buffer DescriptorBuffer {
+ MeshDescriptor meshDescriptors[];
+};    
+layout(std430, set=0, binding=3)  buffer MeshInstanceBuffer {
+ MeshInstance meshInstances[];
+};    
+
+layout(std430, set=0,binding = 4) buffer DrawCount {
+    uint count;
+};
+layout(std430, set=0,binding = 5) buffer DrawCommands {
+    DrawIndexedIndirectCommand commands[];
+};
+layout(std430, set=0,binding = 6) buffer SceneInstanceIdBuffet {
+    uint sceneInstanceIds[];
+};
+layout( set=0,binding = 7) uniform sampler2D hizDepth;
+
+
+struct Frustum {
+ vec4 planes[6];
+};
+
+
+Frustum extractFrustum() {
+    Frustum frustum;
+    frustum.planes = cullPlanes;
+
+
+    for(int i =0; i < 6; i++){
+        
+        frustum.planes[i] /= length(frustum.planes[i].xyz);
+    }
+    return frustum;
+}
+
+
+bool aabbInFrustum(vec3 center, vec3 halfExtent, Frustum frustum) {
+ 
+ for(int i =0; i < 6; i++){
+     if (i == 4 && skipNearPlane != 0) continue;
+    vec3 n = frustum.planes[i].xyz;
+    float d = frustum.planes[i].w;
+
+    vec3 p = center + halfExtent * sign(n);
+
+    float dist = dot(n, p) + d;
+float epsilon = 0.01;
+
+if(dist < -epsilon)
+    return false;
+ }
+
+ return true;
+}
+
+bool isOccluded(
+    vec3 center,
+    float radius,
+    sampler2D hizBuffer
+) {
+vec4 clip = cameraProj * cameraView * vec4(center, 1.0);
+if (clip.w <= 0.0) return false;
+vec3 ndc = clip.xyz / clip.w;
+vec2 centerUV = ndc.xy * 0.5 + 0.5;
+
+
+
+
+float projRadius = (projScaleY * radius * screenHeight) / (clip.w * 2.0);
+// float projRadius = (projScaleY * radius) / (clip.w);
+
+vec2 screenSize = vec2(
+        textureSize(hizBuffer, 0)
+    );
+
+    vec2 radiusUV =
+        vec2(projRadius) / screenSize;
+
+ vec2 uvMin = centerUV - radiusUV;
+    vec2 uvMax = centerUV + radiusUV;
+    if (uvMax.x < 0.0 ||
+        uvMin.x > 1.0 ||
+        uvMax.y < 0.0 ||
+        uvMin.y > 1.0)
+    {
+        return false;
+    }
+
+    uvMin = clamp(uvMin, vec2(0.0), vec2(1.0));
+    uvMax = clamp(uvMax, vec2(0.0), vec2(1.0));
+
+float mip = log2(max(projRadius, 1.0));
+mip = clamp(mip,0.0, float(maxMip));
+
+
+
+float d0 = textureLod(hizBuffer, vec2(uvMin.x, uvMin.y), mip).r;
+float d1 = textureLod(hizBuffer, vec2(uvMax.x, uvMin.y), mip).r;
+float d2 = textureLod(hizBuffer, vec2(uvMin.x, uvMax.y), mip).r;
+float d3 = textureLod(hizBuffer, vec2(uvMax.x, uvMax.y), mip).r;
+float d4 = textureLod(hizBuffer, centerUV, mip).r;
+
+float hizDepth = max(max(max(d0, d1), max(d2, d3)), d4);
+
+vec4 viewCenter = cameraView * vec4(center,1.0);
+
+
+
+vec4 nearestPSClip = cameraProj * vec4(viewCenter.xy,  viewCenter.z + radius,1.0);
+vec4 nearestBSClip = cameraProj * vec4(viewCenter.xy,  viewCenter.z - radius,1.0);
+
+float objDepth = min(min(nearestPSClip.z / nearestPSClip.w, nearestBSClip.z / nearestBSClip.w), clip.z / clip.w);
+
+ return objDepth > hizDepth;
+
+}
+
+MeshLOD selectLOD(vec3 center,
+float radius,
+mat4 viewProj,
+MeshDescriptor desc
+) {
+vec4 clip = viewProj * vec4(center,1.0);
+
+
+float ndcRadius = (projScaleY * radius)/ clip.w;
+
+for(int i=0; i < 4; i++) {
+    if(ndcRadius >= desc.lods[i].screenThreshold) {
+        return desc.lods[i];
+    }
+}
+
+return desc.lods[3];
+}
+
+
+
+void main() {
+
+uint id = gl_GlobalInvocationID.x;
+
+if(id >= objectCount) return;
+ 
+
+uint globalInstanceId = sceneInstanceIds[id];
+MeshInstance instance = meshInstances[globalInstanceId];
+MeshDescriptor desc = meshDescriptors[instance.meshId];
+
+vec3 worldMin= vec3(FLT_MAX);
+vec3 worldMax = vec3(-FLT_MAX);
+
+vec3 corners[8] = {
+ vec3(desc.aabbMin.x, desc.aabbMin.y, desc.aabbMin.z),
+ vec3(desc.aabbMin.x, desc.aabbMax.y, desc.aabbMin.z),
+ vec3(desc.aabbMin.x, desc.aabbMax.y, desc.aabbMax.z),
+ vec3(desc.aabbMin.x, desc.aabbMin.y, desc.aabbMax.z),
+
+ vec3(desc.aabbMax.x, desc.aabbMin.y, desc.aabbMin.z),
+ vec3(desc.aabbMax.x, desc.aabbMax.y, desc.aabbMin.z),
+ vec3(desc.aabbMax.x, desc.aabbMax.y, desc.aabbMax.z),
+ vec3(desc.aabbMax.x, desc.aabbMin.y, desc.aabbMax.z),
+
+};
+
+for(int i =0; i < 8; i++){
+    vec3 w = (instance.modelTransform * vec4(corners[i], 1.0)).xyz;
+    worldMin = min(w, worldMin);
+    worldMax = max(w, worldMax);
+}
+
+Frustum cascadeFrustum = extractFrustum();
+vec3 aabbCenter     = (worldMin + worldMax) * 0.5;
+vec3 aabbHalfExtent = (worldMax - worldMin) * 0.5;
+vec3 scale = vec3(
+    length(instance.modelTransform[0].xyz),
+    length(instance.modelTransform[1].xyz),
+    length(instance.modelTransform[2].xyz)
+);
+float maxScale = max(scale.x, max(scale.y, scale.z));
+float worldRadius = desc.boundingSphereRadius * maxScale;
+bool visible = frustumCullEnabled != 0 ? aabbInFrustum(aabbCenter, aabbHalfExtent, cascadeFrustum)
+: true;
+if(visible) {
+visible = occlusionCullEnabled == 1 ? !isOccluded(aabbCenter, worldRadius, hizDepth) : true;
+
+};
+MeshLOD lod = lodEnabled != 0 ? selectLOD(aabbCenter, worldRadius,cameraProj * cameraView, desc)
+: desc.lods[0];
+
+DrawIndexedIndirectCommand cmd;
+cmd.indexCount = lod.indexCount;
+cmd.instanceCount = visible ? 1u : 0u;
+cmd.firstIndex = lod.indexOffset;
+cmd.vertexOffset = int(desc.vertexOffset);
+cmd.firstInstance = globalInstanceId;
+
+    uint slot =  atomicAdd(count, 1u);
+    commands[slot] = cmd;
+
+}

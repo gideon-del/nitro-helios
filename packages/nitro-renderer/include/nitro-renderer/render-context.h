@@ -31,6 +31,7 @@ namespace nitro::renderer
         glm::vec3 position;
         float farPlane, nearPlane;
         float fovY;
+        float aspect;
     };
 
     struct DirectionalLight
@@ -71,6 +72,8 @@ namespace nitro::renderer
             float normalBias = 0.05f;
             float lambda = 0.5f;
             bool showCascadeColors = false;
+            uint32_t resolution = 2048u;
+            float casterMargin = 50.0f;
         } shadow;
 
         struct SSAO

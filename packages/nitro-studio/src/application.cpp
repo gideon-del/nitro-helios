@@ -91,6 +91,7 @@ namespace nitro::studio
         cameraData.view = camera.view();
         cameraData.viewProj = camera.viewProj();
         cameraData.position = camera.getEye();
+        cameraData.aspect = float(camera.width()) / float(camera.height());
 
         return cameraData;
     }

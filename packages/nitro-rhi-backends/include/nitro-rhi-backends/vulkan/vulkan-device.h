@@ -153,7 +153,6 @@ namespace nitro::rhi::vulkan
         std::vector<std::pair<VkDescriptorSet, uint64_t>> m_imguiSetGraveyard;
 
     private:
-        void checkMutableComparisonSampler();
         void collectGarbage();
     };
 }

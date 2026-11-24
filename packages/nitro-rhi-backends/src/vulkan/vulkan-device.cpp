@@ -216,7 +216,7 @@ namespace nitro::rhi::vulkan
         return indices;
     }
 
-    VkDevice create_logical_device(const VkPhysicalDevice &physicalDevice, const QueueFamilyIndices &queueIndices)
+    VkDevice create_logical_device(const VkPhysicalDevice &physicalDevice, const QueueFamilyIndices &queueIndices, VkPhysicalDevicePortabilitySubsetFeaturesKHR &portability)
     {
         float queuePriorities = 1.0f;
         VkDeviceQueueCreateInfo queueInfo{};
@@ -239,6 +239,7 @@ namespace nitro::rhi::vulkan
         vulkan12Features.descriptorBindingPartiallyBound = VK_TRUE;
         vulkan12Features.descriptorBindingVariableDescriptorCount = VK_TRUE;
         vulkan12Features.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
+        vulkan12Features.pNext = &portability;
 
         VkPhysicalDeviceVulkan13Features vulkan13Features{};
         vulkan13Features.sType =
@@ -420,11 +421,17 @@ namespace nitro::rhi::vulkan
         physicalDevice = select_physical_device(m_instance);
         m_queueFamilyIndices = find_queue_families(surface->surface, physicalDevice);
 
-        device = create_logical_device(physicalDevice, m_queueFamilyIndices);
+        VkPhysicalDevicePortabilitySubsetFeaturesKHR portability{
+            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR};
+        VkPhysicalDeviceFeatures2 query{VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &portability};
+        vkGetPhysicalDeviceFeatures2(physicalDevice, &query);
+        m_mutableComparisonSamplers = portability.mutableComparisonSamplers == VK_TRUE;
+
+        device = create_logical_device(physicalDevice, m_queueFamilyIndices, portability);
 
         vkGetDeviceQueue(device, m_queueFamilyIndices.graphicsFamily.value(), 0, &graphicsQueue);
         vkGetDeviceQueue(device, m_queueFamilyIndices.presentFamily.value(), 0, &presentQueue);
-        checkMutableComparisonSampler();
+
         allocator = create_allocator(m_instance, physicalDevice, device);
         commandPool = create_command_pool(device, m_queueFamilyIndices);
         m_surfaceFormat = query_device_format(physicalDevice, surface->surface);
@@ -1052,20 +1059,6 @@ namespace nitro::rhi::vulkan
             return;
         auto handle = heap->getHandle();
         destroy(handle);
-    }
-
-    void VulkanDevice::checkMutableComparisonSampler()
-    {
-        VkPhysicalDevicePortabilitySubsetFeaturesKHR portabilityFeatures{};
-        portabilityFeatures.sType =
-            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR;
-
-        VkPhysicalDeviceFeatures2 features{};
-        features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-        features.pNext = &portabilityFeatures;
-
-        vkGetPhysicalDeviceFeatures2(physicalDevice, &features);
-        m_mutableComparisonSamplers = portabilityFeatures.mutableComparisonSamplers == VK_TRUE;
     }
 
     void VulkanDevice::collectGarbage()

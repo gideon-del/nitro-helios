@@ -2,18 +2,21 @@
 #include "nitro-renderer/passes/pass-constants.h"
 namespace
 {
-    struct MeshCompactPushConstant
+    struct CullParamsUBO
     {
-        glm::mat4 view;
-        glm::mat4 proj;
+        glm::vec4 cullPlanes[6];
+        glm::mat4 cameraView;
+        glm::mat4 cameraProj;
         uint32_t objectCount;
         float projScaleY;
         float screenHeight;
-        int32_t maxMip;
-        uint32_t lodEnabled, frustumCullEnabled, occlusionCullEnabled;
-        float _pad;
+        int maxMip;
+        uint32_t lodEnabled;
+        uint32_t frustumCullEnabled;
+        uint32_t occlusionCullEnabled;
+        uint32_t skipNearPlane;
     };
-    static_assert(sizeof(MeshCompactPushConstant) == 160, "must match the shader's push constant block");
+    static_assert(sizeof(CullParamsUBO) == 256, "must match the shader's push constant block");
 
 }
 
@@ -22,6 +25,9 @@ namespace nitro::renderer
     CullOutputs addMeshCompactPass(RenderContext &ctx, const CullParams &params)
     {
         std::vector<rhi::RHIDescriptorBinding> bindings{
+            {rhi::RHIDescriptorBinding::Type::UniformBuffer,
+             rhi::RHIDescriptorBinding::ShaderStage::Compute,
+             0},
             {rhi::RHIDescriptorBinding::Type::StorageBuffer,
              rhi::RHIDescriptorBinding::ShaderStage::Compute,
              2},
@@ -44,14 +50,13 @@ namespace nitro::renderer
         auto *layout = ctx.layouts.get(bindings);
 
         rhi::ComputePipelineDesc computePipelineDesc;
-        computePipelineDesc.hasPushConstant = true;
-        computePipelineDesc.pushConstantSize = sizeof(MeshCompactPushConstant);
+        computePipelineDesc.hasPushConstant = false;
 
         computePipelineDesc.threadGroupSizeX = 64;
         computePipelineDesc.threadGroupSizeY = 1;
         computePipelineDesc.threadGroupSizeZ = 1;
         computePipelineDesc.layouts = {layout};
-        computePipelineDesc.shader = ctx.shaders.compute("mesh-compact");
+        computePipelineDesc.shader = ctx.shaders.compute("cull");
 
         auto computePipeline = ctx.pipelines.get(computePipelineDesc);
 
@@ -65,10 +70,10 @@ namespace nitro::renderer
         drawCountOptions.instanceType = frame::ResourceInstanceType::PerFrame;
         drawCountOptions.lifetime = frame::ResourceLifetimeType::Persistent;
 
-        auto drawCountHandle = ctx.builder.createBuffer("Geometry Count Buffer", drawCountDesc, frame::ResourceSize::bufferAbsolute(sizeof(uint32_t)), drawCountOptions);
+        auto drawCountHandle = ctx.builder.createBuffer("Draw Count Buffer/" + std::string(params.name), drawCountDesc, frame::ResourceSize::bufferAbsolute(sizeof(uint32_t)), drawCountOptions);
 
         auto drawCountPhysicalHandle = ctx.builder.get(drawCountHandle)->physicalHandle;
-        ctx.builder.addRenderPass("Clear Draw Count", [=](const frame::PassContext &passCtx)
+        ctx.builder.addRenderPass("Clear Draw Count " + std::string(params.name), [=](const frame::PassContext &passCtx)
                                   {
         auto drawCountBuffer = passCtx.resources.get(drawCountPhysicalHandle, passCtx.frame);
         passCtx.cmd.fillBuffer(drawCountBuffer, 0, 4, 0); })
@@ -86,9 +91,23 @@ namespace nitro::renderer
         drawCommandOptions.instanceType = frame::ResourceInstanceType::PerFrame;
         drawCommandOptions.lifetime = frame::ResourceLifetimeType::Persistent;
 
-        auto drawCommandHandle = ctx.builder.createBuffer("Geometry Draw Commands", drawCommandDesc, frame::ResourceSize::bufferAbsolute(kMaxDrawCommands * sizeof(rhi::DrawIndexedIndirectArgs)), drawCommandOptions);
+        auto drawCommandHandle = ctx.builder.createBuffer("Draw Commands/" + std::string(params.name), drawCommandDesc, frame::ResourceSize::bufferAbsolute(kMaxDrawCommands * sizeof(rhi::DrawIndexedIndirectArgs)), drawCommandOptions);
 
         auto drawCommandPhysicalHandle = ctx.builder.get(drawCommandHandle)->physicalHandle;
+
+        rhi::BufferDesc uboDesc;
+        uboDesc.storage = rhi::BufferDesc::StorageMode::Shared;
+        uboDesc.usage = rhi::BufferDesc::Usage::Uniform;
+
+        frame::GPUResourceOptions uboOptions;
+        uboOptions.scope = frame::ResourceScope::View;
+        uboOptions.viewHandle = ctx.view.handle;
+        uboOptions.instanceType = frame::ResourceInstanceType::PerFrame;
+        uboOptions.lifetime = frame::ResourceLifetimeType::Persistent;
+
+        auto uboHandle = ctx.builder.createBuffer("Cull UBO" + std::string(params.name), uboDesc, frame::ResourceSize::bufferAbsolute(sizeof(CullParamsUBO)), uboOptions);
+
+        auto uboPhysicalHandle = ctx.builder.get(uboHandle)->physicalHandle;
 
         rhi::TextureDesc hizDesc;
         hizDesc.format = rhi::TextureDesc::ImageFormat::ColorR32;
@@ -105,26 +124,35 @@ namespace nitro::renderer
 
         auto hizPhysicalHandle = ctx.builder.get(hizHandle)->physicalHandle;
 
-        MeshCompactPushConstant pc{};
+        CullParamsUBO pc;
 
         pc.objectCount = ctx.request.sceneData->meshInstanceCount;
         pc.frustumCullEnabled = params.frustumCull ? 1 : 0;
-        pc.lodEnabled = params.lod ? 1 : 0;
+        pc.lodEnabled = params.lodEnabled ? 1 : 0;
         pc.occlusionCullEnabled = 0;
-        pc.proj = ctx.request.camera.proj;
+        pc.cameraProj = ctx.request.camera.proj;
         pc.projScaleY = ctx.request.camera.proj[1][1];
-        pc.view = ctx.request.camera.view;
+        pc.cameraView = ctx.request.camera.view;
         pc.screenHeight = ctx.view.size.height;
+        for (int i = 0; i < (int)params.planes.size(); i++)
+        {
+            pc.cullPlanes[i] = params.planes[i];
+        }
+
+        pc.skipNearPlane = params.testNearPlane ? 0u : 1u;
 
         auto meshesPhysicalHandle = ctx.builder.get(ctx.scene.meshes)->physicalHandle;
         auto instancesPhysicalHandle = ctx.builder.get(ctx.scene.instances)->physicalHandle;
         auto instanceIdsPhysicalHandle = ctx.builder.get(ctx.scene.sceneInstanceIds)->physicalHandle;
 
         auto sampler = ctx.samplers.linearClamp;
-        ctx.builder.addRenderPass("Mesh Compact", [=](const frame::PassContext &p)
+        ctx.builder.addRenderPass("Mesh Compact" + std::string(params.name), [=](const frame::PassContext &p)
                                   {
+                                    auto* ubo = p.resources.get(uboPhysicalHandle, p.frame);
+                                    ubo->upload(&pc, sizeof(CullParamsUBO));
                                       auto descriptorSet = p.cmd.allocateDescriptorSet(layout);
 
+                                      descriptorSet->writeBuffer(ubo, 0);
                                       descriptorSet->writeBuffer(p.resources.get(meshesPhysicalHandle, p.frame), 2);
                                       descriptorSet->writeBuffer(p.resources.get(instancesPhysicalHandle, p.frame), 3);
                                       descriptorSet->writeBuffer(p.resources.get(drawCountPhysicalHandle, p.frame), 4);
@@ -142,7 +170,6 @@ namespace nitro::renderer
                                       p.cmd.bindComputePipeline(computePipeline);
                                       p.cmd.bindComputeDescriptorSet(descriptorSet, 0);
                                     
-                                      p.cmd.setPushConstant(&pc, sizeof(MeshCompactPushConstant), 1, true);
                                       p.cmd.dispatch(groupSize, 1, 1); })
             .read(ctx.scene.meshes, rhi::ResourceState::ShaderRead)
             .read(ctx.scene.instances, rhi::ResourceState::ShaderRead)
