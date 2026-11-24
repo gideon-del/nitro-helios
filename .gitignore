@@ -4,3 +4,5 @@ build/
 xcode-build/
 
 assets/environments/*.hdr
+
+gltf/

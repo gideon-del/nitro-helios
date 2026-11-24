@@ -11,6 +11,13 @@ namespace nitro::renderer
         std::array<glm::mat4, kCascadeCount> viewProj;
         glm::vec4 splits;
     };
+
+    struct ShadowCascadeOutput
+    {
+        std::array<frame::LogicalTextureHandle, kCascadeCount> outputs;
+        CascadeData data;
+    };
+
     CascadeData computeCascades(const CameraData &camera,
                                 glm::vec3 lightDir,
                                 const PipelineSettings::Shadow &settings);

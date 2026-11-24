@@ -48,12 +48,16 @@ namespace nitro::renderer
                                 const PipelineSettings::Shadow &settings)
     {
 
+        assert(camera.fovY > 0.0f && camera.fovY < glm::pi<float>() && "fovY unset or not in radians");
+        assert(camera.nearPlane > 0.0f && camera.farPlane > camera.nearPlane);
+        assert(camera.aspect > 0.0f);
+
         std::array<float, kCascadeCount + 1> bounds;
 
         for (uint32_t i = 0; i <= kCascadeCount; ++i)
-            bounds[i] = practicalSplit(camera.nearPlane, camera.farPlane, kCascadeCount, i, settings.lambda);
+            bounds[i] = practicalSplit(camera.nearPlane, settings.distance, kCascadeCount, i, settings.lambda);
         bounds[0] = camera.nearPlane;
-        bounds[kCascadeCount] = camera.farPlane;
+        bounds[kCascadeCount] = settings.distance;
 
         glm::vec3 dir = glm::normalize(lightDir);
         glm::vec3 up = std::abs(dir.y) > 0.99f ? glm::vec3(0, 0, 1) : glm::vec3(0, 1, 0);

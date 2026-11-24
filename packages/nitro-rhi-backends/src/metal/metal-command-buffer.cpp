@@ -101,7 +101,12 @@ namespace nitro::rhi::metal
         {
             encoder->setDepthStencilState(
                 metalPipeline->depthStencilState);
+
+            const auto &pipelineDesc = metalPipeline->getDesc();
+
+            encoder->setDepthBias(pipelineDesc.depthBias.constant, pipelineDesc.depthBias.slope, pipelineDesc.depthBias.clamp);
         }
+
         encoder->setCullMode(metalPipeline->cullMode);
         encoder->setFrontFacingWinding(metalPipeline->frontFace);
         m_pipeline = metalPipeline;

@@ -9,6 +9,8 @@
 #define DEBUG_DIRECT   5
 #define DEBUG_DiffuseIBL   6
 #define DEBUG_SpecularIBL   7
+#define DEBUG_CASCADE 8
+
 
 
 layout(set = 0, binding = 0) uniform LightingFrame {
@@ -36,19 +38,78 @@ layout(set = 0, binding = 7) uniform samplerCube irradiance;
 layout(set = 0, binding = 8) uniform samplerCube prefiltered;
 layout(set = 0, binding = 9) uniform sampler2D   brdfLut;
 
+layout(set = 0, binding = 10) uniform ShadowFrame {
+    mat4  cascadeViewProj[4];
+    mat4  view;            
+    vec4  splits;         
+    vec4  params;          
+} shadow;
+
+
+layout(set=0, binding=11) uniform sampler2DShadow shadowMap0;
+layout(set=0, binding=12) uniform sampler2DShadow shadowMap1;
+layout(set=0, binding=13) uniform sampler2DShadow shadowMap2;
+layout(set=0, binding=14) uniform sampler2DShadow shadowMap3;
+
 layout(location = 0) out vec4 outColor;
 layout(location = 0) in vec2  fragUV;
 
 const float PI = 3.14159265358979323846;
 const float TWO_PI = 6.28318530717958647692;
 const float HALF_PI = 1.57079632679489661923;
-
+const vec3 kCascadeTint[4] = vec3[](vec3(1,0.2,0.2), vec3(0.2,1,0.2), vec3(0.2,0.4,1), vec3(1,1,0.2));
 vec3 reconstructPosition(vec2 uv, float depth, mat4 invViewProj) {
  vec4 clipPos = vec4(uv * 2.0 - 1.0, depth, 1.0);
  vec4 worldPos = invViewProj * clipPos;
  return worldPos.xyz /worldPos.w;
 }
 
+
+float sampleCascade(int c, vec3 uvz) {
+  switch(c){
+    case 0: return  texture(shadowMap0, uvz);
+    case 1: return  texture(shadowMap1, uvz);
+    case 2: return  texture(shadowMap2, uvz);
+   default: return  texture(shadowMap3, uvz);
+  }
+}
+
+int selectCascade(vec3 worldPos) {
+    float viewDepth = -(shadow.view * vec4(worldPos, 1.0)).z;
+    for (int i = 0; i < 4; ++i)
+        if (viewDepth < shadow.splits[i]) return i;
+    return 3;
+}
+
+float computeShadow(vec3 worldPos, vec3 N, vec3 L){
+
+   float viewDepth = -(shadow.view * vec4(worldPos, 1.0)).z;
+
+   int c = 3;
+
+   for(int i =0; i < 4; ++i) {
+     if(viewDepth < shadow.splits[i]){
+      c =i; 
+      break;
+     }
+   }
+   
+
+   float NdotL = clamp(dot(N,L), 0.0, 1.0);
+    vec3 p = worldPos + N * shadow.params.x * (1.0 - NdotL);
+
+    vec4 clip = shadow.cascadeViewProj[c] * vec4(p, 1.0);
+    vec3 ndc  = clip.xyz / clip.w;
+    vec2 uv   = ndc.xy * 0.5 + 0.5;
+    if (any(lessThan(uv, vec2(0))) || any(greaterThan(uv, vec2(1))) || ndc.z > 1.0) return 1.0;
+
+
+    float texel = shadow.params.y, sum = 0.0;
+    for (int y = -1; y <= 1; ++y)
+        for (int x = -1; x <= 1; ++x)
+            sum += sampleCascade(c, vec3(uv + vec2(x, y) * texel, ndc.z));
+    return sum / 9.0;
+}
 
 
 
@@ -160,7 +221,10 @@ vec3 radiance = frame.lightColor.rgb * frame.lightColor.a;
 vec3 kDdirect = (1.0 - F) * (1.0 - metallic);
 
 vec3 direct = (kDdirect * albedo / PI + specular) * radiance * NdotL;
+vec3 geoN = normalize(cross(dFdx(worldPos), dFdy(worldPos)));
 
+if(dot(geoN, V)  <0.0) geoN = -geoN;
+direct *= computeShadow(worldPos, geoN, L);
 vec3 ambient  = (diffuseIBL + specularIBL) * ao * frame.envIntensity;
 
 vec3 color = direct + ambient + texelFetch(gEmissive, p, 0).rgb;
@@ -179,6 +243,7 @@ switch (frame.debugMode)
     case DEBUG_DIRECT:   result = direct; break;
     case DEBUG_DiffuseIBL:   result = diffuseIBL; break;
     case DEBUG_SpecularIBL:   result = specularIBL; break;
+    case DEBUG_CASCADE:   result = kCascadeTint[selectCascade(worldPos)] * (0.25 + 0.75 * NdotL); break;; break;
     default:             result = color; break;
 }
 

@@ -18,7 +18,18 @@ namespace
     };
     static_assert(sizeof(LightingFrame) == 160);
 
-    uint32_t toLightingDebug(PipelineSettings::DebugMode mode)
+    struct ShadowFrame
+    {
+        glm::mat4 cascadeViewProj[4];
+        glm::mat4 view;
+        glm::vec4 splits;
+        glm::vec4 params;
+    };
+
+    static_assert(sizeof(ShadowFrame) == 352);
+
+    uint32_t
+    toLightingDebug(PipelineSettings::DebugMode mode)
     {
         using M = PipelineSettings::DebugMode;
         switch (mode)
@@ -37,6 +48,8 @@ namespace
             return 6;
         case M::SpecularIBL:
             return 7;
+        case M::Cascade:
+            return 8;
         case M::Lit:
         case M::Depth:
         case M::Albedo:
@@ -51,7 +64,7 @@ namespace
 }
 namespace nitro::renderer
 {
-    LightingOutputs addDeferredLightingPass(RenderContext &ctx, const GBufferOutputs &gbuf)
+    LightingOutputs addDeferredLightingPass(RenderContext &ctx, const GBufferOutputs &gbuf, const ShadowCascadeOutput &shadow)
     {
         rhi::TextureDesc lightingDesc;
         lightingDesc.format = rhi::TextureDesc::ImageFormat::ColorRGBA16;
@@ -91,6 +104,20 @@ namespace nitro::renderer
         auto uboHandle = ctx.builder.createBuffer("Lighting UBO", uboDesc, frame::ResourceSize::bufferAbsolute(sizeof(LightingFrame)), uboOptions);
         auto uboPhysicalHandle = ctx.builder.get(uboHandle)->physicalHandle;
 
+        rhi::BufferDesc shadowUBODesc;
+
+        shadowUBODesc.usage = rhi::BufferDesc::Usage::Uniform;
+        shadowUBODesc.storage = rhi::BufferDesc::StorageMode::Shared;
+
+        frame::GPUResourceOptions shadowUBOOptions;
+        shadowUBOOptions.scope = frame::ResourceScope::View;
+        shadowUBOOptions.viewHandle = ctx.view.handle;
+        shadowUBOOptions.lifetime = frame::ResourceLifetimeType::Persistent;
+        shadowUBOOptions.instanceType = frame::ResourceInstanceType::PerFrame;
+
+        auto shadowUboHandle = ctx.builder.createBuffer("Shadow UBO", shadowUBODesc, frame::ResourceSize::bufferAbsolute(sizeof(ShadowFrame)), shadowUBOOptions);
+        auto shadowUboPhysicalHandle = ctx.builder.get(shadowUboHandle)->physicalHandle;
+
         std::vector<rhi::RHIDescriptorBinding> bindings = {
             {rhi::RHIDescriptorBinding::Type::UniformBuffer,
              rhi::RHIDescriptorBinding::ShaderStage::Fragment,
@@ -122,6 +149,21 @@ namespace nitro::renderer
             {rhi::RHIDescriptorBinding::Type::Sampler,
              rhi::RHIDescriptorBinding::ShaderStage::Fragment,
              9},
+            {rhi::RHIDescriptorBinding::Type::UniformBuffer,
+             rhi::RHIDescriptorBinding::ShaderStage::Fragment,
+             10},
+            {rhi::RHIDescriptorBinding::Type::Sampler,
+             rhi::RHIDescriptorBinding::ShaderStage::Fragment,
+             11},
+            {rhi::RHIDescriptorBinding::Type::Sampler,
+             rhi::RHIDescriptorBinding::ShaderStage::Fragment,
+             12},
+            {rhi::RHIDescriptorBinding::Type::Sampler,
+             rhi::RHIDescriptorBinding::ShaderStage::Fragment,
+             13},
+            {rhi::RHIDescriptorBinding::Type::Sampler,
+             rhi::RHIDescriptorBinding::ShaderStage::Fragment,
+             14},
         };
 
         auto layout = ctx.layouts.get(bindings);
@@ -149,11 +191,30 @@ namespace nitro::renderer
             .envIntensity = ctx.request.sceneData->environment.intensity,
             .hasEnvironment = ctx.request.sceneData->environment.valid() ? 1u : 0u};
         auto sampler = ctx.samplers.linearClamp;
+        auto shadowSampler = ctx.samplers.shadow;
+        std::array<frame::PhysicalTextureHandle, kCascadeCount> shadowDepths;
 
-        ctx.builder.addRenderPass("Deferred Lighting", [=](const frame::PassContext &p)
-                                  {
+        for (size_t i = 0; i < shadow.outputs.size(); i++)
+        {
+            shadowDepths[i] = ctx.builder.get(shadow.outputs[i])->physicalHandle;
+        }
+        ShadowFrame shadowFrame;
+
+        shadowFrame.params = glm::vec4(ctx.request.pipelineSettings.shadow.normalOffset, 1.0f / float(ctx.request.pipelineSettings.shadow.resolution), ctx.request.pipelineSettings.shadow.enabled ? 1.0f : 0.0f, 0.0f);
+        shadowFrame.splits = shadow.data.splits;
+        shadowFrame.view = ctx.request.camera.view;
+        for (size_t i = 0; i < shadow.data.viewProj.size(); i++)
+        {
+            shadowFrame.cascadeViewProj[i] = shadow.data.viewProj[i];
+        }
+
+        auto &renderPass = ctx.builder.addRenderPass("Deferred Lighting", [=](const frame::PassContext &p)
+                                                     {
                                       auto *ubo = p.resources.get(uboPhysicalHandle, p.frame);
                                       ubo->upload(&lightingFrame, sizeof(LightingFrame));
+
+                                      auto *shadowUbo = p.resources.get(shadowUboPhysicalHandle, p.frame);
+                                      shadowUbo->upload(&shadowFrame, sizeof(ShadowFrame));
 
                                       auto *descriptorSet = p.cmd.allocateDescriptorSet(layout);
 
@@ -188,6 +249,19 @@ namespace nitro::renderer
                                       textureBinding.texture = p.resources.get(brdfLUTPhysicalHandle, p.frame);
                                       descriptorSet->writeTexture(textureBinding, 9, rhi::ImageLayout::ShaderReadOnly);
 
+                                         descriptorSet->writeBuffer(shadowUbo, 10);
+
+                                       textureBinding.sampler = shadowSampler;
+                                    
+                   for(size_t i=0; i < shadowDepths.size(); i++){
+
+                                      textureBinding.texture = p.resources.get(shadowDepths[i], p.frame);
+                                      descriptorSet->writeTexture(textureBinding, 11 +i, rhi::ImageLayout::ShaderReadOnly);
+                         }
+
+
+                                   
+
                                       descriptorSet->commit();
 
                                       rhi::RenderingDesc renderPassDesc;
@@ -213,13 +287,17 @@ namespace nitro::renderer
 
                                       p.cmd.draw(3);
                                       p.cmd.endRendering(); })
-            .read(gbuf.albedo, rhi::ResourceState::ShaderRead)
-            .read(gbuf.normal, rhi::ResourceState::ShaderRead)
-            .read(gbuf.material, rhi::ResourceState::ShaderRead)
-            .read(gbuf.emissive, rhi::ResourceState::ShaderRead)
-            .read(gbuf.depth, rhi::ResourceState::ShaderRead)
-            .write(lightingHandle, rhi::ResourceState::RenderTarget);
+                               .read(gbuf.albedo, rhi::ResourceState::ShaderRead)
+                               .read(gbuf.normal, rhi::ResourceState::ShaderRead)
+                               .read(gbuf.material, rhi::ResourceState::ShaderRead)
+                               .read(gbuf.emissive, rhi::ResourceState::ShaderRead)
+                               .read(gbuf.depth, rhi::ResourceState::ShaderRead)
+                               .write(lightingHandle, rhi::ResourceState::RenderTarget);
 
+        for (auto &s : shadow.outputs)
+        {
+            renderPass.read(s, rhi::ResourceState::ShaderRead);
+        }
         LightingOutputs output{
             .sceneColor = lightingHandle};
 

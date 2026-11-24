@@ -313,12 +313,18 @@ namespace nitro::rhi::vulkan
         rasterizationInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
         rasterizationInfo.cullMode = convertCullMode(desc.cullMode);
         rasterizationInfo.frontFace = convertFrontFace(desc.frontFace);
-        rasterizationInfo.depthClampEnable = VK_FALSE;
-        rasterizationInfo.depthBiasClamp = 0.0f;
-        rasterizationInfo.depthBiasEnable = VK_TRUE;
+        // rasterizationInfo.depthClampEnable = VK_FALSE;
+        // rasterizationInfo.depthBiasClamp = 0.0f;
+        // rasterizationInfo.depthBiasEnable = VK_TRUE;
         rasterizationInfo.lineWidth = 1.0f;
         rasterizationInfo.polygonMode = VK_POLYGON_MODE_FILL;
         rasterizationInfo.rasterizerDiscardEnable = VK_FALSE;
+
+        rasterizationInfo.depthBiasEnable = desc.depthBias.enabled() ? VK_TRUE : VK_FALSE;
+        rasterizationInfo.depthBiasConstantFactor = desc.depthBias.constant;
+        rasterizationInfo.depthBiasSlopeFactor = desc.depthBias.slope;
+        rasterizationInfo.depthBiasClamp = desc.depthBias.clamp;
+        assert(desc.depthBias.clamp == 0.0f && "depthBiasClamp requires the device feature to be enabled");
 
         VkPipelineMultisampleStateCreateInfo multisampleInfo{};
         multisampleInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;

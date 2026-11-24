@@ -27,11 +27,11 @@ namespace nitro::renderer
 
     struct CameraData
     {
-        glm::mat4 view, proj, viewProj, invViewProj;
-        glm::vec3 position;
-        float farPlane, nearPlane;
-        float fovY;
-        float aspect;
+        glm::mat4 view{1.0f}, proj{1.0f}, viewProj{1.0f}, invViewProj{1.0f};
+        glm::vec3 position{0.0f};
+        float nearPlane = 0.1f, farPlane = 1000.0f;
+        float fovY = 0.0f;
+        float aspect = 1.0f;
     };
 
     struct DirectionalLight
@@ -68,12 +68,16 @@ namespace nitro::renderer
     {
         struct Shadow
         {
-            float bias = 0.005f;
-            float normalBias = 0.05f;
-            float lambda = 0.5f;
+
+            float lambda = 0.85f;
+            float distance = 50.0f;
             bool showCascadeColors = false;
             uint32_t resolution = 2048u;
             float casterMargin = 50.0f;
+            float biasConstant = 0.0f;
+            float biasSlope = 0.0f;
+            bool enabled = true;
+            float normalOffset = 0.0f;
         } shadow;
 
         struct SSAO
@@ -98,7 +102,8 @@ namespace nitro::renderer
             Ambient,
             Direct,
             DiffuseIBL,
-            SpecularIBL
+            SpecularIBL,
+            Cascade,
         } debugMode = DebugMode::Lit;
 
         struct Lighting

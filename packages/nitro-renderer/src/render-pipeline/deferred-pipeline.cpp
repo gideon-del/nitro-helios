@@ -6,6 +6,8 @@
 #include "nitro-renderer/passes/deferred-lighting-pass.h"
 #include "nitro-renderer/passes/tonemap-pass.h"
 #include "nitro-renderer/stage-outputs.h"
+#include "nitro-renderer/passes/shadow-pass.h"
+#include "nitro-renderer/shadows/cascades.h"
 #include <array>
 namespace nitro::renderer
 {
@@ -127,6 +129,27 @@ namespace nitro::renderer
                                              .occlusion = false,
                                              .testNearPlane = true,
                                              .name = "Geometry"});
+
+        auto cascadeData = computeCascades(
+            ctx.request.camera,
+            ctx.request.sceneData->directionalLight.direction,
+            ctx.request.pipelineSettings.shadow);
+        ShadowCascadeOutput shadowOutput;
+        shadowOutput.data = cascadeData;
+
+        for (uint32_t i = 0; i < kCascadeCount; i++)
+        {
+
+            auto cascadeCullOutput = addMeshCompactPass(ctx, {.planes = extractFrustum(cascadeData.viewProj[i]),
+                                                              .frustumCull = true,
+                                                              .lodEnabled = true,
+                                                              .occlusion = false,
+                                                              .testNearPlane = false,
+                                                              .name = "Shadow/Cascade " + std::to_string(i)});
+            auto shadowOuput = addShadowPass(ctx, cascadeCullOutput, cascadeData.viewProj[i], i, ctx.request.pipelineSettings.shadow);
+            shadowOutput.outputs[i] = shadowOuput.depth;
+        }
+
         auto depthOutput = addDepthPrepass(ctx, cull);
 
         if (mode == PipelineSettings::DebugMode::Depth)
@@ -135,7 +158,7 @@ namespace nitro::renderer
         if (isGBufferView(mode))
             return publish(ctx, addDebugViewPass(ctx, pick(gbuf, mode), toGBufferView(mode)).output);
 
-        auto lightOutput = addDeferredLightingPass(ctx, gbuf);
+        auto lightOutput = addDeferredLightingPass(ctx, gbuf, shadowOutput);
 
         publish(ctx, addTonemapPass(ctx, lightOutput.sceneColor).output);
     }

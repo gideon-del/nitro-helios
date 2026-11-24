@@ -17,9 +17,11 @@ namespace nitro::rhi::metal
         MTL::Winding frontFace = MTL::WindingCounterClockwise;
         MTL::CullMode cullMode = MTL::CullModeBack;
         bool hasDepth = true;
+        const PipelineDesc &getDesc() { return m_pipelineDesc; }
 
     private:
         MetalDevice *m_device;
         MTL::VertexDescriptor *m_descriptor = nullptr;
+        const PipelineDesc m_pipelineDesc;
     };
 }

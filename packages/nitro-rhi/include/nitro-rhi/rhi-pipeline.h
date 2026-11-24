@@ -116,6 +116,16 @@ namespace nitro::rhi
 
         bool operator==(const RHIStencilDesc &o) const = default;
     };
+
+    struct RHIDepthBiasDesc
+    {
+        float constant = 0.0f;
+        float slope = 0.0f;
+        float clamp = 0.0f;
+
+        bool enabled() const { return constant != 0.0f || slope != 0.0f; }
+        bool operator==(const RHIDepthBiasDesc &) const = default;
+    };
     struct PipelineDesc
     {
         RHIVertexLayout vertexLayout;
@@ -155,6 +165,7 @@ namespace nitro::rhi
         } frontFace = FrontFace::CounterClockwise;
         CullMode cullMode = CullMode::Back;
         RHIStencilDesc stencil;
+        RHIDepthBiasDesc depthBias;
 
         bool operator==(const PipelineDesc &) const = default;
     };
@@ -230,6 +241,10 @@ namespace nitro::rhi
             hashCombine(seed, std::hash<int>{}(static_cast<int>(desc.stencil.back.compareOp)));
             hashCombine(seed, std::hash<uint32_t>{}(desc.stencil.back.compareMask));
             hashCombine(seed, std::hash<uint32_t>{}(desc.stencil.back.writeMask));
+
+            hashCombine(seed, std::hash<float>{}(desc.depthBias.constant));
+            hashCombine(seed, std::hash<float>{}(desc.depthBias.slope));
+            hashCombine(seed, std::hash<float>{}(desc.depthBias.clamp));
 
             return seed;
         }

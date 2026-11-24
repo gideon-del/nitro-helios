@@ -77,7 +77,7 @@ namespace nitro::studio
         {
             bakeEnvironment(m_hdrFiles[m_selectedHdr]);
         }
-        m_scene.loadGltfScene("./assets/DamagedHelmet/DamagedHelmet.gltf", m_device);
+        m_scene.loadGltfScene("./assets/gltf/ABeautifulGame/glTF/ABeautifulGame.gltf", m_device);
     }
 
     renderer::CameraData toCameraData(const geometry::OrbitalCamera &camera)
@@ -92,6 +92,7 @@ namespace nitro::studio
         cameraData.viewProj = camera.viewProj();
         cameraData.position = camera.getEye();
         cameraData.aspect = float(camera.width()) / float(camera.height());
+        cameraData.fovY = camera.fov();
 
         return cameraData;
     }
@@ -306,8 +307,9 @@ namespace nitro::studio
             "Direct",
             "DiffuseIBL",
             "SpeculaIBL",
+            "Shadow Cascade",
         };
-        static_assert(IM_ARRAYSIZE(kModes) == static_cast<int>(renderer::PipelineSettings::DebugMode::SpecularIBL) + 1);
+        static_assert(IM_ARRAYSIZE(kModes) == static_cast<int>(renderer::PipelineSettings::DebugMode::Cascade) + 1);
 
         int mode = static_cast<int>(m_pipelineSettings.debugMode);
         if (ImGui::Combo("View", &mode, kModes, IM_ARRAYSIZE(kModes)))
@@ -320,10 +322,10 @@ namespace nitro::studio
         ImGui::ColorEdit3("Color", &m_sun.color.x);
         ImGui::DragFloat("Intensity", &m_sun.intensity, 0.05f, 0.0f, 20.0f);
 
-        ImGui::SeparatorText("Environment");
-        ImGui::ColorEdit3("Ambient", &m_environment.ambientColor.x);
-        ImGui::DragFloat("Ambient Intensity", &m_environment.ambientIntensity, 0.005f, 0.0f, 2.0f);
-        ImGui::ColorEdit3("Sky", &m_environment.skyColor.x);
+        // ImGui::SeparatorText("Environment");
+        // ImGui::ColorEdit3("Ambient", &m_environment.ambientColor.x);
+        // ImGui::DragFloat("Ambient Intensity", &m_environment.ambientIntensity, 0.005f, 0.0f, 2.0f);
+        // ImGui::ColorEdit3("Sky", &m_environment.skyColor.x);
 
         ImGui::SeparatorText("Tonemap");
         ImGui::DragFloat("Exposure", &m_postSettings.tonemap.exposure, 0.05f, 0.0f, 20.0f);
@@ -348,6 +350,15 @@ namespace nitro::studio
                 }
             ImGui::EndCombo();
         }
+
+        ImGui::DragFloat("Shadow Normal Bias", &m_pipelineSettings.shadow.normalOffset, 0.05f, 0.0f, 20.0f);
+        ImGui::DragFloat("Shadow Lambda", &m_pipelineSettings.shadow.lambda, 0.05f, 0.0f, 1.0f);
+        ImGui::DragFloat("Shadow Distance", &m_pipelineSettings.shadow.distance, 10.5f, 0.0f, 500.0f);
+        ImGui::DragFloat("Shadow Cater Margin", &m_pipelineSettings.shadow.casterMargin, 0.5f, 0.0f, 200.0f);
+        ImGui::DragFloat("Shadow Bias Slope", &m_pipelineSettings.shadow.biasSlope, 0.5f, 0.0f, 200.0f);
+
+        ImGui::Text("near %.3f far %.1f fovY %.3f aspect %.3f", request.camera.nearPlane, request.camera.farPlane, request.camera.fovY, request.camera.aspect);
+        ImGui::Text("radius c0 %.2f", 1.0f / glm::length(glm::vec3(request.camera.viewProj[0][0], request.camera.viewProj[1][0], request.camera.viewProj[2][0])));
         ImGui::End();
         m_device->endImGuiFrame();
         m_device->drawImGui(cmd);

@@ -147,7 +147,7 @@ namespace nitro::rhi::metal
             return MTL::StencilOperationKeep;
         }
     }
-    MetalPipeline::MetalPipeline(MetalDevice *device, const PipelineDesc &desc) : m_device(device), hasDepth(desc.hasDepth)
+    MetalPipeline::MetalPipeline(MetalDevice *device, const PipelineDesc &desc) : m_device(device), hasDepth(desc.hasDepth), m_pipelineDesc(desc)
     {
         NS::Error *error = nullptr;
 
