@@ -71,13 +71,12 @@ namespace nitro::renderer
 
             float lambda = 0.85f;
             float distance = 50.0f;
-            bool showCascadeColors = false;
             uint32_t resolution = 2048u;
             float casterMargin = 50.0f;
             float biasConstant = 0.0f;
             float biasSlope = 0.0f;
             bool enabled = true;
-            float normalOffset = 0.0f;
+            float normalOffset = 1.5f;
         } shadow;
 
         struct SSAO

@@ -10,6 +10,7 @@ namespace nitro::renderer
     {
         std::array<glm::mat4, kCascadeCount> viewProj;
         glm::vec4 splits;
+        glm::vec4 texelWorld;
     };
 
     struct ShadowCascadeOutput

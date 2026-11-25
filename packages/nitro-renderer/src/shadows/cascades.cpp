@@ -52,12 +52,14 @@ namespace nitro::renderer
         assert(camera.nearPlane > 0.0f && camera.farPlane > camera.nearPlane);
         assert(camera.aspect > 0.0f);
 
+        const float shadowFar = std::min(settings.distance, camera.farPlane);
+
         std::array<float, kCascadeCount + 1> bounds;
 
         for (uint32_t i = 0; i <= kCascadeCount; ++i)
-            bounds[i] = practicalSplit(camera.nearPlane, settings.distance, kCascadeCount, i, settings.lambda);
+            bounds[i] = practicalSplit(camera.nearPlane, shadowFar, kCascadeCount, i, settings.lambda);
         bounds[0] = camera.nearPlane;
-        bounds[kCascadeCount] = settings.distance;
+        bounds[kCascadeCount] = shadowFar;
 
         glm::vec3 dir = glm::normalize(lightDir);
         glm::vec3 up = std::abs(dir.y) > 0.99f ? glm::vec3(0, 0, 1) : glm::vec3(0, 1, 0);
@@ -118,6 +120,7 @@ namespace nitro::renderer
                                                    centre.y - radius, centre.y + radius,
                                                    zNear, zFar);
             result.viewProj[i] = proj * lightView;
+            result.texelWorld[i] = (2.0 * radius) / float(settings.resolution);
         }
 
         return result;

@@ -24,9 +24,10 @@ namespace
         glm::mat4 view;
         glm::vec4 splits;
         glm::vec4 params;
+        glm::vec4 texelWorld;
     };
 
-    static_assert(sizeof(ShadowFrame) == 352);
+    static_assert(sizeof(ShadowFrame) == 368);
 
     uint32_t
     toLightingDebug(PipelineSettings::DebugMode mode)
@@ -203,6 +204,7 @@ namespace nitro::renderer
         shadowFrame.params = glm::vec4(ctx.request.pipelineSettings.shadow.normalOffset, 1.0f / float(ctx.request.pipelineSettings.shadow.resolution), ctx.request.pipelineSettings.shadow.enabled ? 1.0f : 0.0f, 0.0f);
         shadowFrame.splits = shadow.data.splits;
         shadowFrame.view = ctx.request.camera.view;
+        shadowFrame.texelWorld = shadow.data.texelWorld;
         for (size_t i = 0; i < shadow.data.viewProj.size(); i++)
         {
             shadowFrame.cascadeViewProj[i] = shadow.data.viewProj[i];

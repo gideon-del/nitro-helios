@@ -42,7 +42,8 @@ layout(set = 0, binding = 10) uniform ShadowFrame {
     mat4  cascadeViewProj[4];
     mat4  view;            
     vec4  splits;         
-    vec4  params;          
+    vec4  params; 
+    vec4 texelWorld;         
 } shadow;
 
 
@@ -96,13 +97,13 @@ float computeShadow(vec3 worldPos, vec3 N, vec3 L){
    
 
    float NdotL = clamp(dot(N,L), 0.0, 1.0);
-    vec3 p = worldPos + N * shadow.params.x * (1.0 - NdotL);
+    vec3 p = worldPos + N * shadow.params.x * shadow.texelWorld[c] * (1.0 - NdotL);
 
     vec4 clip = shadow.cascadeViewProj[c] * vec4(p, 1.0);
     vec3 ndc  = clip.xyz / clip.w;
     vec2 uv   = ndc.xy * 0.5 + 0.5;
     if (any(lessThan(uv, vec2(0))) || any(greaterThan(uv, vec2(1))) || ndc.z > 1.0) return 1.0;
-
+    
 
     float texel = shadow.params.y, sum = 0.0;
     for (int y = -1; y <= 1; ++y)

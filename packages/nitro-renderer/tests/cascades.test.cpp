@@ -30,14 +30,15 @@ namespace
 TEST_CASE("Cascade splits increase and end at far", "[cascades]")
 {
     auto cam = makeCamera({0, 2, 0}, 0);
-    auto r = computeCascades(cam, kSun, settings());
+    auto s = settings();
+    auto r = computeCascades(cam, kSun, s);
     float prev = cam.nearPlane;
     for (uint32_t i = 0; i < kCascadeCount; ++i)
     {
         CHECK(r.splits[i] > prev);
         prev = r.splits[i];
     }
-    CHECK_THAT(r.splits[kCascadeCount - 1], WithinRel(cam.farPlane));
+    CHECK_THAT(r.splits[kCascadeCount - 1], WithinRel(s.distance));
 }
 
 TEST_CASE("Cascades are deterministic", "[cascades]")
@@ -55,6 +56,14 @@ TEST_CASE("Cascade radius ignores camera rotation", "[cascades]")
     auto b = computeCascades(makeCamera({0, 2, 0}, 73), kSun, settings());
     for (uint32_t i = 0; i < kCascadeCount; ++i)
         CHECK_THAT(radiusOf(a.viewProj[i]), WithinRel(radiusOf(b.viewProj[i]), 1e-5f));
+}
+TEST_CASE("Cascade texel world is correct", "[cascades]")
+{
+    auto resolution = settings().resolution;
+    auto a = computeCascades(makeCamera({0, 2, 0}, 0), kSun, settings());
+
+    for (int i = 0; i < 4; i++)
+        CHECK_THAT(a.texelWorld[i], WithinRel(2.0f * radiusOf(a.viewProj[i]) / float(resolution), 1e-4f));
 }
 
 TEST_CASE("Cascades move only by whole texels", "[cascades]")

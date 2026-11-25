@@ -103,7 +103,6 @@ namespace nitro::rhi::metal
                 metalPipeline->depthStencilState);
 
             const auto &pipelineDesc = metalPipeline->getDesc();
-
             encoder->setDepthBias(pipelineDesc.depthBias.constant, pipelineDesc.depthBias.slope, pipelineDesc.depthBias.clamp);
         }
 

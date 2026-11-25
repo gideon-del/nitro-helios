@@ -1,0 +1,83 @@
+#version 450
+layout(local_size_x =16, local_size_y=16, local_size_z=1) in;
+
+layout(set=0, binding=0) uniform sampler2D gDepth;
+layout(set=0, binding=1) uniform sampler2D gNormal;
+layout(set =0, binding=2,rgba16f) uniform writeonly image2D aoOutput;
+layout(std430,set=0, binding=3) buffer KernelSamples {
+    vec4 kernel[];
+};
+
+layout(set=0, binding=4) uniform sampler2D noiseTex;
+
+layout(set=0, binding=5) uniform FrameUBO {
+ mat4 view;
+ mat4 invProj;
+ mat4 proj;
+ vec2 halfSize;
+ uint sampleCount;
+ float radius;
+ float bias;
+} u;
+
+
+vec3 decodeNormal(vec2 n){
+vec2 f = n * 2.0 - 1.0;
+vec3 v = vec3(f, 1.0 - abs(f.x) - abs(f.y));
+
+if(v.z < 0.0){
+    v.xy = (1.0 - abs(v.yx)) * sign(v.xy);
+}
+
+return normalize(v);
+}
+
+
+mat3 generateTBN(vec3 normal, vec3 randomVec){
+    vec3 tangent = normalize(randomVec - normal * dot(randomVec, normal));
+   vec3 bitangent = cross(normal, tangent);
+
+    return mat3(tangent, bitangent, normal); 
+}
+
+vec3 reconstructViewPosition(vec2 uv, float depth, mat4 invProj) {
+    vec3 ndc = vec3(uv * 2.0 -1.0, depth);
+
+    vec4 clip = invProj * vec4(ndc, 1.0);
+
+    return clip.xyz /clip.w;
+}
+
+
+void main() {
+    ivec2 hp = ivec2(gl_GlobalInvocationID.xy);
+    if (any(greaterThanEqual(hp, ivec2(u.halfSize)))) return;
+    ivec2 fp = hp *2;
+    float d = texelFetch(gDepth, fp, 0).r;
+
+    if(d >= 1.0 ) {
+        imageStore(aoOutput, hp, vec4(1.0, 1e6,0, 0));
+        return;
+    }
+
+    vec2 uv =(vec2(fp) + 0.5) / vec2(textureSize(gDepth,0));
+    vec3  P   = reconstructViewPosition(uv, d, u.invProj);
+    vec3  N   = normalize(mat3(u.view) * decodeNormal(texelFetch(gNormal, fp, 0).xy));
+    vec3  rnd = vec3(texture(noiseTex, (vec2(hp) + 0.5) / 4.0).xy, 0.0);
+
+     mat3  TBN = generateTBN(N, rnd);
+     float occlusion = 0.0;
+
+     for(uint i =0; i < u.sampleCount; i++){
+        vec3 S = P + (TBN * vec3(kernel[i]))  * u.radius;
+        vec4 c = u.proj * vec4(S, 1.0);
+        vec2 suv = (c.xy /c.w) * 0.5 + 0.5;
+        float sceneZ = reconstructViewPosition(suv,textureLod(gDepth, suv,0).r, u.invProj).z;
+        float range = smoothstep(0.0,1.0, u.radius/ abs( P.z - sceneZ));
+        occlusion += (sceneZ >= S.z + u.bias ? 1.0: 0.0) * range;
+     }
+
+     float ao = 1.0 - (occlusion/u.sampleCount);
+      imageStore(aoOutput, hp, vec4(ao, -P.z,0, 0));
+
+}

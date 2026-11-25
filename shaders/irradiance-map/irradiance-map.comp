@@ -12,7 +12,7 @@ layout(set=0,binding=2) uniform samplerCube envTexture;
 layout(set=0, binding=3, rgba16f) uniform writeonly image2D cubeFace;
 
 const float PI = 3.14159265358979323846;
-
+const float kIrradianceSourceFace = 16.0;
 vec3 getNormalDirection(vec2 uv, uint faceIndex) {
     vec2 local = uv * 2.0 -1.0;
 
@@ -72,7 +72,8 @@ vec3 sampleIrradiance(mat3 TBN, vec3 normal, samplerCube environment) {
  vec3 irradiance = vec3(0.0);
  uint sampleCount =0u;
  float sampleDelta = 0.025;
-float srcMip = max(log2(float(pc.envFaceSize) / float(pc.faceSize)) - 1.0, 0.0);
+// float srcMip = max(log2(float(pc.envFaceSize) / float(pc.faceSize)) - 1.0, 0.0);
+float srcMip = max(log2(float(pc.envFaceSize)) - log2(kIrradianceSourceFace), 0.0);
  for(float theta =0; theta <= PI/2; theta+= sampleDelta){
     for(float phi =0.0; phi <= 2*PI; phi += sampleDelta) {
  vec3 tangentSample = vec3(sin(theta) * cos(phi), sin(theta)* sin(phi), cos(theta));
@@ -85,32 +86,29 @@ float srcMip = max(log2(float(pc.envFaceSize) / float(pc.faceSize)) - 1.0, 0.0);
 
  return PI* irradiance / float(sampleCount);
 
-// TODO:
-// Replace brute-force hemisphere integration with
-// Hammersley importance sampling.
-// Current implementation is the correctness reference.
 
-    // vec3  irradiance  = vec3(0.0);
-    // uint  SAMPLE_COUNT = 72768u; 
-
-    // for (uint i = 0u; i < SAMPLE_COUNT; i++) {
-    //     vec2 xi = hammersley(i, SAMPLE_COUNT);
-
-    //     // Map xi to spherical coordinates (cosine-weighted hemisphere)
-    //     float phi      = 2.0 * PI * xi.x;
-    //     float cosTheta = sqrt(1.0 - xi.y);  // cosine-weighted distribution
-    //     float sinTheta = sqrt(xi.y);
-
-    //     vec3 tangentSample = vec3(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
-    //     vec3 worldSample   = normalize(TBN * tangentSample);
-    //     // vec3 worldSample   = normalize(TBN * vec3(0.0,0.0,1.0));
-
-    //     irradiance += texture(environment, worldSample).rgb * cosTheta ;
-    //     // irradiance += worldSample * 0.5 + 0.5;
-    // }
-    // return PI *  irradiance / float(SAMPLE_COUNT);
 
 }
+
+// vec3 sampleIrradiance(mat3 TBN) {
+//     const uint SAMPLE_COUNT = 512u;
+//     float saTexel = 4.0 * PI / (6.0 * float(pc.envFaceSize) * float(pc.envFaceSize));
+//     vec3 sum = vec3(0.0);
+//     for (uint i = 0u; i < SAMPLE_COUNT; ++i) {
+//         vec2  xi       = hammersley(i, SAMPLE_COUNT);
+//         float phi      = 2.0 * PI * xi.x;
+//         float cosTheta = sqrt(1.0 - xi.y);
+//         float sinTheta = sqrt(xi.y);
+//         vec3  L        = TBN * vec3(sinTheta * cos(phi), sinTheta * sin(phi), cosTheta);
+
+//         float pdf      = cosTheta / PI;
+//         float saSample = 1.0 / (float(SAMPLE_COUNT) * pdf + 1e-4);
+//         float mip      = max(0.5 * log2(saSample / saTexel) + 1.0, 0.0);
+
+//         sum += textureLod(envTexture, L, mip).rgb;     
+//     }
+//     return sum / float(SAMPLE_COUNT);
+// }
 
 
 void main() {

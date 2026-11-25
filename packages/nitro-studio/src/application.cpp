@@ -77,7 +77,7 @@ namespace nitro::studio
         {
             bakeEnvironment(m_hdrFiles[m_selectedHdr]);
         }
-        m_scene.loadGltfScene("./assets/gltf/ABeautifulGame/glTF/ABeautifulGame.gltf", m_device);
+        m_scene.loadGltfScene("./assets/gltf/DamagedHelmet/DamagedHelmet.gltf", m_device);
     }
 
     renderer::CameraData toCameraData(const geometry::OrbitalCamera &camera)
@@ -192,7 +192,7 @@ namespace nitro::studio
     {
         auto hdriTexture = renderer::loadHDRImage(m_device, path.c_str());
         auto cubemapTexture = renderer::createCubeMap(m_device, hdriTexture, 512, std::string(SHADER_DIR), m_backend == Backend::Metal);
-        auto irradianceTexture = renderer::generateIrradianceMap(m_device, cubemapTexture, 32, std::string(SHADER_DIR), m_backend == Backend::Metal);
+        auto irradianceTexture = renderer::generateIrradianceMap(m_device, cubemapTexture, 64, std::string(SHADER_DIR), m_backend == Backend::Metal);
         auto prefilteredTexture = renderer::generatePrefliteredMap(m_device, cubemapTexture, 512, std::string(SHADER_DIR), m_backend == Backend::Metal, 5);
         auto brdfLUT = renderer::generateBrdfLUT(m_device, 512, std::string(SHADER_DIR), m_backend == Backend::Metal);
 
@@ -356,9 +356,6 @@ namespace nitro::studio
         ImGui::DragFloat("Shadow Distance", &m_pipelineSettings.shadow.distance, 10.5f, 0.0f, 500.0f);
         ImGui::DragFloat("Shadow Cater Margin", &m_pipelineSettings.shadow.casterMargin, 0.5f, 0.0f, 200.0f);
         ImGui::DragFloat("Shadow Bias Slope", &m_pipelineSettings.shadow.biasSlope, 0.5f, 0.0f, 200.0f);
-
-        ImGui::Text("near %.3f far %.1f fovY %.3f aspect %.3f", request.camera.nearPlane, request.camera.farPlane, request.camera.fovY, request.camera.aspect);
-        ImGui::Text("radius c0 %.2f", 1.0f / glm::length(glm::vec3(request.camera.viewProj[0][0], request.camera.viewProj[1][0], request.camera.viewProj[2][0])));
         ImGui::End();
         m_device->endImGuiFrame();
         m_device->drawImGui(cmd);
